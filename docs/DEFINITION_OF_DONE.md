@@ -1,0 +1,80 @@
+# DEFINITION_OF_DONE.md — When a story is "done"
+
+> **Lane:** Core governance. **Source of record:** `SECURE_BUILDER_PRD.md` §2, §4, §8.1.
+> **Operationalized by:** `CLAUDE.md` §3, §7.
+>
+> "Done" in Secure Builder is not "the code works." It is "the code passed the full gate
+> chain and a human approved it, with the evidence recorded." This file states that bar
+> exactly.
+
+---
+
+## 1. The bar
+
+A story is **done** only when **all four** of the following are true, **in order**, with
+no step skipped, reordered, or auto-approved:
+
+1. **Quality gate PASS** (Murat — `QUALITY_GATE.md`).
+2. **Security gate PASS** (Sentinel — `CONTROLS-MAPPING.md` / PRD §5.4).
+3. **Manual security review CLEAR** (human + AI assistant — `CLAUDE.md` §4.4).
+4. **Explicit human approval** — the human types "approved." This is the **hard stop**
+   and the only thing that unlocks a commit.
+
+> **No self-approval (Guarantee #1).** No AI agent approves AI-produced work. A story is
+> never "done" on an AI's say-so, no matter how correct the work appears.
+
+If any gate returns FAIL or the manual review returns findings, the story returns to the
+implementer with remediation notes and is **fully re-gated** — not patched and waved
+through.
+
+---
+
+## 2. Per-story evidence that must exist before "done"
+
+- **TDD two-commit sequence** in `git log` (`[S-XXX/tests]` before `[S-XXX/impl]`) for
+  any code-bearing story (Guarantee #3). Non-code stories — docs, ADRs, pipeline config —
+  are exempt by nature.
+- **`### TDD Red-Phase Evidence`** section in the story file (failing-test output).
+- **`## Gate Results`** section in the story file carrying the verdict tuple
+  (Murat / Sentinel / Manual / Human).
+- **Negative authorization tests** for every endpoint touched (401 / 403 / IDOR / 400 /
+  conflict — Guarantee #8).
+- **Security checks mapped to controls** — each Sentinel check links to cited control
+  text in `CONTROLS-MAPPING.md` (Guarantee #4).
+- For **security-sensitive** stories (auth, RBAC, new endpoints, data-boundary changes):
+  the human has **named the endpoints touched** and stated, in their own words, *who can
+  call each one and what stops everyone else.* A bare approval is not accepted.
+
+---
+
+## 3. Obligations triggered by "done" (the commit + handoff protocol)
+
+On human approval, before the story is closed out (`CLAUDE.md` §7):
+
+1. **Commit** per the TDD two-commit convention — `[S-XXX/tests]` then `[S-XXX/impl]`
+   (or `[F-XXX/...]` for framework/engine work). **No AI co-author or attribution
+   trailer on any commit** (standing rule, `CLAUDE.md` §7.1).
+2. **Append to the gate log** (`_bmad-output/gate-log.md`) — Quick Ledger row, Detailed
+   Ledger row, a `DETECTED` row for any new finding, and the terminal `REMEDIATED` /
+   `ACCEPTED` row for any finding that closed. **Append-only** — never edit or delete a
+   prior row (Guarantee #6).
+3. **Write the handoff prompt** — `NEXT_PROMPT.md` (S-prefix) or
+   `NEXT_PROMPT_FRAMEWORK.md` (F-prefix), fully self-contained for a fresh session.
+
+A story does **not** appear in the gate log until it has passed all four gates.
+In-progress stories have no entries.
+
+---
+
+## 4. What "done" does NOT mean (honesty clause)
+
+- **Not authorized to operate.** Done here means release-ready *as far as a pre-flight
+  development tool can make it* — not an ATO. The downstream platform team is the sole
+  approval authority and re-runs its own checks.
+- **Not separation of duties.** The four gates are a structured self-check by a single
+  operator, not separation of duties (`CLAUDE.md` §9). "Approved" evidences one
+  developer's structured self-check at the §4.4 depth — not senior security sign-off
+  unless a qualified senior reviewer actually performed it.
+- **Not proof an automated gate ran.** While Murat and Sentinel are Phase-2 builds, the
+  gate verdicts are produced by a human running the checklist by hand. Evidence and
+  briefings must say which it was.

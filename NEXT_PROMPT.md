@@ -54,6 +54,21 @@ the PRD only. Four F-track commits:
   under `docs/templates/`.
 - All F-track, **no AI co-author trailer.**
 
+**Built the enforcement mechanics** (`F-006`) — the machine-checkable guarantees,
+`local-attested` mode. Stdlib-only Python + thin `sh` hooks, works with/without the
+`pre-commit` framework, no network deps:
+- `agents/manifest.json` — §3 table as data (lanes, `owned_globs`, reads).
+- `scripts/gates/check_lanes.py` (Guarantee #5 file-ownership), `check_tdd.py`
+  (Guarantee #3 two-commit + msg prefix), `secret_scan.py` (Guarantee #7 backstop).
+- `scripts/hooks/{pre-commit,commit-msg}` + `install-hooks.sh` + `.pre-commit-config.yaml`
+  + `.gitattributes` (force LF so hooks stay runnable).
+
+**⚠️ The scripts are UNVERIFIED.** This laptop has **no Python installed** (only the
+Windows Store stub), so I could not execute the smoke test. The hooks are **not
+installed** (committing still works). The `pre-commit` hook is **fail-closed** — it exits
+1 if Python is absent — so do **not** run `scripts/install-hooks.sh` until Python is on
+the box.
+
 **Resolved a design tension (noted, not relitigated):** the live `gate-log.md` /
 `NEXT_PROMPT*` live in `_bmad-output/` which is **gitignored here** — correct, because a
 real app's gate log holds sensitive findings (OPSEC) and is tracked in *that app's* repo
@@ -75,31 +90,36 @@ where Guarantee #6 (git history = tamper record) holds. So this engine repo trac
 - **Evidence schema/templates are tracked here; live instances live in the consuming
   app's repo** (`_bmad-output/` is gitignored — OPSEC).
 
-## What's next (pick up here) — Week 1: enforcement mechanics (the last Week-1 item)
+## What's next (pick up here) — verify the scripts, then Week 2 (agents)
 
-All Week-1 *docs* are done. The remaining item is **code** — the machine-checkable
-guarantees from the build plan (this is `local-attested` mode, §9/§6). Two pieces:
+**Week 1 is functionally complete** (governance docs + enforcement mechanics). Two things
+before moving on, then Week 2:
 
-1. **Pre-commit hook** — enforces, on the diff being committed:
-   - TDD two-commit check (a `[S-XXX/tests]` commit precedes `[S-XXX/impl]` in `git log`);
-   - secret scan (block on probable secrets / forbidden files per `CLAUDE.md` §8);
-   - lint + typecheck + tests exit 0, no skipped tests, no debug statements.
-2. **Lane-enforcement script** — `git diff` touched files vs. each agent's owned-artifact
-   globs (§3.2 / `CLAUDE.md` §2.2) → flag out-of-lane changes. (File-ownership dimension
-   only; semantic over-reach stays human judgment — don't over-claim.)
+0. **Install Python on the build box, then verify the F-006 scripts** (they are
+   reviewed but UNEXECUTED — see warning above). Quick smoke test:
+   - `python scripts/gates/check_lanes.py --list-agents`
+   - `python scripts/gates/check_lanes.py --agent Amelia --range HEAD~1..HEAD`
+     (docs-only commit → expect an OUT-OF-LANE finding, exit 1)
+   - `python scripts/gates/check_tdd.py --staged-msg "[S-001/tests] x"` (expect OK)
+   - `python scripts/gates/secret_scan.py --files README.md` (expect clean)
+   Fix anything that surfaces, then optionally `sh scripts/install-hooks.sh`.
+   - **Decision deferred:** if you'd rather not depend on Python (air-gap), say so and we
+     port the three checks to POSIX `sh`. Otherwise Python stays.
 
-**Decisions this needs before writing** (ask the operator):
-   - Hook mechanism: plain `.git/hooks` + a tracked `scripts/` dir, or a manager (husky /
-     pre-commit)? Engine repo is docs-only today, so the hook is also a **template** App #1
-     installs.
-   - Language: POSIX `sh` vs Node — affects portability to air-gapped targets.
-   - Where agent→glob ownership is declared as data (a tracked `agents.yaml`/JSON the
-     lane script reads) vs. hard-coded from the §3 manifest.
-   - (If App #1 gets a remote/CI: also wire `ci-enforced` branch-protection — otherwise
-     `local-attested` only for now.)
+**Then Week 2 — Agents (rebuild the §3 manifest as skills):**
+- **[SLOTTABLE]** Customize built-in personas onto stock skills: John (pm), Winston
+  (architect), Sally (ux-designer), Amelia (dev), Paige (tech-writer).
+- **[HEADS-DOWN]** Build the custom skills from the §7 scaffold: Tori, Bob, Murat (one
+  persona, cluster of test skills), Frank, **Sentinel** (the §5.4 checklist + control
+  lookup against `CONTROLS-MAPPING.md`). These have no stock equivalent — they're the
+  real Week-2 work.
+- **[SLOTTABLE]** Smoke-test each agent in isolation on a throwaway story before wiring.
+- The §7 agent-builder template scaffold lives at `.github/skills/bmad-agent-builder/
+  assets/` per the PRD — confirm where the substrate expects skill files on this setup.
 
-**Watch for:** keep marking honestly what's enforced-today vs Phase-2. Generic
-placeholders only (`<ACCOUNT_ID>`, `<CERT_ARN>`); never invent real infra.
+**Watch for:** keep marking honestly what's enforced-today vs Phase-2; the agents read the
+governance docs as their mandatory reads (see `agents/manifest.json`). Generic
+placeholders only; never invent real infra.
 
 ## Key files
 

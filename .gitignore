@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Secure Builder: vendored framework & local config ---
+# BMAD framework is a vendored dependency, not this project's IP — keep it out of
+# the public repo. .claude/ holds local config + session artifacts. _bmad-output/
+# is generated output (OPSEC: never publish framework-generated artifacts).
+_bmad/
+_bmad-output/
+.claude/

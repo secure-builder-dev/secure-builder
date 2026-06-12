@@ -858,3 +858,14 @@ document."
 | **CVE** | Common Vulnerabilities and Exposures. A publicly catalogued software vulnerability identifier, tracked by the dependency policy. |
 | **CUI** | Controlled Unclassified Information. Sensitive but unclassified information requiring safeguarding; the IL4 data category. |
 | **MVVM** | Model-View-ViewModel. The Android architectural pattern specified for the Kotlin/native track. |
+| **GATE_ENFORCEMENT** | Initialization variable (§9) selecting how the §2 gate chain is enforced: `ci-enforced` (server-side branch protection + required CI status checks — a true merge wall, requires a Git remote with CI) or `local-attested` (local pre-commit hook + append-only audit + operator discipline, for air-gapped/offline targets with no remote CI). Sets the honest strength of Guarantee #2. |
+| **Negative authorization test** | A test asserting that an *un*authorized actor is denied — e.g., user A cannot read user B's resource (IDOR), or a role lacking a permission is rejected. Guarantee #8 requires every endpoint to ship with these, not just positive happy-path tests. |
+| **NIST** | National Institute of Standards and Technology. Publisher of the SP 800-series standards this engine produces evidence against — notably SP 800-53 (security controls) and SP 800-37 (RMF). |
+| **SP** | Special Publication. NIST's standards series (e.g., SP 800-53 Rev 5, SP 800-37 Rev 2). |
+| **RAG** | Retrieval-Augmented Generation. Grounding LLM output in retrieved source documents rather than model memory; the basis for the citation-grounded control mappings in Guarantee #4 (a fast-follow — see §14 Track C). |
+| **SCA** | Software Composition Analysis. Scanning resolved dependencies for known-vulnerable components and license violations. |
+| **MCP** | Model Context Protocol. The protocol connecting agents to external tools and data sources; part of the integration surface in the Track-B rebuild inventory (§10.1). |
+| **CFR** | Code of Federal Regulations. The codification of US federal agency regulations (e.g., 48 CFR § 227.7103, government purpose rights). |
+| **APK** | Android Package. The installable Android application bundle; the `native` Android distribution artifact. |
+| **MDM** | Mobile Device Management. Enterprise control plane for distributing and managing apps on devices; a `native` Android distribution channel. |
+| **LUKS** | Linux Unified Key Setup. A disk-encryption specification cited as an example data-at-rest mechanism (SC-28). |

@@ -1,0 +1,25 @@
+# Pre-commit framework config — local hooks only (no network, air-gap safe).
+#
+# These `repo: local` hooks call the SAME stdlib-only scripts as the plain git hooks in
+# scripts/hooks/, so behavior is identical whether you use the framework or
+# scripts/install-hooks.sh. Using `local` repos means pre-commit never clones hook repos
+# from the internet on first run — the one thing that would otherwise break air-gapped.
+#
+# Enable with:  pre-commit install  (and  pre-commit install --hook-type commit-msg)
+# The substance lives in scripts/gates/*.py; this file is just wiring (CLAUDE.md §0, §6).
+
+repos:
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: secret & forbidden-file scan (Guarantee #7)
+        entry: python scripts/gates/secret_scan.py --staged
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: commit-prefix
+        name: commit-message prefix ([S-XXX/...] | [F-XXX/...])
+        entry: python scripts/gates/check_tdd.py --staged-msg
+        language: system
+        stages: [commit-msg]

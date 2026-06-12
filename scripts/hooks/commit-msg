@@ -1,0 +1,17 @@
+#!/bin/sh
+# commit-msg — enforce the commit-message prefix convention (CLAUDE.md §4.1, §7).
+# Argument $1 is the path to the file holding the proposed commit message.
+#
+# Validates the [S-XXX/tests], [S-XXX/impl], or [F-XXX/...] prefix. The TDD two-commit
+# ORDERING (tests before impl) is verified separately by check_tdd.py --story at gate
+# time / pre-push, since it spans more than the single commit being made.
+
+set -e
+PY="$(command -v python3 || command -v python)"
+if [ -z "$PY" ]; then
+  echo "commit-msg: python not found — skipping prefix check." >&2
+  exit 0
+fi
+ROOT="$(git rev-parse --show-toplevel)"
+MSG="$(cat "$1")"
+"$PY" "$ROOT/scripts/gates/check_tdd.py" --staged-msg "$MSG"

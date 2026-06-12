@@ -1,0 +1,37 @@
+#!/bin/sh
+# pre-commit — local-attested gate backstop (CLAUDE.md §0, §6; GATE_ENFORCEMENT=local-attested).
+#
+# Runs the machine-checkable checks that apply to the STAGED change. This is
+# defense-in-depth, NOT an unbypassable wall: a determined operator can `--no-verify`.
+# That is by design for local-attested mode — the append-only gate log + git history
+# make a skip visible and attributable, and the downstream platform team re-checks
+# everything (PRD §2 Guarantee #2, §13).
+#
+# Install with scripts/install-hooks.sh (or use .pre-commit-config.yaml).
+
+set -e
+PY="$(command -v python3 || command -v python)"
+if [ -z "$PY" ]; then
+  echo "pre-commit: python not found on PATH — cannot run gate checks." >&2
+  echo "  (install python3, or commit with --no-verify and run checks manually)." >&2
+  exit 1
+fi
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: running local-attested gate checks…"
+
+# (1) Secret / forbidden-file scan — Guarantee #7, PRD §11.
+"$PY" "$ROOT/scripts/gates/secret_scan.py" --staged || exit 1
+
+# (2) App quality stage — only if the project defines one (web track: npm scripts).
+#     Skipped silently in the docs-only engine repo, which has no package.json.
+if [ -f "$ROOT/package.json" ]; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "pre-commit: npm project detected — running lint / typecheck / test…"
+    npm run --silent lint --if-present || { echo "pre-commit: lint failed"; exit 1; }
+    npm run --silent typecheck --if-present || { echo "pre-commit: typecheck failed"; exit 1; }
+    npm test --silent --if-present || { echo "pre-commit: tests failed"; exit 1; }
+  fi
+fi
+
+echo "pre-commit: checks passed."

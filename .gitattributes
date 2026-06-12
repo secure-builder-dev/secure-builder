@@ -1,0 +1,6 @@
+# Force LF on anything executed by a POSIX shell / interpreter.
+# CRLF in a shell script breaks the shebang ("bad interpreter: /bin/sh^M"); CRLF in the
+# hooks would silently break the local-attested gate on checkout. Keep these LF always.
+*.sh            text eol=lf
+*.py            text eol=lf
+scripts/hooks/* text eol=lf

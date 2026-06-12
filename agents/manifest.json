@@ -1,0 +1,103 @@
+{
+  "$comment": [
+    "Agent manifest — the §3 PRD table as machine-readable data.",
+    "Source of record: SECURE_BUILDER_PRD.md §3 / §3.2. Operationalized by CLAUDE.md §2.",
+    "owned_globs is the FILE-OWNERSHIP dimension of Guarantee #5 (machine-checkable).",
+    "The SEMANTIC dimension (a decision buried inside an allowed file) is NOT in here —",
+    "it stays human/Sentinel judgment. Do not treat this file as full lane automation.",
+    "Globs are gitignore-style (fnmatch over forward-slash repo-relative paths).",
+    "This same file is the intended data source for the Phase-2 agent skills."
+  ],
+  "agents": {
+    "John": {
+      "persona": "Product Manager",
+      "lane": "PRD, epics, high-level story scoping",
+      "owned_globs": ["docs/PRD.md", "docs/epics/**"],
+      "owned_semantic": ["story headers (intra-file; not glob-checkable)"],
+      "mandatory_reads": ["docs/STORY_TEMPLATE.md", "docs/PRD.md"]
+    },
+    "Tori": {
+      "persona": "Story Analyst",
+      "lane": "Story writing, refinement, gap analysis, story-vs-contract alignment",
+      "owned_globs": ["docs/stories/**"],
+      "mandatory_reads": [
+        "docs/stories/**", "docs/STORY_TEMPLATE.md", "docs/PRD.md",
+        "docs/architecture/API_CONTRACT.md", "docs/architecture/DB_SCHEMA_v2.md",
+        "docs/architecture/DEPENDENCY_POLICY.md"
+      ]
+    },
+    "Bob": {
+      "persona": "Scrum Master",
+      "lane": "Sprint dispatch, gate enforcement, sprint artifacts",
+      "owned_globs": [
+        "_bmad-output/planning-artifacts/**",
+        "_bmad-output/NEXT_PROMPT.md",
+        "_bmad-output/NEXT_PROMPT_FRAMEWORK.md",
+        "NEXT_PROMPT.md"
+      ],
+      "mandatory_reads": []
+    },
+    "Winston": {
+      "persona": "Architect",
+      "lane": "ADR decisions, DB schema, API contract design",
+      "owned_globs": [
+        "docs/architecture/ADR-LOG.md",
+        "docs/architecture/API_CONTRACT.md",
+        "docs/architecture/DB_SCHEMA_v2.md"
+      ],
+      "mandatory_reads": [
+        "docs/architecture/ADR-LOG.md",
+        "docs/architecture/DB_SCHEMA_v2.md",
+        "docs/architecture/API_CONTRACT.md"
+      ]
+    },
+    "Sally": {
+      "persona": "UX Designer",
+      "lane": "UX/UI design — interaction patterns, component specs, accessibility (web track)",
+      "owned_globs": ["docs/UX-SPEC.md", "docs/design/**"],
+      "mandatory_reads": ["docs/stories/**", "docs/PRD.md", "docs/architecture/API_CONTRACT.md"]
+    },
+    "Amelia": {
+      "persona": "Developer",
+      "lane": "TDD implementation — tests first, always",
+      "owned_globs": ["src/**", "test/**", "tests/**"],
+      "mandatory_reads": [
+        "docs/architecture/API_CONTRACT.md",
+        "docs/architecture/DB_SCHEMA_v2.md",
+        "docs/architecture/DEPENDENCY_POLICY.md"
+      ]
+    },
+    "Murat": {
+      "persona": "Test Architect",
+      "lane": "Test strategy, ATDD, coverage gates, quality gates",
+      "owned_globs": ["docs/QUALITY_GATE.md"],
+      "mandatory_reads": ["docs/QUALITY_GATE.md"]
+    },
+    "Frank": {
+      "persona": "DevSecOps",
+      "lane": "Pipeline, Helm, Terraform, image compliance, STIG",
+      "owned_globs": ["docs/architecture/DEVSECOPS_SPEC.md", "helm/**", "terraform/**", "**/*.tf"],
+      "mandatory_reads": [
+        "docs/architecture/DEVSECOPS_SPEC.md",
+        "docs/architecture/DEPENDENCY_POLICY.md"
+      ]
+    },
+    "Sentinel": {
+      "persona": "Security Gatekeeper",
+      "lane": "Security, architecture, dependency gate — binary verdicts only",
+      "owned_globs": [
+        "docs/architecture/DEPENDENCY_POLICY.md",
+        "docs/security/**",
+        "_bmad-output/gate-log.md"
+      ],
+      "mandatory_reads": ["CLAUDE.md", "docs/architecture/DEPENDENCY_POLICY.md"]
+    },
+    "Paige": {
+      "persona": "Tech Writer",
+      "lane": "User/developer docs; doc curation and indexing (excl. governance/architecture/security)",
+      "owned_globs": ["README.md", "docs/guides/**", "docs/index.md"],
+      "owned_semantic": ["docs/** excluding governance, architecture, security, and story files owned by other lanes"],
+      "mandatory_reads": ["docs/PRD.md"]
+    }
+  }
+}

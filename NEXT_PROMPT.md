@@ -1,6 +1,6 @@
 # NEXT PROMPT — Secure Builder (session handoff)
 
-> Paste this to Claude at the start of the next session. It is self-contained: the
+> Paste this to the agent at the start of the next session. It is self-contained: the
 > next session has no memory of the last one. (Memory files under
 > `~/.claude/projects/c--dev-secure-builder/memory/` also carry this context.)
 
@@ -14,18 +14,21 @@ secure pipelines to cut the cATO remediation bottleneck). The design is already 
 I built a "frankenstein" version at work that generated a 76-story backend that compiled
 first try. This repo is the clean, ownable rebuild.
 
-**The spec is done.** `SECURE_BUILDER_PRD.md` is locked (do **not** edit it — resist
-polishing). We are **executing the build plan** (`SECURE_BUILDER_BUILD_PLAN.md`), in
-**Week 1: the governance backbone.**
+**The spec is `SECURE_BUILDER_PRD.md`** — it was locked, and is now **deliberately
+amended** for the two-context architecture (see below); CLAUDE.md was kept in sync. We
+are **executing the build plan** (`SECURE_BUILDER_BUILD_PLAN.md`), at the **Week 1 →
+Week 2 boundary** (governance backbone done; agents next).
 
 **Hard rule:** clean-room. Build from the PRD spec and my descriptions only — never
 paste my work artifacts (real CLAUDE.md, ADRs, real boundary/account names). OPSEC: only
 aggregate/releasable metrics ever touch this laptop.
 
 **End state (not the current scaffolding):** Claude + BMAD are temporary scaffolding to
-prove the design. The target is **own-orchestration (Track B — my own framework from
-scratch, replacing BMAD) + local Ollama/Qwen models on owned hardware (Track C)**. Both
-are deliberately *out* of the 4-week window, gated on Track A proving the design first.
+prove the design. The target is **own-orchestration (Track B) + local models on owned
+hardware (Track C)** — now with a specific split: the **build context on a local code
+model (Qwen)** and the **gate context on a different local model (Llama)** so the bias
+firewall is reinforced by different weights, not just different sessions. Both tracks are
+deliberately *out* of the 4-week window, gated on Track A proving the design first.
 
 **Goal:** demoable clean engine + public repo + 3-min video in ~4 focused weeks, then
 run ≥2 real apps through it before I separate (~June 2027), using the platform team's
@@ -33,100 +36,83 @@ intake findings as third-party proof.
 
 ## What we did last session
 
-**Built out the Week 1 governance backbone — all doc artifacts done.** Clean-room from
-the PRD only. Four F-track commits:
+**Amended the engine for an agentic two-context (build vs. gate) architecture** — commit
+**`ede5912` `[F-008/docs]`** (8 files, no AI trailer). The change, mirrored across
+`CLAUDE.md` and the (now-amended) `SECURE_BUILDER_PRD.md`:
 
-- **`CLAUDE.md` — the engine constitution** (`F-002`). Governing law + auto-loaded file.
-  Honest now-vs-Phase-2 split (§0): binds today = no self-approval, human approval before
-  commit, TDD two-commit, append-only evidence, no AI trailer, clean-room/OPSEC; Phase 2 =
-  the automated gate agents (Murat, Sentinel), the lane-diff script, the `ci-enforced`
-  merge wall. Encodes all of: 8 guarantees, agent manifest, 7-step lifecycle + routing +
-  human-attested reads, the four gate criteria, init vars, `GATE_ENFORCEMENT` honesty,
-  commit protocol, AI security rules, no-over-claiming doctrine, governance index.
-- **Gate docs** (`F-003`): `docs/QUALITY_GATE.md` (Murat), `docs/DEFINITION_OF_DONE.md`,
-  `docs/STORY_TEMPLATE.md`, `docs/architecture/DEPENDENCY_POLICY.md` (Sentinel severity
-  matrix + IL4 license policy).
-- **Evidence docs** (`F-004`): `docs/security/controls/CONTROLS-MAPPING.md` (IL4 baseline
-  + IL6/Android/tactical checks → NIST 800-53 Rev 5 IDs; control IDs+titles recorded,
-  verbatim text marked corpus-pending = RAG fast-follow; every row DRAFT until human
-  ratification; flags SA-12→SR-3 Rev-5 move), `docs/GATE_LOG_SCHEMA.md` (three-ledger
-  append-only structure + verdict vocab + update protocol), and the two handoff templates
-  under `docs/templates/`.
-- All F-track, **no AI co-author trailer.**
+- **Two context windows per story with an information barrier.** **CW1 (Build):** Bob
+  dispatch → Amelia TDD (local working commits) → write `NEXT_PROMPT_GATES.md`. **CW2
+  (Gates):** Murat → Sentinel scan the *diff only*, **blind to the builder's reasoning**
+  → capped self-healing loop → manual security review + human approval. This is
+  **context-isolated independent review** — a fresh set of eyes scans the artifact, not
+  the author's justifications.
+- **Self-healing loop capped at 3 rounds**, then escalates to a human (anti-runaway +
+  anti-Goodhart). Human gates (manual review, approval) are terminal and unchanged.
+- **Sentinel forced read-and-attest** (§3.2): Sentinel must open/read each skill file —
+  incl. **adversarial testing** — and echo an attestation before judging. Fixes the
+  observed failure where it *improvised* a skill instead of executing it.
+- **Guarantee #2 re-scoped** "no commit" → "**no promotion**": local TDD commits are
+  permitted in CW1 as tamper-evident audit evidence; the gate chain + approval gate
+  *promotion* (DONE/push/merge), not the local checkpoint commit.
+- **New `NEXT_PROMPT_GATES.md`** intra-story handoff (template added under
+  `docs/templates/`; live instance gitignored under `_bmad-output/`).
+- **Gate-log authorship fixed Bob → Sentinel** (resolves the §2-manifest vs §7.2
+  contradiction — Sentinel already owns the file).
+- Framed throughout as **independent review, explicitly NOT internal separation of
+  duties** — the honesty doctrine (§9 / PRD §6.1, §13) is preserved intact.
 
-**Built the enforcement mechanics** (`F-006`) — the machine-checkable guarantees,
-`local-attested` mode. Stdlib-only Python + thin `sh` hooks, works with/without the
-`pre-commit` framework, no network deps:
-- `agents/manifest.json` — §3 table as data (lanes, `owned_globs`, reads).
-- `scripts/gates/check_lanes.py` (Guarantee #5 file-ownership), `check_tdd.py`
-  (Guarantee #3 two-commit + msg prefix), `secret_scan.py` (Guarantee #7 backstop).
-- `scripts/hooks/{pre-commit,commit-msg}` + `install-hooks.sh` + `.pre-commit-config.yaml`
-  + `.gitattributes` (force LF so hooks stay runnable).
-
-**⚠️ The scripts are UNVERIFIED.** This laptop has **no Python installed** (only the
-Windows Store stub), so I could not execute the smoke test. The hooks are **not
-installed** (committing still works). The `pre-commit` hook is **fail-closed** — it exits
-1 if Python is absent — so do **not** run `scripts/install-hooks.sh` until Python is on
-the box.
-
-**Resolved a design tension (noted, not relitigated):** the live `gate-log.md` /
-`NEXT_PROMPT*` live in `_bmad-output/` which is **gitignored here** — correct, because a
-real app's gate log holds sensitive findings (OPSEC) and is tracked in *that app's* repo
-where Guarantee #6 (git history = tamper record) holds. So this engine repo tracks the
-**schema + templates**, not live instances.
+**Carried over from Week 1 (still true):** the governance docs (F-002…F-005) and the
+`local-attested` enforcement mechanics (F-006) are built. **⚠️ The F-006 gate scripts
+are still UNVERIFIED** — this laptop has **no real Python** (only the Windows Store
+stub), hooks are **not installed**, and the `pre-commit` hook is fail-closed.
 
 ## Decisions locked (don't relitigate)
 
+- **Two-context split is independent review, NOT separation of duties.** Never describe
+  it as SoD in a README/briefing. Genuine SoD remains the external platform team.
+- **Loop cap = 3 rounds**, then escalate to human.
+- **Promotion (not commit) is the gated event**; local TDD commits are audit evidence.
+- **Sentinel authors the gate log**, live in CW2 + the DONE row on approval. Bob owns the
+  `NEXT_PROMPT*` handoffs only.
+- **Track C model split: Qwen (build) / Llama (gates)** — target, out of the 4-week window.
 - Operating mode: **team-owned, single-operator-per-session.**
-- **Gitignore the framework** (`_bmad/`, `_bmad-output/`, `.claude/`) — decided, done.
-- RAG corpus is a **fast-follow**, NOT in the 4-week window — static
-  `CONTROLS-MAPPING.md` is enough to demo (already proven at work).
-- F9 (risk-tiered light/full manual gate): **deferred** to after real review-load data
-  (captured in §14 Track A).
-- Track B (own orchestration) and Track C (offline/local Ollama+Qwen): **out of the
-  4-week window**, gated on Track A.
-- **`CLAUDE.md` is the source of *operations*; `SECURE_BUILDER_PRD.md` is the source of
-  *record*.** Where they differ, the PRD governs and CLAUDE.md is the bug.
-- **Evidence schema/templates are tracked here; live instances live in the consuming
-  app's repo** (`_bmad-output/` is gitignored — OPSEC).
+- **Gitignore the framework** (`_bmad/`, `_bmad-output/`, `.claude/`) — done. Evidence
+  schema/templates tracked here; live instances live in the consuming app's repo (OPSEC).
+- RAG corpus, F9 risk-tiered manual gate, Track B/C: **out of the 4-week window.**
 
-## What's next (pick up here) — verify the scripts, then Week 2 (agents)
+## What's next (pick up here)
 
-**Week 1 is functionally complete** (governance docs + enforcement mechanics). Two things
-before moving on, then Week 2:
+**0. Verify the F-006 scripts** (still UNEXECUTED — no Python on the box). Install Python,
+then smoke-test `scripts/gates/check_lanes.py` / `check_tdd.py` / `secret_scan.py` (see
+prior handoff for exact commands), fix anything, optionally `sh scripts/install-hooks.sh`.
+Or, if staying air-gapped, port the three checks to POSIX `sh`.
 
-0. **Install Python on the build box, then verify the F-006 scripts** (they are
-   reviewed but UNEXECUTED — see warning above). Quick smoke test:
-   - `python scripts/gates/check_lanes.py --list-agents`
-   - `python scripts/gates/check_lanes.py --agent Amelia --range HEAD~1..HEAD`
-     (docs-only commit → expect an OUT-OF-LANE finding, exit 1)
-   - `python scripts/gates/check_tdd.py --staged-msg "[S-001/tests] x"` (expect OK)
-   - `python scripts/gates/secret_scan.py --files README.md` (expect clean)
-   Fix anything that surfaces, then optionally `sh scripts/install-hooks.sh`.
-   - **Decision deferred:** if you'd rather not depend on Python (air-gap), say so and we
-     port the three checks to POSIX `sh`. Otherwise Python stays.
-
-**Then Week 2 — Agents (rebuild the §3 manifest as skills):**
-- **[SLOTTABLE]** Customize built-in personas onto stock skills: John (pm), Winston
-  (architect), Sally (ux-designer), Amelia (dev), Paige (tech-writer).
-- **[HEADS-DOWN]** Build the custom skills from the §7 scaffold: Tori, Bob, Murat (one
-  persona, cluster of test skills), Frank, **Sentinel** (the §5.4 checklist + control
-  lookup against `CONTROLS-MAPPING.md`). These have no stock equivalent — they're the
-  real Week-2 work.
+**Then Week 2 — Agents — must now implement the two-context flow:**
+- **[SLOTTABLE]** Customize built-in personas onto stock skills: John, Winston, Sally,
+  Amelia, Paige.
+- **[HEADS-DOWN]** Build the custom skills (no stock equivalent): Tori, Bob, **Murat**
+  (one persona, cluster of test skills), Frank, **Sentinel**. The gate skills must
+  encode the new mechanics:
+  - **Sentinel/Murat run in CW2 against the diff only** — wire the `NEXT_PROMPT_GATES.md`
+    handoff as their entry (template: `docs/templates/NEXT_PROMPT_GATES-template.md`).
+  - **Sentinel forced read-and-attest** of all its skill files incl. adversarial testing
+    — fill the `<path>` placeholders in the gates template, and add those skill paths to
+    `Sentinel.mandatory_reads` in `agents/manifest.json` once the files exist.
+  - **The capped (3-round) self-healing loop** and Sentinel-authored live gate-log writes.
 - **[SLOTTABLE]** Smoke-test each agent in isolation on a throwaway story before wiring.
-- The §7 agent-builder template scaffold lives at `.github/skills/bmad-agent-builder/
-  assets/` per the PRD — confirm where the substrate expects skill files on this setup.
 
-**Watch for:** keep marking honestly what's enforced-today vs Phase-2; the agents read the
-governance docs as their mandatory reads (see `agents/manifest.json`). Generic
-placeholders only; never invent real infra.
+**Watch for:** keep marking honestly enforced-today vs Phase-2; independent-review ≠ SoD;
+forced-read is stronger than ambient context but still not positive proof of *application*.
+Generic placeholders only; never invent real infra.
 
 ## Key files
 
-- `CLAUDE.md` — **engine constitution (governing law + auto-loaded).**
-- `docs/QUALITY_GATE.md`, `docs/DEFINITION_OF_DONE.md`, `docs/STORY_TEMPLATE.md` — gate docs.
+- `CLAUDE.md` — **engine constitution (governing law + auto-loaded).** §3 = two-context
+  lifecycle; §3.2 = Sentinel forced-read; §7 = promotion/commit protocol.
+- `SECURE_BUILDER_PRD.md` — the amended spec / build contract. §4 = two-context lifecycle.
+- `docs/templates/NEXT_PROMPT_GATES-template.md` — the CW2 (gate context) entry prompt.
+- `docs/QUALITY_GATE.md`, `docs/DEFINITION_OF_DONE.md`, `docs/GATE_LOG_SCHEMA.md` — gate docs.
 - `docs/architecture/DEPENDENCY_POLICY.md` — Sentinel severity matrix + IL4 license policy.
-- `docs/security/controls/CONTROLS-MAPPING.md` — check → NIST 800-53 control mapping (DRAFT rows).
-- `docs/GATE_LOG_SCHEMA.md` — gate-log structure; `docs/templates/NEXT_PROMPT*` — handoff templates.
-- `SECURE_BUILDER_PRD.md` — the spec / build contract (8 core guarantees in §2) — **LOCKED.**
+- `docs/security/controls/CONTROLS-MAPPING.md` — check → NIST 800-53 control mapping (DRAFT).
+- `agents/manifest.json` — §2 lanes/owned_globs/reads as data (Sentinel owns gate-log).
 - `SECURE_BUILDER_BUILD_PLAN.md` — 4-week build plan + evidence/OPSEC strategy.

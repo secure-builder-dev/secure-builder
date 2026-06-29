@@ -49,6 +49,10 @@ preserve (e.g., mark today-binding vs Phase-2; human-attested vs verified).>
 ---
 
 ## Notes
+- This is the **inter-story** (framework-stream) handoff. The **intra-story** build→gate
+  handoff is a separate artifact — see `NEXT_PROMPT_GATES-template.md` — used when a story
+  (F- or S-prefix) hands its diff from the build context to the gate context (`CLAUDE.md`
+  §3 CW2).
 - Every framework commit is **F-prefix** and carries **no AI co-author / attribution
   trailer** (`CLAUDE.md` §7.1) — restate this in the handoff so a fresh session doesn't
   reintroduce a trailer.

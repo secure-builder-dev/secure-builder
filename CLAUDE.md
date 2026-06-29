@@ -26,8 +26,14 @@ been built is theater — so the split is stated plainly.
 these):**
 
 - **No self-approval.** No AI agent approves AI-produced work. Approval is a human act.
-- **No commit without explicit human approval.** The human types "approved"; nothing
-  else unlocks a commit.
+- **No promotion without explicit human approval.** Local TDD working commits are made
+  during the build context as audit evidence; but nothing is *promoted* — recorded DONE
+  in the gate log, pushed, or merged — until the human types "approved." Nothing else
+  unlocks promotion (§1 Guarantee #2, §7).
+- **Two-context separation (build vs. gates).** Each story runs in two context windows:
+  a build context (dispatch → TDD implementation) and a separate gate context that
+  reviews only the story and the diff, blind to the builder's reasoning — context-
+  isolated independent review, **not** separation of duties (§3, §9).
 - **TDD two-commit sequence** for every code-bearing change (test-only failing commit,
   then implementation commit) — verifiable in `git log`.
 - **Append-only evidence.** Gate log, issue-lifecycle ledger, and ADR log are only ever
@@ -64,12 +70,16 @@ section enforces one of them. Each is stated here as a binding rule.
 1. **No self-approval.** No artifact produced by an AI agent is approved by an AI
    agent. Final approval is a human act. Self-approval is a protocol violation
    regardless of how correct the work is.
-2. **No commit without a complete gate chain.** Nothing commits without, in order:
-   Quality gate PASS → Security gate PASS → Manual security review CLEAR → explicit
-   human approval. No step may be skipped, reordered, or auto-approved. The *strength*
-   of this enforcement depends on `GATE_ENFORCEMENT` (§5): `ci-enforced` is a
-   server-side merge wall; `local-attested` is a local hook plus the audit trail and
-   operator discipline. Either way the downstream platform team re-runs its own checks.
+2. **No promotion without a complete gate chain.** Local TDD working commits (the §4.1
+   test-only and implementation commits) are permitted during the build context as audit
+   evidence — they are themselves tamper-evident in git history (Guarantee #6). But
+   nothing is *promoted* — recorded DONE in the gate log, pushed, or merged to the
+   integration branch — without, in order: Quality gate PASS → Security gate PASS →
+   Manual security review CLEAR → explicit human approval. No step may be skipped,
+   reordered, or auto-approved. The *strength* of this enforcement depends on
+   `GATE_ENFORCEMENT` (§5): `ci-enforced` is a server-side merge wall; `local-attested`
+   is a local hook plus the audit trail and operator discipline. Either way the
+   downstream platform team re-runs its own checks.
 3. **No implementation without a preceding failing test.** Every behavioral change — a
    feature or a bug fix — is produced by a two-commit TDD sequence: a test-only commit
    that demonstrably fails, then an implementation commit. (Non-code stories — docs,
@@ -163,28 +173,63 @@ Do not claim full automation of lane enforcement. State the split.
 
 ## 3. Story Lifecycle and Gate Sequence
 
-Every story executes this sequence **exactly**. No step may be skipped, reordered, or
-auto-approved. Steps 6 (human approval) is a **hard stop.**
+Every story executes this sequence **exactly**, across **two context windows** with a
+deliberate information barrier between them. No step may be skipped, reordered, or
+auto-approved. Steps 6 and 7 (manual review and human approval) are **hard stops.**
+
+**Why two contexts (the bias firewall).** The build context and the gate context are
+separate sessions — separate model context windows. The gate context receives only the
+story file and the code diff, **never** the builder's chain of reasoning, justifications,
+or self-assessment. This is **context-isolated independent review**: a fresh set of eyes
+scans the artifact cold and cannot be talked into the author's framing. It strengthens
+the *independence* of the automated self-check; it is **not** separation of duties — it
+is still AI reviewing AI under one operator, with one human approver (§9). Target
+substrate (Phase 2 / Track C): the build context runs on one local model and the gate
+context on a *different* local model, so the two are not even the same weights; on the
+current substrate both run on the same model in two separate sessions.
+
+**Context Window 1 — Build** (entered cold from `NEXT_PROMPT.md`):
 
 1. **Dispatch.** Bob routes the story to the correct first agent (§3.1).
 2. **Implementation.** The assigned agent implements. For Amelia, the TDD two-commit
-   sequence is mandatory (test-only failing commit precedes implementation commit).
-3. **Quality gate (Murat).** FAIL → back to implementer for remediation, re-run.
-   PASS → proceed.
-4. **Security gate (Sentinel).** FAIL → agent remediates, re-run. PASS → proceed.
-5. **Manual security review (human + AI assistant).** Findings → back to implementer
-   with remediation notes, then **full re-gate**. CLEAR → proceed.
-6. **Human approval (HARD STOP).** Explicit "approved" required. Approval → commit.
-7. **Handoff.** Bob dispatches the next story and writes the handoff prompt (§3.3).
+   sequence is mandatory — a test-only failing commit, then an implementation commit
+   (§4.1). These are **local working commits**, made here as audit evidence; they are
+   not approval and not promotion (§1 Guarantee #2, §7).
+3. **Gate handoff.** The build context ends by writing `NEXT_PROMPT_GATES.md` (§3.3): a
+   self-contained prompt pointing the gate context at the story and the diff to scan. The
+   build context does **not** gate its own work.
 
-> **Nothing commits without: Quality PASS + Security PASS + Manual CLEAR + explicit
-> human approval.** The AI model cannot approve its own work; self-approval is a
-> protocol violation regardless of how correct the underlying work is.
+**Context Window 2 — Gates** (entered cold from `NEXT_PROMPT_GATES.md`, blind to CW1's reasoning):
+
+4. **Quality gate (Murat).** FAIL → remediation note back to the builder, re-run.
+   PASS → proceed.
+5. **Security gate (Sentinel).** Sentinel first loads and attests its full skill set —
+   every gate skill, **including adversarial testing** (§3.2) — before judging any code.
+   FAIL → remediation note back to the builder, re-run. PASS → proceed.
+6. **Manual security review (human + AI assistant) — HARD STOP.** The §4.4 contract.
+   Findings → back to the builder with remediation notes, then **full re-gate**.
+   CLEAR → proceed.
+7. **Human approval (HARD STOP).** Explicit "approved" — the only thing that unlocks
+   promotion. On approval: Sentinel appends the gate log's DONE row (§7.2), then Bob
+   writes the next story's `NEXT_PROMPT.md` (§3.3).
+
+> **Self-healing loop (capped).** A FAIL at step 4 or 5 returns concrete findings to the
+> builder, who fixes and re-commits locally; the gate context re-scans. The loop is
+> **capped at 3 rounds** — if the gates still FAIL after the third, **stop and escalate
+> to the human** rather than auto-remediating indefinitely. Two local models auto-fixing
+> to each other's checks is a Goodhart risk; the human gates (steps 6–7) are the backstop
+> for code that passes the mechanical checks but is still wrong.
+
+> **Nothing is promoted without: Quality PASS + Security PASS + Manual CLEAR + explicit
+> human approval.** The AI model cannot approve its own work; self-approval is a protocol
+> violation regardless of how correct the underlying work is.
 
 > **Today's reality (Phase 1):** Murat and Sentinel are not yet built as automated
-> agents. Steps 3 and 4 are still executed — the operator and the AI assistant run the
-> §4 Quality criteria and §4-referenced Security checklist manually, record the binary
-> verdict, and only then proceed. The gate is real; the automation is Phase 2.
+> agents. Steps 4 and 5 are still executed — the operator and the AI assistant run the §4
+> Quality criteria and §4-referenced Security checklist manually in the gate context,
+> record the binary verdict, and only then proceed. The two-context split is practiced
+> today as **two separate sessions** (build, then a fresh gate session that sees only the
+> diff). The gate is real; the automation is Phase 2.
 
 ### 3.1 Agent routing
 
@@ -210,7 +255,7 @@ read is a gate failure at Murat or Sentinel.
 | Tori | Story file(s), `STORY_TEMPLATE.md`, `PRD.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
 | Amelia | Story file, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
 | Murat | Story file, `QUALITY_GATE.md` |
-| Sentinel | `CLAUDE.md` (always in context), `DEPENDENCY_POLICY.md` |
+| Sentinel | `CLAUDE.md` (always in context), `DEPENDENCY_POLICY.md`, **all Sentinel gate skill files — incl. adversarial testing — loaded and attested per the protocol below** |
 | Frank | `DEVSECOPS_SPEC.md`, `DEPENDENCY_POLICY.md`, provider-specific STIG checklist |
 | Winston | `ADR-LOG.md`, `DB_SCHEMA_v2.md`, `API_CONTRACT.md` |
 | Sally | Story file, `PRD.md`, `API_CONTRACT.md` |
@@ -225,15 +270,36 @@ read did not occur. This is a **negative check** — it can catch a missed read 
 consequences but cannot positively verify one. **Do not describe this gate as
 "verified."**
 
+**Sentinel skill-load protocol (forced read-and-attest).** Sentinel's checks live in its
+skill files; they are not to be improvised or recalled from memory. At the start of the
+gate context, Sentinel must **open and read each of its skill files** — the quality- and
+security-gate checks, control lookup against `CONTROLS-MAPPING.md`, the dependency policy,
+and **adversarial testing** — and echo a one-line attestation of each (what it loaded)
+before it judges any code. A gate run that did not load and attest its skills is
+**invalid** and re-runs. Forcing an actual read pulls the skill instructions into context
+rather than trusting the model to recall them — a stronger control than ambient presence,
+though (per the caveat above) still not positive proof the instructions were *applied*
+(§9).
+
 ### 3.3 Sprint Continuity — Handoff Prompts
 
-A fresh session has no memory of the current one, so the handoff prompt must be fully
-self-contained. Bob writes a clipboard-ready handoff after every commit. Two streams
-exist:
+A fresh session has no memory of the current one, so every handoff prompt must be fully
+self-contained. Three handoff artifacts exist, on two different axes:
+
+**Inter-story (one completed story → the next story's session), written by Bob:**
 
 - `_bmad-output/NEXT_PROMPT.md` — written after each **S-prefix (story)** commit.
 - `_bmad-output/NEXT_PROMPT_FRAMEWORK.md` — written after each **F-prefix (framework)**
   commit.
+
+**Intra-story (one story's build context → its gate context), written by the build
+context (CW1):**
+
+- `_bmad-output/NEXT_PROMPT_GATES.md` — written at the end of implementation to hand the
+  story and its diff to the gate context (§3, CW2). It carries a *single story
+  mid-lifecycle*, not a completed one, and is overwritten each story. Its job is to point
+  the fresh gate context at exactly what to scan **without** leaking the builder's
+  reasoning, and to enumerate Sentinel's mandatory skill-loads (§3.2).
 
 > **Building Secure Builder itself is framework work and uses the F-prefix track.** All
 > commits that develop the engine (this file, gate docs, hooks, agent skills) are
@@ -253,7 +319,7 @@ exist:
 | ATDD | Every acceptance criterion maps by name to ≥1 test | Partially |
 | Control mapping | Each check links to cited control text | Partially — mapping correctness is human-confirmed |
 | Mandatory reads | Operator attests artifacts were supplied; reviewers treat contradiction with a mandatory source as evidence of a missed read (negative check only) | No — human-attested by design |
-| Manual security review | Human attestation against the §4.3 contract | No — human-attested by design |
+| Manual security review | Human attestation against the §4.4 contract | No — human-attested by design |
 
 > **On the "Yes" rows:** deterministic only for their *named* patterns — git-log
 > ordering, exit codes, coverage numbers, the listed skip annotations. Two sub-checks
@@ -407,14 +473,21 @@ downstream of everything this engine produces.
 
 ## 7. Commit Protocol
 
-A story does not commit until **Quality PASS + Security PASS + Manual CLEAR + explicit
-human "approved."** On approval:
+A story's **local TDD working commits** are made in the build context during
+implementation (§3 CW1, §4.1) — they are audit evidence, not approval. A story is not
+**promoted** — recorded DONE in the gate log, and, where a remote exists, pushed or
+merged to the integration branch — until **Quality PASS + Security PASS + Manual CLEAR +
+explicit human "approved."** On approval:
 
-1. Commit per the TDD two-commit convention (§4.1) — test-only commit, then
-   implementation commit. Message prefixes: `[S-XXX/tests]` and `[S-XXX/impl]` for
-   stories; `[F-XXX/...]` for framework/engine work.
-2. **Bob updates the gate log** (`_bmad-output/gate-log.md`) — append-only (§7.2).
-3. **Bob writes the handoff prompt** (§3.3) — S-prefix or F-prefix stream.
+1. Confirm the TDD two-commit sequence (§4.1) is present in `git log` — test-only commit
+   before implementation commit. Message prefixes: `[S-XXX/tests]` and `[S-XXX/impl]` for
+   stories; `[F-XXX/...]` for framework/engine work. (Post-gate remediation commits carry
+   the same story prefix.)
+2. **Sentinel updates the gate log** (`_bmad-output/gate-log.md`) — append-only (§7.2).
+   Sentinel owns this artifact (§2) and writes its verdict and finding rows live during
+   the gate context; the terminal DONE row is appended here, on approval.
+3. **Bob writes the handoff prompt** (§3.3) — the next story's S-prefix or F-prefix
+   stream.
 
 ### 7.1 No AI attribution trailer (standing rule)
 
@@ -429,7 +502,9 @@ The gate log is the RMF evidence artifact feeding the SSP under CA-2 (Control
 Assessments) and SA-11 (Developer Testing). A story appears in it **only after passing
 all four gates** — in-progress stories have no entries.
 
-After every commit, Bob appends:
+Sentinel owns the gate log (§2 manifest) and authors every row — its verdict and finding
+rows live during the gate context, and the terminal rows on approval. (Earlier drafts
+assigned this to Bob, which contradicted the manifest; corrected here.) It appends:
 
 - one **Quick Ledger** row — Date | Story | Murat | Sentinel | Manual Security | Human |
   Commit;
@@ -493,7 +568,11 @@ a value is releasable, leave it out.
   security-sensitive (auth, RBAC, new endpoints, data-boundary changes) and a second
   qualified person is available, the approver *should* be someone other than the
   implementer; when that is not possible, the limitation is **recorded as a known risk,
-  not papered over.**
+  not papered over.** **The two-context build/gate split (§3) does not change this:**
+  isolating the gate reviewer from the builder's reasoning strengthens the *independence*
+  of the self-check, but it is still AI reviewing AI under one operator with one human
+  approver — independent review, not separation of duties. Never describe the two-context
+  architecture, in a README or a briefing, as "separation of duties."
 - **What "approved" means.** A recorded human approval evidences a human review **of the
   depth defined in §4.4 — one developer's structured self-check.** It does **not** assert
   senior-level security sign-off unless a qualified senior reviewer actually performed
@@ -530,8 +609,9 @@ a value is releasable, leave it out.
 provider implementation + STIG-checklist files under
 `docs/security/providers/{aws,azure,android,tactical}/`.
 
-**Sprint output** (all in `_bmad-output/`): `gate-log.md`; `NEXT_PROMPT.md`;
-`NEXT_PROMPT_FRAMEWORK.md`; `planning-artifacts/`.
+**Sprint output** (all in `_bmad-output/`): `gate-log.md` (Sentinel-authored);
+`NEXT_PROMPT.md`; `NEXT_PROMPT_FRAMEWORK.md`; `NEXT_PROMPT_GATES.md` (intra-story
+build→gate handoff); `planning-artifacts/`.
 
 > Source of record for all of the above is `SECURE_BUILDER_PRD.md`. This constitution
 > operationalizes it; the PRD governs where they differ.

@@ -68,13 +68,15 @@ a `DETECTED` event, then **exactly one** terminal event — `REMEDIATED` **or** 
 | **Sentinel PASS (1 non-blocking)** | Passed with a documented carry-forward (see Issue Lifecycle Ledger). |
 | **Sentinel PASS (1 remediated)** | Blocking finding caught and fixed in-session before the final verdict. |
 | **Manual CLEAR** | Logic-layer review found no auth bypass, IDOR, privilege escalation, or business-rule bypass. |
-| **Human APPROVED** | Explicit "approved" in conversation — the only thing that unlocks a commit. |
+| **Human APPROVED** | Explicit "approved" in conversation — the only thing that unlocks promotion. |
 
 ---
 
-## 3. Update protocol (Bob, after every commit)
+## 3. Update protocol (Sentinel — in the gate context, and on approval)
 
-After each commit, Bob appends — in this order — and **never** rewrites prior rows:
+Sentinel owns the gate log (`CLAUDE.md` §2 manifest) and authors every row — verdict and
+finding rows live during the gate context, the terminal DONE row on approval. It
+appends — in this order — and **never** rewrites prior rows:
 
 1. one **Quick Ledger** row;
 2. one **Detailed Ledger** row;

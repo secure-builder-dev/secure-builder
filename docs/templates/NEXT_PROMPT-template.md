@@ -48,6 +48,10 @@ play.>
 ---
 
 ## Notes
+- This is the **inter-story** handoff (a completed story → the next story's session). The
+  **intra-story** build→gate handoff is a separate artifact — see
+  `NEXT_PROMPT_GATES-template.md`. A story reaches *this* handoff only after its gate
+  context cleared and the human approved (`CLAUDE.md` §3 CW2).
 - The **gate verdicts and commit hashes** are the load-bearing content — a fresh session
   reconstructs trust in prior work from them, not from prose.
 - If a story is mid-lifecycle (e.g., failed a gate and is being remediated), say **exactly

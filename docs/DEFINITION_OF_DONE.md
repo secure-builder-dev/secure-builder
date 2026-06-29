@@ -18,7 +18,11 @@ no step skipped, reordered, or auto-approved:
 2. **Security gate PASS** (Sentinel — `CONTROLS-MAPPING.md` / PRD §5.4).
 3. **Manual security review CLEAR** (human + AI assistant — `CLAUDE.md` §4.4).
 4. **Explicit human approval** — the human types "approved." This is the **hard stop**
-   and the only thing that unlocks a commit.
+   and the only thing that unlocks promotion.
+
+> Gates 1–3 run in a separate **gate context (CW2)** that sees only the story and the
+> diff — blind to the builder's reasoning (`CLAUDE.md` §3). The build context (CW1) makes
+> the local TDD commits and hands off to the gate context; it never gates its own work.
 
 > **No self-approval (Guarantee #1).** No AI agent approves AI-produced work. A story is
 > never "done" on an AI's say-so, no matter how correct the work appears.
@@ -49,16 +53,19 @@ through.
 
 ## 3. Obligations triggered by "done" (the commit + handoff protocol)
 
-On human approval, before the story is closed out (`CLAUDE.md` §7):
+On human approval, before the story is **promoted** (closed out / pushed / merged)
+(`CLAUDE.md` §7):
 
-1. **Commit** per the TDD two-commit convention — `[S-XXX/tests]` then `[S-XXX/impl]`
-   (or `[F-XXX/...]` for framework/engine work). **No AI co-author or attribution
-   trailer on any commit** (standing rule, `CLAUDE.md` §7.1).
-2. **Append to the gate log** (`_bmad-output/gate-log.md`) — Quick Ledger row, Detailed
-   Ledger row, a `DETECTED` row for any new finding, and the terminal `REMEDIATED` /
-   `ACCEPTED` row for any finding that closed. **Append-only** — never edit or delete a
-   prior row (Guarantee #6).
-3. **Write the handoff prompt** — `NEXT_PROMPT.md` (S-prefix) or
+1. **Confirm the TDD two-commit sequence is present** in `git log` — `[S-XXX/tests]` then
+   `[S-XXX/impl]` (or `[F-XXX/...]` for framework/engine work), made as local working
+   commits in the build context. **No AI co-author or attribution trailer on any commit**
+   (standing rule, `CLAUDE.md` §7.1).
+2. **Sentinel appends to the gate log** (`_bmad-output/gate-log.md`) — Quick Ledger row,
+   Detailed Ledger row, a `DETECTED` row for any new finding, and the terminal
+   `REMEDIATED` / `ACCEPTED` row for any finding that closed. Sentinel owns this artifact
+   (`CLAUDE.md` §2, §7.2). **Append-only** — never edit or delete a prior row
+   (Guarantee #6).
+3. **Bob writes the handoff prompt** — `NEXT_PROMPT.md` (S-prefix) or
    `NEXT_PROMPT_FRAMEWORK.md` (F-prefix), fully self-contained for a fresh session.
 
 A story does **not** appear in the gate log until it has passed all four gates.

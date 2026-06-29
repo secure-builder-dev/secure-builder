@@ -33,6 +33,7 @@
         "_bmad-output/planning-artifacts/**",
         "_bmad-output/NEXT_PROMPT.md",
         "_bmad-output/NEXT_PROMPT_FRAMEWORK.md",
+        "_bmad-output/NEXT_PROMPT_GATES.md",
         "NEXT_PROMPT.md"
       ],
       "mandatory_reads": []

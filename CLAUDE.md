@@ -127,6 +127,7 @@ artifacts, operates within a single-responsibility lane, and may not act outside
 | John | Product Manager | PRD, epics, high-level story scoping | `docs/PRD.md`, story headers |
 | Tori | Story Analyst | Story writing, refinement, gap analysis, story-vs-contract alignment | Story files |
 | Bob | Scrum Master | Sprint dispatch, gate enforcement, sprint artifacts | `_bmad-output/planning-artifacts/`, `_bmad-output/NEXT_PROMPT.md` |
+| Atlas | Contextualization Lead | Phase-0 inception (§2.3): guide authoring + gap-hardening of the document matrix, backlog intent-traceability, cohesion-gate criteria; orchestrate lane owners for current-state — writes no other lane's artifact | `docs/context/**` |
 | Winston | Architect | ADR decisions, DB schema, API contract design | `docs/architecture/ADR-LOG.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md` |
 | Sally | UX Designer | UX/UI design — interaction patterns, component specs, accessibility, frontend design specs (web track) | `docs/UX-SPEC.md`, design-spec files |
 | Amelia | Developer | TDD implementation — tests first, always | All `src/` implementation files |
@@ -146,8 +147,8 @@ session until dismissed, and nested skill calls inherit the active persona.
 
 On the current substrate, the planning/design/implementation/documentation personas
 (John, Winston, Sally, Amelia, Paige) layer onto stock framework agent skills. The
-orchestration and gatekeeper personas — **Tori, Bob, Murat, Frank, and Sentinel** —
-have no stock equivalent and are **custom skills to be built (Phase 2).** Invocation
+orchestration and gatekeeper personas — **Tori, Bob, Atlas, Murat, Frank, and Sentinel**
+— have no stock equivalent and are **custom skills to be built (Phase 2).** Invocation
 names are an implementation detail of the substrate, not a guarantee.
 
 ### 2.2 Lane Boundary Enforcement (the honest split)
@@ -168,6 +169,54 @@ Guarantee #5 is **partially** machine-checkable, and the split is stated honestl
   of reviewer judgment (Sentinel's, once built; the operator's today).
 
 Do not claim full automation of lane enforcement. State the split.
+
+### 2.3 Project Contextualization Workflow (Phase 0 — prerequisite)
+
+**No story runs until Phase 0 has produced, and a human has ratified, the project's
+governing context.** The §3 lifecycle assumes that context exists — the intent an epic is
+built toward, the `SHALL NOT` rules the manual gate (§4.4) and cohesion gate (§3.5) check
+against, the target contracts a story is written to. That context is a **document matrix**
+(the PRD and its supporting governing docs: current state, desired delta, end-state
+intent), not code. Phase 0 is the engine's own onboarding, automated — it guides a user
+through building a build-ready project so the person who knows how to set up the context is
+no longer required in the loop. Orchestrated by **Atlas**, who owns only `docs/context/**`
+and **triggers** the lane owners (John, Winston, Sentinel) to write governing docs into
+their own artifacts (Guarantee #5 holds).
+
+**Delivers three artifacts** (nothing downstream is valid without them): a hardened
+**document matrix**; an **intent-traceable backlog**; the project's **cohesion-gate
+criteria** (§3.5).
+
+**Matrix = fixed core + needed-only additions.** Core, always produced by the lane owners:
+PRD/intent (John), target architecture + API/DB contracts (Winston), target security
+posture (Sentinel), migration/delta plan. Then a needs-analysis may recommend *additional*
+governing docs — **cap 3, target ≤ 2, default zero** — and **only where the recommendation
+names the specific build failure or intent-gap that occurs without it.** If that failure
+cannot be stated, it is not recommended. The cap is a ceiling, never a quota. **No fluff.**
+
+**Stages (gated between stages):**
+1. **Intake + current-state pre-fill.** Brownfield: deterministic extraction pre-fills the
+   current-state; the OPSEC filter (§8) strips sensitive values to placeholders *before*
+   any write; facts are provenance-tagged. Greenfield: thin.
+2. **Guided authoring + needs-analysis.** Elicitation drives John/Winston; the capped,
+   needed-only recommendations are presented for human decision.
+3. **Gap-Analysis Gate (Tori).** Coherence (no doc contradicts another) + completeness (no
+   intent element unspecified). Loop until clean.
+4. **Backlog (John).** Epics/stories from the hardened matrix, each stamped to its intent
+   element(s).
+5. **Intent-Traceability Gate (Tori).** Every story → an intent element; every intended
+   delta → ≥ 1 story. Fail back to stage 4.
+6. **Cohesion criteria (Atlas).** Generate the per-epic checklist; wire into §3.5.
+
+**Honesty.** The matrix and backlog are AI-assisted **drafts**; intent is human-owned and
+not authoritative until ratified — self-ratification by an agent is a protocol violation,
+as self-approval is. The three Phase-0 gates are structured self-checks, **not** proof
+(§9). Reverse-engineered facts carry provenance; ratified ≠ verified. The matrix is
+**loaded** into agent context via §3.2 mandatory reads — it is **not** stored in the
+governance reference corpus (`docs/security/corpus/`, which is external controlling text the
+security gate reads on demand to ground citations, keyed by control ID, not a vector store;
+semantic search appears in Phase 0 only as an optional construction tool over a large
+brownfield source tree).
 
 ---
 
@@ -253,6 +302,7 @@ read is a gate failure at Murat or Sentinel.
 |---|---|
 | John | `docs/STORY_TEMPLATE.md`, `docs/PRD.md` |
 | Tori | Story file(s), `STORY_TEMPLATE.md`, `PRD.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
+| Atlas | `PRD.md`, `STORY_TEMPLATE.md`, the target repo/source (brownfield current-state), the existing governing docs in the matrix, `docs/context/**` |
 | Amelia | Story file, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
 | Murat | Story file, `QUALITY_GATE.md` |
 | Sentinel | `CLAUDE.md` (always in context), `DEPENDENCY_POLICY.md`, **all Sentinel gate skill files — incl. adversarial testing — loaded and attested per the protocol below** |
@@ -327,6 +377,20 @@ context (CW1):**
 > skip-detection catches named annotations but not a test trivially neutered without
 > them (e.g., `expect(true).toBe(true)`). The **manual gate is the backstop** for what
 > the heuristics miss.
+
+### 3.5 Epic-boundary Cohesion Gate
+
+The §3 gates judge a *single story*; they cannot catch **intent drift across an epic** —
+stories that each passed but, assembled, no longer fulfill what the matrix (§2.3) said the
+epic was for. The cohesion gate fires at the completion of **every** epic (standing,
+universal); *what* it checks is generated per-project in Phase 0 (§2.3, stage 6) — the same
+universal-gate / conditional-content pattern the security gate uses with the §5 init
+variables. It asks: does the assembled, gate-passed epic still satisfy its matrix intent
+elements; did any story meet an acceptance criterion in a way that violates a matrix `SHALL
+NOT`; is every intent element the epic owns covered by shipped work? Binary — `COHERENT` /
+`DRIFT`. `DRIFT` blocks epic close and returns to correct-course (re-scope, add a story, or
+amend intent with a recorded ADR) before the epic is recorded done. Owned by **Atlas**.
+Like every gate here it is a structured self-check, not proof (§9).
 
 ---
 
@@ -603,11 +667,17 @@ a value is releasable, leave it out.
 **Architecture:** `docs/architecture/ADR-LOG.md`; `API_CONTRACT.md`; `DB_SCHEMA_v2.md`;
 `docs/architecture/DEPENDENCY_POLICY.md`; `docs/architecture/DEVSECOPS_SPEC.md`.
 
+**Project context (Phase 0, §2.3):** `docs/context/` (matrix index, current-state
+pre-fill, traceability map, cohesion criteria — Atlas-owned). The fixed-core matrix itself
+lives in its lane docs (PRD, architecture, security).
+
 **Security:** `docs/security/README.md` (two-layer overview);
 `docs/security/controls/IL4-baseline.md`; `docs/security/controls/IL6-delta.md`;
 `docs/security/controls/CONTROLS-MAPPING.md`; `docs/security/controls/CDS-guidance.md`;
 provider implementation + STIG-checklist files under
-`docs/security/providers/{aws,azure,android,tactical}/`.
+`docs/security/providers/{aws,azure,android,tactical}/`; verbatim authoritative source text
+under `docs/security/corpus/` (NIST/DISA/OWASP/DoD-AI, read on demand; ledger
+`corpus/MANIFEST.md`).
 
 **Sprint output** (all in `_bmad-output/`): `gate-log.md` (Sentinel-authored);
 `NEXT_PROMPT.md`; `NEXT_PROMPT_FRAMEWORK.md`; `NEXT_PROMPT_GATES.md` (intra-story

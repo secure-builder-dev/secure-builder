@@ -38,6 +38,17 @@
       ],
       "mandatory_reads": []
     },
+    "Atlas": {
+      "persona": "Contextualization Lead",
+      "lane": "Phase-0 inception (PRD §15): document matrix authoring + gap-hardening, backlog intent-traceability, cohesion-gate criteria; orchestrates lane owners for current-state — writes no other lane's artifact",
+      "owned_globs": ["docs/context/**"],
+      "owned_semantic": ["orchestrates John/Winston/Sentinel writes into their own lane artifacts (not glob-owned here)"],
+      "mandatory_reads": [
+        "docs/PRD.md",
+        "docs/STORY_TEMPLATE.md",
+        "docs/context/**"
+      ]
+    },
     "Winston": {
       "persona": "Architect",
       "lane": "ADR decisions, DB schema, API contract design",

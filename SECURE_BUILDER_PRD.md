@@ -127,6 +127,7 @@ that lane (enforced at gate time — OWASP LLM08 compliance).
 | John | Product Manager | PRD, epics, high-level story scoping | `docs/PRD.md`, story headers |
 | Tori | Story Analyst | Story writing, refinement, gap analysis, story-vs-contract alignment | Story files |
 | Bob | Scrum Master | Sprint dispatch, gate enforcement, sprint artifacts | `_bmad-output/planning-artifacts/`, `_bmad-output/NEXT_PROMPT.md` |
+| Atlas | Contextualization Lead | **Phase-0 inception (§15):** guide authoring + gap-hardening of the document matrix, backlog generation + intent-traceability, cohesion-gate criteria; orchestrate lane owners for reverse-engineered current-state — writes no other lane's artifact | `docs/context/**` (matrix index, current-state pre-fill, traceability map, cohesion criteria) |
 | Winston | Architect | ADR decisions, DB schema, API contract design | `docs/architecture/ADR-LOG.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md` |
 | Sally | UX Designer | UX/UI design — interaction patterns, component specs, accessibility, frontend design specs (web track) | `docs/UX-SPEC.md`, design-spec files |
 | Amelia | Developer | TDD implementation — tests first, always | All `src/` implementation files |
@@ -149,9 +150,9 @@ On the current substrate, the planning, design, implementation, and documentatio
 personas (John, Winston, Sally, Amelia, Paige) are layered onto the base framework's
 stock agent skills (`bmad-agent-pm`, `-architect`, `-ux-designer`, `-dev`,
 `-tech-writer`). The orchestration and gatekeeper personas — Tori (story analyst),
-Bob (scrum master), Murat (test architect), Frank (DevSecOps), and Sentinel (security
-gatekeeper) — have no stock equivalent and are **custom skills built to the §7
-scaffold**; building them is part of Phase 2 (see §14). Invocation names are an
+Bob (scrum master), Atlas (contextualization lead), Murat (test architect), Frank
+(DevSecOps), and Sentinel (security gatekeeper) — have no stock equivalent and are
+**custom skills built to the §7 scaffold**; building them is part of Phase 2 (see §14). Invocation names are an
 implementation detail of the substrate, not a guarantee — the §10 orchestration spec
 requires only that a named persona can be activated on demand.
 
@@ -240,6 +241,7 @@ mandatory read is a gate failure at Murat or Sentinel.
 |---|---|
 | John | `docs/STORY_TEMPLATE.md`, `docs/PRD.md` |
 | Tori | Story file(s), `STORY_TEMPLATE.md`, `PRD.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
+| Atlas | `PRD.md`, `STORY_TEMPLATE.md`, the target repo/source (brownfield current-state), the existing governing docs in the matrix, `docs/context/**` |
 | Amelia | Story file, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
 | Murat | Story file, `QUALITY_GATE.md` |
 | Sentinel | `CLAUDE.md` (always in context), `DEPENDENCY_POLICY.md`, **all Sentinel gate skill files — incl. adversarial testing — loaded and attested (see below)** |
@@ -316,6 +318,31 @@ context:**
 > annotations but not a test trivially neutered without them (e.g.,
 > `expect(true).toBe(true)`). The manual gate (§5.5, §6) is the backstop for what the
 > heuristics miss.
+
+### 4.5 Epic-boundary Cohesion Gate
+
+The §4 gates above judge a *single story*. They cannot catch **intent drift across an
+epic** — a set of stories that each passed its own gates but, assembled, no longer
+fulfills what the document matrix (§15.1) said the epic was for. The cohesion gate closes
+that gap.
+
+- **Standing, universal.** It fires at the completion of **every** epic, on every project
+  — a fixed tier of the lifecycle, not opt-in.
+- **Per-project criteria.** *What* it checks is generated from that project's matrix during
+  Phase 0 (§15.2, step 5), the same universal-gate / conditional-content pattern the
+  security gate uses with the §9 init variables.
+- **What it asks.** Does the assembled, gate-passed epic still satisfy its intent elements
+  in the matrix? Did any story satisfy an acceptance criterion in a way that violates a
+  matrix `SHALL NOT` (a business-rule bypass surfacing only at the epic level)? Is every
+  intent element the epic owns covered by shipped work?
+- **Verdict.** Binary — `COHERENT` / `DRIFT`. `DRIFT` blocks epic close and returns to
+  correct-course (re-scope, add a story, or amend intent with a recorded ADR) before the
+  epic is recorded done. Owned by **Atlas** (defines the criteria in Phase 0); it runs in
+  the build phase and its verdict is recorded like any other gate.
+
+> Like every other gate here, it is a structured self-check, not proof — AI-assisted intent
+> comparison with a human confirming. It does not certify intent; it flags divergence for a
+> human (§6, §13).
 
 ---
 
@@ -619,10 +646,16 @@ gate sequences, routing, commit protocol); `docs/PRD.md`; `docs/STORY_TEMPLATE.m
 **Architecture documents:** `ADR-LOG.md`; `API_CONTRACT.md`; `DB_SCHEMA_v2.md`;
 `DEPENDENCY_POLICY.md`; `DEVSECOPS_SPEC.md`; `sentinel-gate-log.md`.
 
+**Project context (Phase 0, §15):** `docs/context/` — matrix index, reverse-engineered
+current-state pre-fill, intent-traceability map, and cohesion-gate criteria (Atlas-owned).
+The fixed-core matrix lives in its lane documents (PRD, architecture, security).
+
 **Security documents:** `docs/security/README.md` (two-layer overview, ADR-020/022/
 023); `controls/IL4-baseline.md`; `controls/IL6-delta.md`; `controls/CONTROLS-
 MAPPING.md`; `controls/CDS-guidance.md`; provider implementation + STIG-checklist
-files under `providers/{aws,azure,android,tactical}/`.
+files under `providers/{aws,azure,android,tactical}/`; verbatim authoritative source text
+under `corpus/` (NIST / DISA / OWASP / DoD-AI, read on demand — §15.4; ledger in
+`corpus/MANIFEST.md`).
 
 **Sprint output artifacts** (all in `_bmad-output/`): `gate-log.md` (Sentinel — verdict
 and finding rows live in the gate context, terminal DONE row on approval); `NEXT_PROMPT.md`
@@ -882,9 +915,143 @@ Local models on owned hardware, one per context window: the **build context** on
 code model (e.g., Ollama + Qwen) and the **gate context** on a *different* local model
 (e.g., a Llama), so the §4 bias firewall is reinforced by genuinely different weights, not
 just different sessions. Begin by measuring the output-quality gap on an already-working
-app before redesigning anything. RAG over a governance-document corpus for Sentinel:
-retrieval first (achievable), judgment stays human. Start the corpus small (800-53 + the
-relevant SRG), not "every document."
+app before redesigning anything. A **curated governance reference corpus** for Sentinel
+(`docs/security/corpus/`, §12.4): verbatim authoritative source text (NIST, DISA, OWASP,
+DoD AI) the security gate **reads on demand**, keyed by control ID — not a vector store. It
+is version-controlled and vendored into the repo so it works offline; the check→control
+*mapping judgment* stays human. Start small (800-53 + the relevant SRG for the active
+tiers), not "every document"; semantic retrieval is an *optional later* discovery aid over
+the same files, never the citation path.
+
+---
+
+## 15. Project Contextualization Workflow (Phase 0 — prerequisite)
+
+> **This workflow runs before any story.** The §4 lifecycle silently assumes the
+> project's governing context already exists — the intent an epic is built toward, the
+> `SHALL NOT` rules the manual gate (§5.5) and cohesion gate (§4.5) check against, the
+> target contracts a story is written to. That context is not code; it is a **document
+> matrix** — the PRD and its supporting governing documents, capturing current state,
+> the desired delta, and the end-state intent. For greenfield it is authored fresh; for
+> **brownfield it must be built and hardened before the engine can be handed to a
+> peer.** This workflow is the engine's own onboarding, automated: it guides a user
+> through producing a build-ready project so the person who *knows how to set up the
+> context is no longer required to be in the loop.*
+
+**What Phase 0 delivers** (three artifacts; nothing downstream is valid without them):
+
+1. a **hardened document matrix** — the governing context the build reasons from;
+2. an **intent-traceable backlog** — epics and stories proven to fulfill the matrix;
+3. the project's **cohesion-gate criteria** — the per-project intent-integrity checks the
+   §4.5 gate runs at each epic boundary.
+
+**The labor inversion.** Phase 0 does not ask the human to author the matrix from a blank
+page. It **guides via structured elicitation** — it asks the questions an expert knew to
+ask — and, for brownfield, pre-fills the *current-state* half by reverse-engineering the
+existing code (OPSEC-filtered, §11), so the human confirms and supplies intent rather than
+transcribes. Encoding that tacit question-and-check sequence *is* the automation.
+
+### 15.1 The document matrix — fixed core + needed-only additions
+
+**Fixed core (always produced),** written by the existing lane owners, not Atlas:
+
+| Document | Captures | Lane |
+|---|---|---|
+| PRD / intent | Current state, desired delta, end-state intent | John |
+| Target architecture + API/DB contracts | The system the build is moving *toward* | Winston |
+| Target security posture | Impact level, enclave/boundary target, control baseline | Sentinel |
+| Migration / delta plan | The path from current state to end-state (brownfield) | John + Winston |
+
+**Needed-only additions (capped, human-approved).** After the core is drafted, a needs-
+analysis inspects the project and may recommend *additional* governing documents —
+**hard cap 3, target ≤ 2, default zero.** A document is recommended **only if the
+recommendation names the specific build failure or intent-gap that occurs without it.**
+If that failure cannot be stated, it is not recommended. The cap is a ceiling, never a
+quota; **no fluff** — the matrix stays as small as the build allows. The human accepts or
+declines each recommendation.
+
+Atlas owns only the `docs/context/**` artifacts — the matrix index, the reverse-engineered
+current-state pre-fill, the traceability map, and the cohesion criteria — and **triggers**
+the lane owners to write the governing documents into their own artifacts, so Guarantee #5
+lane boundaries hold.
+
+### 15.2 The workflow (staged, gated between stages)
+
+Orchestrated by **Atlas** (§3) — the Phase-0 analogue of Bob, coordinating the lane owners.
+
+0. **Intake & current-state pre-fill.** Greenfield or brownfield; point at the repo. For
+   brownfield, deterministic extraction (file walk, AST parse, route/schema introspection,
+   dependency scan) pre-fills the current-state fields; the OPSEC filter (§11) strips
+   sensitive values to placeholders before anything is written. Facts are provenance-tagged
+   (`[extracted: path@commit]` / `[human-asserted]`). *(Greenfield: thin — little code yet.)*
+1. **Author the matrix (guided).** Structured elicitation drives John/Winston to capture
+   the delta and end-state intent. The needs-analysis then runs and presents its capped,
+   needed-only recommendations (§15.1) for human decision.
+2. **Harden — Gap-Analysis Gate.** Gap analysis runs across **every** document in the
+   matrix, checking two properties: **coherence** (no document contradicts another) and
+   **completeness** (no intent element left unspecified). Driver: **Tori** (gap analysis is
+   her lane). Loops with findings until the matrix is clean.
+3. **Generate the backlog.** Epics and stories derived from the hardened matrix, each
+   stamped with the intent element(s) it traces to. Driver: **John**.
+4. **Pressure-test — Intent-Traceability Gate.** Bidirectional: **every story maps to an
+   intent element** (no rogue work) and **every intended delta is covered by ≥ 1 story**
+   (no gap). Driver: **Tori**. Failures return to step 3.
+5. **Establish cohesion criteria.** Atlas generates the per-epic intent-integrity checklist
+   from the matrix and wires it into the §4.5 epic-boundary gate.
+
+**Handoff.** Hardened matrix + intent-traceable backlog + cohesion criteria = a build-ready
+project. A peer runs the §4 engine to the end-state without the original context author.
+
+### 15.3 Guarantees and honest limits
+
+These extend the §2 doctrine to the context layer; they do not replace it.
+
+- **Human-ratified, not auto-trusted** (mirrors Guarantee #1). The matrix and backlog are
+  AI-assisted *drafts*; intent is human-owned. Neither is authoritative until a human
+  ratifies it. Self-ratification by an agent is a protocol violation, as self-approval is.
+- **Provenance on reverse-engineered facts** (mirrors Guarantee #4). Every current-state
+  fact cites its source or is tagged `[human-asserted]`.
+- **OPSEC-filtered extraction** (mirrors Guarantee #7, §11). Reverse-engineering a real
+  secure codebase is exactly where infra values leak; filtering to placeholders precedes
+  any write, and structural separation remains the primary control.
+- **The three Phase-0 gates are structured self-checks, not proof.** Gap-Analysis,
+  Intent-Traceability, and Cohesion (§4.5) are AI-assisted comparisons with a human
+  confirming — the same honesty caveat as every other gate (§4.4, §13). Ratified ≠ verified.
+- **Needed-only, no fluff.** The needs-analysis recommends a document only against a named
+  build failure; zero is the default and common outcome.
+- **The build inherits the matrix.** If intent is wrong or incomplete, the backlog and code
+  inherit it — but *visibly*, because it is drafted, provenance-tagged, and ratified.
+
+### 15.4 Relationship to the governance reference corpus
+
+Keep two bodies of text separate. (1) The **governance reference corpus**
+(`docs/security/corpus/`) — verbatim NIST / DISA / OWASP / DoD-AI source text — is external
+authoritative controlling text the security gate **reads on demand**, keyed by control ID,
+to ground citations (Guarantee #4). It is a version-controlled folder, **not** a vector
+store; the full catalog is never loaded into a prompt. (2) The **document matrix** is
+per-project governing intent, *loaded* into agent context via mandatory-reads (§4.2) — and
+semantic-retrieval recall failure on an intent element (a silently un-retrieved `SHALL NOT`)
+is exactly the failure a security build cannot tolerate, which is why neither body relies on
+fuzzy retrieval for its authoritative path. Vector/semantic search is at most a *later,
+optional discovery aid* (finding a control when its ID is unknown; searching a large
+brownfield source tree during Phase 0 step 0) — never the citation path or the home of the
+matrix.
+
+### 15.5 Implementation (substrate-agnostic)
+
+- **Storage.** Version-controlled, human-diffable governing documents (the core matrix in
+  their lane artifacts) plus Atlas's `docs/context/**` — matrix index, current-state
+  pre-fill with inline provenance, traceability map, cohesion criteria, and an append-only
+  ratification ledger.
+- **Construction.** The §15.2 pipeline: extraction → OPSEC filter → guided authoring +
+  needs-analysis → gap-hardening → backlog → traceability → cohesion criteria.
+- **Consumption.** The matrix feeds the build through the §4.2 mandatory-read lists; the
+  traceability map drives the §4.5 cohesion gate.
+- **Current substrate.** Seeds already exist as framework skills — project documentation
+  (`bmad-document-project`), PRD and architecture creation, epics/stories creation, and
+  implementation-readiness/gap checks; Phase 0 orchestrates them into one guided flow with
+  the two new gates. **Target substrate (Track B/C, §14):** own the pipeline and the
+  elicitation scripts; the compliance RAG stays a separate corpus.
 
 ---
 

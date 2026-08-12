@@ -41,8 +41,37 @@ scripts/
   hooks/
     pre-commit              # sh dispatcher → secret_scan (+ app lint/typecheck/test if present)
     commit-msg              # sh dispatcher → check_tdd --staged-msg
+  vendor/                   # corpus vendoring converters (Node .mjs — see below)
+    oscal-catalog-to-md.mjs   # NIST OSCAL catalog JSON  → 800-53r5 family files + index
+    oscal-baselines-to-md.mjs # NIST OSCAL profiles      → 53B IL4/IL6 baselines + delta
+    xccdf-stig-to-md.mjs      # DISA XCCDF benchmark XML → STIG/SRG rule files
+    owasp-fetch.mjs           # official OWASP repos     → Top 10 / ASVS / LLM / MASVS
   install-hooks.sh          # copy hooks into .git/hooks (framework-free path)
 .pre-commit-config.yaml     # framework path: repo:local hooks calling the same scripts
+```
+
+## `vendor/` — corpus generation (a different job from the gates)
+
+The `gates/` scripts enforce guarantees at commit/gate time. The `vendor/` scripts do
+something else: they generate `docs/security/corpus/` — the **verbatim** authoritative
+source text Sentinel's citations resolve into (Guarantee #4, ADR-0002). They are **Node
+`.mjs`** — written that way in F-010 when this box had no working Python (it does now:
+CPython 3.12.13 via `uv`, shims in `~/.local/bin`). They stay Node because they work and
+are proven against real sources; new converters may be either, but keep them
+**dependency-free** — Track C is air-gapped. They run offline once the source file is
+local, so a corpus refresh is repeatable rather than a one-time manual conversion.
+
+**The rule they encode: no fabrication.** Every character of control text comes from the
+official source file. A source that cannot be obtained is marked `SOURCE-NEEDED` in
+`corpus/MANIFEST.md` — never filled from memory. Currency and per-source status live in
+that manifest; the full procedure is `corpus/VENDORING_PROMPT.md`.
+
+```sh
+# each script prints its own usage when called with no arguments
+node scripts/vendor/oscal-catalog-to-md.mjs   <catalog.json> <out-controls-dir> [retrieved]
+node scripts/vendor/oscal-baselines-to-md.mjs <catalog> <moderate> <high> <out-53b-dir> <crosswalk-dir> [retrieved]
+node scripts/vendor/xccdf-stig-to-md.mjs      <benchmark.xml> <out.md> "<Doc Title>" "<Prov doc id>" [retrieved]
+node scripts/vendor/owasp-fetch.mjs           <corpus-owasp-dir> [retrieved]   # network path
 ```
 
 ## Install (pick one)

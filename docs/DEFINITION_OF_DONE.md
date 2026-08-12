@@ -43,8 +43,12 @@ through.
   (Murat / Sentinel / Manual / Human).
 - **Negative authorization tests** for every endpoint touched (401 / 403 / IDOR / 400 /
   conflict — Guarantee #8).
-- **Security checks mapped to controls** — each Sentinel check links to cited control
-  text in `CONTROLS-MAPPING.md` (Guarantee #4).
+- **Security checks mapped to controls** — each Sentinel check carries a control ID from
+  `CONTROLS-MAPPING.md`, resolving to verbatim text in `docs/security/corpus/`
+  (Guarantee #4). A check whose source is not vendored says so; it is never filled from
+  memory.
+- **Intent element recorded** in the story header — the matrix element this story traces
+  to (Phase 0, PRD §15.2). A story with none is rogue work.
 - For **security-sensitive** stories (auth, RBAC, new endpoints, data-boundary changes):
   the human has **named the endpoints touched** and stated, in their own words, *who can
   call each one and what stops everyone else.* A bare approval is not accepted.
@@ -70,6 +74,29 @@ On human approval, before the story is **promoted** (closed out / pushed / merge
 
 A story does **not** appear in the gate log until it has passed all four gates.
 In-progress stories have no entries.
+
+---
+
+## 3.5 When an *epic* is done (the cohesion bar)
+
+Story-level "done" does not close an epic. An epic is **done** only when, in addition to
+every story in it being done above:
+
+- **Atlas's epic-boundary cohesion gate returns `COHERENT`** (`CLAUDE.md` §3.5, PRD §4.5)
+  — the assembled, gate-passed epic still satisfies the intent elements the Phase-0 matrix
+  assigned it, no acceptance criterion was met in a way that violates a matrix `SHALL
+  NOT`, and every intent element the epic owns is covered by shipped work.
+- The verdict is **appended to the gate log's Epic Cohesion Ledger**
+  (`GATE_LOG_SCHEMA.md` §1.4).
+
+`DRIFT` **blocks epic close** and returns to correct-course — re-scope, add a story, or
+amend the intent with a recorded ADR — then re-run the gate. Like every gate here it is a
+structured self-check with a human confirming, not proof (`CLAUDE.md` §9).
+
+> **Upstream of all of this:** no story runs at all until **Phase 0** has produced, and a
+> human has **ratified**, the document matrix, the intent-traceable backlog, and the
+> epic cohesion criteria (`CLAUDE.md` §2.3, PRD §15). Self-ratification by an agent is a
+> protocol violation, exactly as self-approval is.
 
 ---
 

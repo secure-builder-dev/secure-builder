@@ -1,8 +1,9 @@
 # GATE_LOG_SCHEMA.md — Gate log structure & update protocol
 
-> **Owner:** Bob (Scrum Master) appends; Sentinel owns the file. **Source of record:**
-> `SECURE_BUILDER_PRD.md` §8.1. **Operationalized by:** `CLAUDE.md` §7.2. **Controls
-> evidenced:** CA-2 (Control Assessments), SA-11 (Developer Testing).
+> **Owner:** Sentinel (Security Gatekeeper) — owns the file and authors **every** row
+> (`CLAUDE.md` §2 manifest, §7.2; PRD §8.1). Bob owns the `NEXT_PROMPT*` handoffs only.
+> **Source of record:** `SECURE_BUILDER_PRD.md` §8.1. **Operationalized by:** `CLAUDE.md`
+> §7.2. **Controls evidenced:** CA-2 (Control Assessments), SA-11 (Developer Testing).
 >
 > This file is the **schema** — the tracked, public-safe specification of the gate log's
 > structure. The **live gate log** (`_bmad-output/gate-log.md`) lives in the consuming
@@ -57,6 +58,25 @@ a `DETECTED` event, then **exactly one** terminal event — `REMEDIATED` **or** 
   **additional** `REMEDIATED` event (it does not replace the `ACCEPTED` row). Lifecycle
   history is permanent.
 
+### 1.4 Epic Cohesion Ledger — one row per epic close
+
+The §3 story gates judge a single story; the **epic-boundary cohesion gate** (`CLAUDE.md`
+§3.5, PRD §4.5) judges the assembled epic against its Phase-0 intent elements. Its verdict
+is recorded like any other gate — one row appended when the epic closes.
+
+| Date | Epic | Verdict | Intent elements checked | Uncovered / drifted | Resolution | Human |
+|---|---|---|---|---|---|---|
+| 2026-06-11 | E-01 | COHERENT | 4/4 covered; 0 `SHALL NOT` violations | — | — | APPROVED |
+
+*(row above is an illustrative example, not real data)*
+
+- **Owned by Atlas**; appended by Sentinel with the rest of the log (single-author rule).
+- `DRIFT` **blocks epic close**. The row still gets appended (the finding is the evidence),
+  and the resolution — re-scope, added story, or an intent amendment with a recorded ADR —
+  is named in the **Resolution** column, followed by a later `COHERENT` row after re-run.
+  Never edit the `DRIFT` row.
+- A `DRIFT` finding also gets an Issue ID in §1.3 with `Gate = Atlas (cohesion)`.
+
 ---
 
 ## 2. Verdict vocabulary (Quick Ledger values)
@@ -69,6 +89,8 @@ a `DETECTED` event, then **exactly one** terminal event — `REMEDIATED` **or** 
 | **Sentinel PASS (1 remediated)** | Blocking finding caught and fixed in-session before the final verdict. |
 | **Manual CLEAR** | Logic-layer review found no auth bypass, IDOR, privilege escalation, or business-rule bypass. |
 | **Human APPROVED** | Explicit "approved" in conversation — the only thing that unlocks promotion. |
+| **Atlas COHERENT** | *(epic close only)* Assembled epic still satisfies its matrix intent elements; no `SHALL NOT` violated; every owned intent element covered by shipped work. |
+| **Atlas DRIFT** | *(epic close only)* Intent divergence across the assembled epic — blocks epic close pending correct-course. |
 
 ---
 
@@ -82,7 +104,9 @@ appends — in this order — and **never** rewrites prior rows:
 2. one **Detailed Ledger** row;
 3. a **`DETECTED`** row for any new finding;
 4. the matching **terminal** row when a prior finding closes — `REMEDIATED` if fixed,
-   `ACCEPTED` if carried forward as documented risk (never edit the `DETECTED` row).
+   `ACCEPTED` if carried forward as documented risk (never edit the `DETECTED` row);
+5. at **epic close only**, one **Epic Cohesion Ledger** row (§1.4) carrying Atlas's
+   `COHERENT` / `DRIFT` verdict.
 
 Append-only, always. Corrections are new entries. Git history is the tamper record.
 

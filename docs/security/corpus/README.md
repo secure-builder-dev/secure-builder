@@ -11,8 +11,11 @@ built per-project.
 - **`corpus/` (here)** — verbatim external source text, organized by issuing authority.
   Read-only reference.
 - **`../controls/`** — the engine's *own* curated baselines and check→control mappings,
-  which cite **into** this corpus (`CONTROLS-MAPPING.md`, `IL4-baseline.md`, `IL6-delta.md`).
-- **`../providers/`** — how controls are satisfied per provider (aws/azure/android/tactical).
+  which cite **into** this corpus. `CONTROLS-MAPPING.md` exists; `IL4-baseline.md` and
+  `IL6-delta.md` are **planned, not yet written** (CLAUDE.md §10) — meanwhile baseline
+  membership comes straight from `nist/sp-800-53b/` here.
+- **`../providers/`** — how controls are satisfied per provider (aws/azure/android/
+  tactical). **Planned, not yet written.**
 
 ## Citing
 

@@ -85,7 +85,7 @@ why**, and the gate's *rigor* would depend on undocumented hardware state — ex
 variability §9 forbids. So the active profile is an **explicit, recorded operator choice**, not
 an ambient side effect of what is plugged in.
 
-A launcher helper (PowerShell / Node — **no Python on the clean-room laptop**) may therefore
+A launcher helper (PowerShell / Node / stdlib Python) may therefore
 **offer, not impose**:
 
 1. **Enumerate GPUs / VRAM** (`nvidia-smi --query-gpu=memory.total`, or CUDA device count).

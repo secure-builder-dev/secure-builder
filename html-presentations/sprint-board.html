@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Secure Builder — Sprint Board</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#14181f; --ink-2:#4a5361;
+    --ink-3:#79828f; --line:#e2e6ec; --line-2:#eef1f5;
+    --accent:#2f6bd8; --accent-soft:#e8f0ff;
+    --done:#1f8a5b; --done-soft:#e6f4ec;
+    --warn:#a4610a; --warn-soft:#fdf1de;
+    --block:#b03636; --block-soft:#fdeaea;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1216; --panel:#161b22; --panel-2:#1b212a; --ink:#e6eaf0; --ink-2:#aab3c0;
+      --ink-3:#7b8593; --line:#262d38; --line-2:#1e242d;
+      --accent:#6f9cf0; --accent-soft:#1a2740;
+      --done:#4cc38a; --done-soft:#14301f;
+      --warn:#e0a55a; --warn-soft:#33260f;
+      --block:#e57373; --block-soft:#331a1a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1216; --panel:#161b22; --panel-2:#1b212a; --ink:#e6eaf0; --ink-2:#aab3c0;
+    --ink-3:#7b8593; --line:#262d38; --line-2:#1e242d;
+    --accent:#6f9cf0; --accent-soft:#1a2740;
+    --done:#4cc38a; --done-soft:#14301f;
+    --warn:#e0a55a; --warn-soft:#33260f;
+    --block:#e57373; --block-soft:#331a1a;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:28px 20px 80px}
+
+  header.top{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-bottom:6px}
+  h1{font-size:22px; margin:0; letter-spacing:-.01em}
+  .sub{color:var(--ink-3); font-size:13px; margin:4px 0 0}
+  .tools{display:flex; gap:8px; flex-wrap:wrap}
+  button{
+    font:inherit; font-size:13px; color:var(--ink-2); background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; padding:6px 11px; cursor:pointer;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent)}
+
+  .overall{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0 22px;
+  }
+  .overall .row{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+  .overall .big{font-size:15px; font-weight:600}
+  .overall .count{color:var(--ink-3); font-size:13px; font-variant-numeric:tabular-nums}
+  .bar{height:7px; background:var(--line-2); border-radius:99px; overflow:hidden; margin-top:11px}
+  .bar > i{display:block; height:100%; background:var(--accent); border-radius:99px; transition:width .25s ease}
+  .bar.full > i{background:var(--done)}
+
+  section.grp{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    margin-bottom:16px; overflow:hidden;
+  }
+  .ghead{
+    display:flex; align-items:center; gap:12px; padding:13px 16px;
+    background:var(--panel-2); border-bottom:1px solid var(--line); cursor:pointer; user-select:none;
+  }
+  .ghead .caret{color:var(--ink-3); font-size:11px; width:10px; transition:transform .15s ease}
+  section.grp.collapsed .caret{transform:rotate(-90deg)}
+  section.grp.collapsed .glist{display:none}
+  .ghead h2{font-size:14px; margin:0; font-weight:600; flex:1; letter-spacing:-.005em}
+  .ghead .when{font-size:12px; color:var(--ink-3); font-weight:400}
+  .gprog{display:flex; align-items:center; gap:9px; min-width:132px}
+  .gprog .mini{width:78px; height:5px; background:var(--line-2); border-radius:99px; overflow:hidden}
+  .gprog .mini > i{display:block; height:100%; background:var(--accent); transition:width .25s ease}
+  .gprog.full .mini > i{background:var(--done)}
+  .gprog .n{font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums; min-width:38px; text-align:right}
+
+  .glist{list-style:none; margin:0; padding:0}
+  li.item{display:flex; gap:12px; padding:11px 16px; border-top:1px solid var(--line-2); align-items:flex-start}
+  li.item:first-child{border-top:none}
+  li.item.done .title{color:var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px}
+  li.item.done .note{opacity:.6}
+  input[type=checkbox]{
+    appearance:none; -webkit-appearance:none; margin:2px 0 0; flex:none;
+    width:17px; height:17px; border:1.5px solid var(--line); border-radius:5px;
+    background:var(--panel); cursor:pointer; position:relative; transition:.12s;
+  }
+  input[type=checkbox]:hover{border-color:var(--accent)}
+  input[type=checkbox]:checked{background:var(--done); border-color:var(--done)}
+  input[type=checkbox]:checked::after{
+    content:""; position:absolute; left:5px; top:1.5px; width:4px; height:9px;
+    border:solid #fff; border-width:0 2px 2px 0; transform:rotate(42deg);
+  }
+  input[type=checkbox]:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .body{flex:1; min-width:0}
+  .title{display:block; cursor:pointer}
+  .note{display:block; color:var(--ink-3); font-size:12.5px; margin-top:2px}
+  .meta{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:5px}
+  .tag{
+    font-size:11px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    padding:1.5px 6px; border-radius:5px; border:1px solid var(--line);
+    color:var(--ink-3); background:var(--panel-2); white-space:nowrap;
+  }
+  .tag.done{color:var(--done); border-color:var(--done); background:var(--done-soft)}
+  .tag.warn{color:var(--warn); border-color:var(--warn); background:var(--warn-soft)}
+  .tag.block{color:var(--block); border-color:var(--block); background:var(--block-soft)}
+  .tag.gate{color:var(--accent); border-color:var(--accent); background:var(--accent-soft)}
+  .stamp{font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; flex:none; padding-top:2px}
+
+  .foot{margin-top:26px; color:var(--ink-3); font-size:12px; line-height:1.65}
+  .foot code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px}
+  .foot strong{color:var(--ink-2)}
+  body.filter-open li.item.done{display:none}
+  body.filter-done li.item:not(.done){display:none}
+  @media (max-width:620px){
+    .gprog{min-width:auto} .gprog .mini{width:48px} .ghead .when{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Secure Builder — Sprint Board</h1>
+      <p class="sub">Engine build backlog. F-prefix = building the engine itself · S-prefix = an app built <em>with</em> it. State is saved in this browser.</p>
+    </div>
+    <div class="tools">
+      <button id="f-all" class="on">All</button>
+      <button id="f-open">Open</button>
+      <button id="f-done">Done</button>
+      <button id="collapse">Collapse all</button>
+      <button id="export">Export</button>
+      <button id="import">Import</button>
+      <button id="theme">Theme</button>
+    </div>
+  </header>
+
+  <div class="overall">
+    <div class="row">
+      <span class="big" id="o-label">Overall progress</span>
+      <span class="count" id="o-count">0 / 0</span>
+    </div>
+    <div class="bar" id="o-bar"><i style="width:0%"></i></div>
+  </div>
+
+  <div id="board"></div>
+
+  <p class="foot">
+    <strong>How state is stored.</strong> Checkboxes persist in this browser's
+    <code>localStorage</code> under <code>sb-sprint-board-v1</code> — per browser, per machine, not in git.
+    Use <strong>Export</strong> to drop a JSON snapshot into your notes and <strong>Import</strong> to restore it
+    (also how you move state to another browser, or recover if site data is cleared).<br>
+    <strong>This board is a convenience tracker, not evidence.</strong> Checking a box here is not a gate verdict
+    and not an approval. The evidence artifacts remain the append-only gate log
+    (<code>_bmad-output/gate-log.md</code>, Sentinel-authored) and git history — CLAUDE.md §7.2, Guarantee #6.
+  </p>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Backlog. Edit freely: `id` is the storage key, so keep an item's id stable
+// when you reword its title, and use a new id for genuinely new work.
+// seed:true  = pre-checked on first ever load (already-shipped work).
+// ---------------------------------------------------------------------------
+const BOARD = [
+  { group:"Shipped — engine foundation", when:"Week 0–1 · Jun 2026", items:[
+    { id:"f001", t:"Cap the PRD spec + scaffold the clean repo", tags:["F-001","0d6bb68"], seed:true },
+    { id:"f002", t:"CLAUDE.md — engine constitution", note:"Guarantees, gate sequence, routing, commit protocol, AI security rules.", tags:["F-002","777e146"], seed:true },
+    { id:"f003", t:"Week 1 gate docs", note:"QUALITY_GATE · DEFINITION_OF_DONE · STORY_TEMPLATE · DEPENDENCY_POLICY.", tags:["F-003","9c195de"], seed:true },
+    { id:"f004", t:"Week 1 evidence docs", note:"CONTROLS-MAPPING · gate-log schema · handoff templates.", tags:["F-004","48db054"], seed:true },
+    { id:"f006", t:"Enforcement mechanics — local-attested hooks + gate scripts", note:"secret_scan · check_tdd · check_lanes · pre-commit/commit-msg dispatchers.", tags:["F-006","152b0c7","committed unverified"], tagClass:{"committed unverified":"warn"}, seed:true },
+    { id:"f008", t:"Two-context build/gate split (bias firewall)", note:"CW1 build → NEXT_PROMPT_GATES → CW2 gates, blind to the builder's reasoning. Independent review, explicitly NOT separation of duties.", tags:["F-008","ede5912"], seed:true },
+  ]},
+
+  { group:"Shipped — today's migration", when:"2026-08-11", items:[
+    { id:"f010a", t:"Phase-0 contextualization workflow (Atlas)", note:"Document matrix + intent-traceable backlog + cohesion criteria, human-ratified. No story runs before it. ADR-0001.", tags:["F-010","336ebf0","ADR-0001"], seed:true },
+    { id:"f010b", t:"Epic-boundary cohesion gate (COHERENT / DRIFT)", note:"Fires at every epic close; catches intent drift the per-story gates structurally cannot.", tags:["F-010","gate"], tagClass:{"gate":"gate"}, seed:true },
+    { id:"f010c", t:"Governance corpus vendored — read-on-demand, not RAG", note:"800-53r5 (20 families / 1,196 controls) · 53B IL4+IL6 baselines + delta · ASD STIG V6R4 (286 rules) · OWASP Top 10 / ASVS 5.0 / LLM Top 10 2.0 / MASVS. ADR-0002.", tags:["F-010","ADR-0002"], seed:true },
+    { id:"f010d", t:"Corpus converters saved for repeatable refresh", note:"scripts/vendor/ — OSCAL catalog, OSCAL baselines, XCCDF STIG, OWASP fetch.", tags:["F-010"], seed:true },
+    { id:"f011a", t:"Retire Qwen → US/ally open-weight local models", note:"Standing provenance rule: binds on base-weight origin, not the uploader; includes embedding + reranker models. ADR-0003.", tags:["F-011","f56496a","ADR-0003"], seed:true },
+    { id:"f011b", t:"COMPUTE_PROFILE init variable + MODEL-PROFILES.md", note:"laptop-resident (Devstral Small 2 / Gemma 4, hot-swapped) vs egpu-70b (gate scales to Llama 3.3 70B). Gate profile is a recorded choice, never a silent auto-scale.", tags:["F-011","d2ad293"], seed:true },
+    { id:"f012", t:"Cohesion pass — align the whole project to F-010/F-011", note:"Gate-log owner Bob→Sentinel + Epic Cohesion Ledger · CONTROLS-MAPPING de-RAG'd onto real corpus anchors · Atlas in both routing tables · story intent-element field · epic-close bar in DoD · PRD §11.1 model provenance · DEPENDENCY_POLICY §5 (a model is a dependency) · no-Python claims retired.", tags:["F-012","uncommitted"], tagClass:{"uncommitted":"warn"} },
+  ]},
+
+  { group:"Now — unblock the enforcement layer", when:"Week 1 remainder", items:[
+    { id:"py01", t:"Confirm Python on PATH for the working shell", note:"CPython 3.12.13 via uv; shims in C:\\Users\\cjhou\\.local\\bin. A shell started before the install has a stale PATH.", tags:["env"] },
+    { id:"py02", t:"Smoke-test secret_scan.py against staged changes", tags:["F-006"] },
+    { id:"py03", t:"Smoke-test check_tdd.py — prefix check + two-commit ordering", note:"Run against a real range in this repo, e.g. a past F-commit pair.", tags:["F-006"] },
+    { id:"py04", t:"Smoke-test check_lanes.py against agents/manifest.json", note:"Includes the new Atlas lane (docs/context/**).", tags:["F-006"] },
+    { id:"py05", t:"Install hooks — only after all three pass", note:"sh scripts/install-hooks.sh. The pre-commit hook is fail-closed: a broken script blocks every commit.", tags:["F-006","fail-closed"], tagClass:{"fail-closed":"block"} },
+    { id:"py06", t:"Keep gate scripts stdlib-only (no pip deps)", note:"Track C is air-gapped; a uv-managed interpreter is itself an artifact to stage.", tags:["constraint"] },
+  ]},
+
+  { group:"Week 2 — Personas onto stock skills", when:"[SLOTTABLE]", items:[
+    { id:"p-john", t:"John — Product Manager", tags:["persona"] },
+    { id:"p-winston", t:"Winston — Architect", tags:["persona"] },
+    { id:"p-sally", t:"Sally — UX Designer", tags:["persona"] },
+    { id:"p-amelia", t:"Amelia — Developer (TDD)", tags:["persona"] },
+    { id:"p-paige", t:"Paige — Tech Writer", tags:["persona"] },
+  ]},
+
+  { group:"Week 2 — Custom skills (no stock equivalent)", when:"[HEADS-DOWN]", items:[
+    { id:"c-tori", t:"Tori — Story Analyst", note:"Also drives both Phase-0 gates: Gap-Analysis and Intent-Traceability.", tags:["custom"] },
+    { id:"c-bob", t:"Bob — Scrum Master", note:"Dispatch + the NEXT_PROMPT* handoffs. Does NOT author the gate log.", tags:["custom"] },
+    { id:"c-atlas", t:"Atlas — Contextualization Lead (Phase 0)", note:"PRD §15. Owns docs/context/** only; triggers lane owners to write the matrix into their own artifacts.", tags:["custom","new in F-010"], tagClass:{"new in F-010":"gate"} },
+    { id:"c-murat", t:"Murat — Test Architect (skill cluster)", tags:["custom"] },
+    { id:"c-frank", t:"Frank — DevSecOps", tags:["custom"] },
+    { id:"c-sentinel", t:"Sentinel — Security Gatekeeper", note:"§4.3 checklist + control lookup + dependency policy + adversarial testing.", tags:["custom"] },
+  ]},
+
+  { group:"Week 2 — Gate mechanics the skills must encode", when:"[HEADS-DOWN]", items:[
+    { id:"g-cw2", t:"Murat + Sentinel enter cold from NEXT_PROMPT_GATES.md", note:"Judge the diff only. Never the builder's reasoning.", tags:["F-008"] },
+    { id:"g-attest", t:"Sentinel forced skill-load-and-attest before any verdict", note:"CLAUDE.md §3.2. A run that skipped it is invalid and re-runs. Fill the <path> placeholders in the gates template.", tags:["F-008"] },
+    { id:"g-reads", t:"Add Sentinel skill paths to manifest.json mandatory_reads", note:"Once the skill files exist.", tags:["F-008"] },
+    { id:"g-corpus", t:"Control lookup resolves into docs/security/corpus/", note:"Family file → ## <ID> anchor. Never from model memory. corpus/MANIFEST.md says what is actually openable.", tags:["F-010"] },
+    { id:"g-loop", t:"3-round self-healing cap, then escalate to a human", note:"Anti-runaway and anti-Goodhart.", tags:["F-008"] },
+    { id:"g-log", t:"Sentinel authors live gate-log writes + the DONE row on approval", tags:["F-008"] },
+    { id:"g-smoke", t:"Smoke-test each agent in isolation on a throwaway story", tags:["[SLOTTABLE]"] },
+  ]},
+
+  { group:"Week 3 — Wire + first real run", when:"App #1", items:[
+    { id:"w3-phase0", t:"Run Phase 0 on App #1 — before any story", note:"Hardened matrix + intent-traceable backlog + cohesion criteria, all human-ratified. Agent self-ratification is a protocol violation.", tags:["gate","prerequisite"], tagClass:{"gate":"gate","prerequisite":"block"} },
+    { id:"w3-run", t:"Drive 5–10 real stories through the full lifecycle", note:"Dispatch → TDD → Murat → Sentinel → manual review → approval → promotion → handoff.", tags:[] },
+    { id:"w3-fire", t:"Confirm the gates actually fire", note:"TDD two-commit enforced · coverage on the diff · Sentinel catches a planted issue · gate log fills · handoffs carry a cold session.", tags:[] },
+    { id:"w3-epic", t:"Close one epic through the cohesion gate", note:"COHERENT/DRIFT recorded in the gate log's Epic Cohesion Ledger.", tags:["F-010"] },
+    { id:"w3-friction", t:"Capture friction notes → PRD §10 Track-B rebuild inventory", tags:["[SLOTTABLE]"] },
+  ]},
+
+  { group:"Week 4 — Instrument, package, evidence", when:"", items:[
+    { id:"w4-metrics", t:"Metrics instrumentation from the gate log", note:"Gate pass/fail, findings by severity, coverage, TDD compliance. This produces the value-prop numbers.", tags:[] },
+    { id:"w4-repo", t:"Clean public repo + README that opens with the cATO problem", note:"Not the tech. Never describe the two-context split as separation of duties.", tags:["§9"] },
+    { id:"w4-video", t:"3-minute demo video", note:"One story: failing test → impl → quality gate → security gate → control-mapped → human approval, gate log filling live.", tags:[] },
+    { id:"w4-evidence", t:"Stand up the evidence pipeline", tags:["[SLOTTABLE]"] },
+  ]},
+
+  { group:"Evidence — the third-party proof (long pole)", when:"hard deadline", items:[
+    { id:"e-poc", t:"Capture the work-POC metrics NOW", note:"Cannot be reconstructed after separation. Aggregate/releasable only.", tags:["OPSEC"], tagClass:{"OPSEC":"block"} },
+    { id:"e-intake", t:"Record aggregate platform-team intake results per app", note:"Finding counts by severity, control-mapping gaps, POA&M items, remediation cycle time.", tags:[] },
+    { id:"e-baseline", t:"Get a baseline to compare against", note:"An app NOT built with the engine, or the team's historical norm. \"N → M findings\" needs both numbers.", tags:[] },
+    { id:"e-clear", t:"Confirm with the security office that even aggregates are cleared", tags:["OPSEC"], tagClass:{"OPSEC":"block"} },
+  ]},
+
+  { group:"Corpus backlog — vendor only what a project cites", when:"scope discipline", items:[
+    { id:"cb-ccsrg", t:"DoD Cloud Computing SRG — highest near-term value", note:"PDF-only, no XCCDF. Completes the IL4→IL6 crosswalk overlay. Extract cited sections; mark PARTIAL, never pad.", tags:["SOURCE-NEEDED"], tagClass:{"SOURCE-NEEDED":"warn"} },
+    { id:"cb-appsrg", t:"DISA Application SRG", note:"Converter ready; the archive short code/path was not located.", tags:["SOURCE-NEEDED"], tagClass:{"SOURCE-NEEDED":"warn"} },
+    { id:"cb-mobile", t:"DISA Mobile Application STIG", note:"Android track only. Converter is proven against ASD V6R4 — what's missing is the source archive.", tags:["SOURCE-NEEDED"], tagClass:{"SOURCE-NEEDED":"warn"} },
+    { id:"cb-prose", t:"PDF-only prose standards", note:"800-37r2 · 800-171 · 800-161r1 · 800-218/218A · 800-63 · FIPS 199/200 · 800-124r2 · 800-163r1 · AI RMF · DoD-AI · CNSSP-15. Vendor when a citing project's tiers need them.", tags:["SKELETON"], tagClass:{"SKELETON":"warn"} },
+    { id:"cb-ratify", t:"Ratify control mappings — DRAFT → RATIFIED", note:"Human confirms each check-type's mapping once, logged append-only in CONTROLS-MAPPING §6. A plausible-but-wrong mapping is worse than none.", tags:["Guarantee #4"], tagClass:{"Guarantee #4":"gate"} },
+  ]},
+
+  { group:"Track B / C — the real migration (out of the 4-week window)", when:"gated on Track A", items:[
+    { id:"tb-01", t:"Track B — own the orchestration layer to the §10 spec", note:"Only after the design is provably correct on the current substrate. Debugging a novel design and a novel framework at once is out of scope.", tags:["Track B"] },
+    { id:"tc-01", t:"Measure the output-quality gap on an already-working app first", note:"Before redesigning anything.", tags:["Track C"] },
+    { id:"tc-02", t:"Stand up build = Devstral Small 2 / gate = Gemma 4 (laptop-resident)", note:"Different-lineage weights reinforce the bias firewall. Hot-swapped — contexts are sequential.", tags:["Track C","ADR-0003"] },
+    { id:"tc-03", t:"egpu-70b profile — gate scales to Llama 3.3 70B", note:"A recorded choice, never a silent auto-scale.", tags:["Track C"] },
+    { id:"tc-04", t:"Verify the local stack in a test air-gap", note:"No telemetry, no auto-update. Stage every artifact — models, interpreter, corpus.", tags:["DDIL"] },
+    { id:"tc-05", t:"Re-confirm model provenance on every add or version change", note:"Human-confirmed judgment; no official approved-model list exists. DEPENDENCY_POLICY §5.", tags:["ADR-0003"] },
+    { id:"tc-06", t:"Offline builds need MORE human rigor, not the same", note:"local-attested is the weaker enforcement and a local model is weaker at exactly the security reasoning the gates lean on. CLAUDE.md §6.", tags:["honesty"], tagClass:{"honesty":"block"} },
+  ]},
+];
+
+// ---------------------------------------------------------------------------
+const KEY = "sb-sprint-board-v1";
+const THEME_KEY = "sb-sprint-board-theme";
+let state = {};
+
+function load(){
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); }
+  catch { state = {}; }
+  if (!Object.keys(state).length) {                 // first ever load: seed shipped work
+    const today = new Date().toISOString().slice(0,10);
+    BOARD.forEach(g => g.items.forEach(it => { if (it.seed) state[it.id] = today; }));
+    save();
+  }
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+
+function el(tag, cls, text){
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function render(){
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  BOARD.forEach((g, gi) => {
+    const sec = el("section","grp");
+    const head = el("div","ghead");
+    head.append(el("span","caret","\u25BC"));
+    const h = el("h2"); h.textContent = g.group;
+    if (g.when) { const w = el("span","when"," \u00B7 " + g.when); h.append(w); }
+    head.append(h);
+    const prog = el("div","gprog");
+    const mini = el("div","mini"); mini.append(el("i"));
+    prog.append(mini, el("span","n"));
+    head.append(prog);
+    head.addEventListener("click", () => sec.classList.toggle("collapsed"));
+    sec.append(head);
+
+    const ul = el("ul","glist");
+    g.items.forEach(it => {
+      const li = el("li","item"); li.dataset.id = it.id;
+      const cb = el("input"); cb.type = "checkbox"; cb.id = "cb-" + it.id;
+      cb.checked = !!state[it.id];
+      cb.addEventListener("change", () => {
+        if (cb.checked) state[it.id] = new Date().toISOString().slice(0,10);
+        else delete state[it.id];
+        save(); paint();
+      });
+      const body = el("div","body");
+      const label = el("label","title", it.t); label.htmlFor = cb.id;
+      body.append(label);
+      if (it.note) body.append(el("span","note", it.note));
+      if (it.tags && it.tags.length) {
+        const meta = el("div","meta");
+        it.tags.forEach(t => {
+          const cls = (it.tagClass && it.tagClass[t]) ? "tag " + it.tagClass[t] : "tag";
+          meta.append(el("span", cls, t));
+        });
+        body.append(meta);
+      }
+      li.append(cb, body, el("span","stamp"));
+      ul.append(li);
+    });
+    sec.append(ul);
+    board.append(sec);
+    sec.dataset.gi = gi;
+  });
+  paint();
+}
+
+function paint(){
+  let total = 0, done = 0;
+  document.querySelectorAll("section.grp").forEach(sec => {
+    const items = sec.querySelectorAll("li.item");
+    let gd = 0;
+    items.forEach(li => {
+      const on = !!state[li.dataset.id];
+      li.classList.toggle("done", on);
+      li.querySelector(".stamp").textContent = on ? state[li.dataset.id] : "";
+      if (on) gd++;
+    });
+    total += items.length; done += gd;
+    const pct = items.length ? Math.round(gd / items.length * 100) : 0;
+    const prog = sec.querySelector(".gprog");
+    prog.querySelector(".mini > i").style.width = pct + "%";
+    prog.querySelector(".n").textContent = gd + "/" + items.length;
+    prog.classList.toggle("full", gd === items.length && items.length > 0);
+  });
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById("o-count").textContent = done + " / " + total + "  \u00B7  " + pct + "%";
+  document.getElementById("o-bar").querySelector("i").style.width = pct + "%";
+  document.getElementById("o-bar").classList.toggle("full", done === total && total > 0);
+}
+
+// filters
+function setFilter(mode, btn){
+  document.body.classList.remove("filter-open","filter-done");
+  if (mode !== "all") document.body.classList.add("filter-" + mode);
+  ["f-all","f-open","f-done"].forEach(id => document.getElementById(id).classList.remove("on"));
+  btn.classList.add("on");
+}
+document.getElementById("f-all").onclick  = e => setFilter("all", e.target);
+document.getElementById("f-open").onclick = e => setFilter("open", e.target);
+document.getElementById("f-done").onclick = e => setFilter("done", e.target);
+
+document.getElementById("collapse").onclick = e => {
+  const secs = [...document.querySelectorAll("section.grp")];
+  const anyOpen = secs.some(s => !s.classList.contains("collapsed"));
+  secs.forEach(s => s.classList.toggle("collapsed", anyOpen));
+  e.target.textContent = anyOpen ? "Expand all" : "Collapse all";
+};
+
+document.getElementById("export").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "sprint-board-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+document.getElementById("import").onclick = () => {
+  const raw = prompt("Paste an exported JSON snapshot (this replaces current state):");
+  if (!raw) return;
+  try {
+    const next = JSON.parse(raw);
+    if (typeof next !== "object" || next === null || Array.isArray(next)) throw new Error("not an object");
+    state = next; save(); paint();
+  } catch (err) { alert("Could not import: " + err.message); }
+};
+
+document.getElementById("theme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "" : "dark";
+  if (next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+  try { localStorage.setItem(THEME_KEY, next); } catch {}
+};
+try {
+  const t = localStorage.getItem(THEME_KEY);
+  if (t) document.documentElement.setAttribute("data-theme", t);
+} catch {}
+
+load();
+render();
+</script>
+</body>
+</html>

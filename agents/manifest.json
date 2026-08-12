@@ -47,6 +47,10 @@
         "docs/PRD.md",
         "docs/STORY_TEMPLATE.md",
         "docs/context/**"
+      ],
+      "mandatory_reads_nonglob": [
+        "the target repo/source tree (brownfield current-state extraction)",
+        "the existing governing docs in the project's document matrix"
       ]
     },
     "Winston": {

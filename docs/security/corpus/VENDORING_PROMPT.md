@@ -5,12 +5,26 @@
 > with *verbatim* authoritative text generated from official machine-readable sources, with
 > provenance, committed so the corpus works offline.
 
+> ## ⚠️ STATUS: PARTIALLY EXECUTED (2026-08-11, commit `336ebf0` `[F-010/framework]`)
+>
+> **Already done — do not redo:** NIST 800-53r5 (all 20 families, 1,196 controls) · 800-53B
+> Moderate/High baselines + the IL4→IL6 delta · DISA ASD STIG V6R4 (286 rules) · OWASP Top
+> 10 / ASVS v5.0 / LLM Top 10 v2.0 / MASVS. Converters are written, committed under
+> `scripts/vendor/`, and proven against real sources.
+>
+> **What is left:** the `SOURCE-NEEDED` rows (Cloud Computing SRG — highest value, completes
+> the IL4→IL6 overlay; Application SRG; Mobile Application STIG) and the PDF-only
+> `SKELETON` prose standards. **`MANIFEST.md` is the authority on status — read it first
+> and only work the rows it says are open.** Vendor deferred sources only when an active
+> project's tiers/providers actually cite them (scope discipline, ADR-0002).
+
 ---
 
 ## Read first (governing law — do not skip)
 
-- `CLAUDE.md` (auto-loaded — engine constitution). Note §8/§11 (OPSEC/clean-room), §7.1 (no
-  AI co-author trailer), Guarantee #4 (verbatim, citable — never paraphrased).
+- `CLAUDE.md` (auto-loaded — engine constitution). Note §8 / §8.1 (OPSEC / clean-room;
+  PRD §11), §7.1 (no AI co-author trailer), Guarantee #4 (verbatim, citable — never
+  paraphrased).
 - `docs/security/corpus/README.md` — what the corpus is and the read-on-demand model.
 - `docs/security/corpus/MANIFEST.md` — the source/currency ledger you will update.
 - `SECURE_BUILDER_PRD.md` §12.3 (authoritative references), §15.4 (corpus vs. matrix).
@@ -27,8 +41,14 @@ Guarantee #4: a reviewer must be able to open the cited source and find the exac
 
 ## Environment constraints
 
-- **No Python on this machine.** Use **PowerShell 5.1** (native `ConvertFrom-Json`) or Node
-  for the converters. Everything must run **offline** once the source files are local.
+- **Python is available again** — CPython **3.12.13** via `uv`, shims in
+  `C:\Users\cjhou\.local\bin` (a shell started before that install has a stale PATH;
+  prepend it or restart the shell). This **supersedes** the earlier "no Python on this
+  machine" constraint that shaped the existing converters. The committed converters in
+  `scripts/vendor/` are **Node `.mjs`** and work — do not rewrite them for its own sake;
+  reach for Python only if a *new* source is genuinely easier that way (and keep it
+  **stdlib-only**, since Track C is air-gapped).
+- Everything must run **offline** once the source files are local.
 - Sources are **public standards** — fetching/transferring them is fine (no OPSEC issue).
   But do not hit the network without the operator's go-ahead; if air-gapped, the operator
   places source files in a local `sources/` scratch dir you agree on (never commit raw

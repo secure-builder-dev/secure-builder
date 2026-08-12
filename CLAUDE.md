@@ -50,6 +50,16 @@ yet; see PRD §3.1, §14 Track B):**
   the AI assistant run the §4 Quality and Security criteria *manually* against each
   story, and the verdicts are recorded the same way. The gate is real today; its
   *automation* is Phase 2.
+- **Atlas** and the **Phase-0 contextualization workflow** (§2.3), and the **epic-boundary
+  cohesion gate** (§3.5), as automated skills. The *requirement* binds now — no story runs
+  without a human-ratified document matrix, intent-traceable backlog, and cohesion
+  criteria; no epic closes without a cohesion verdict — but today the operator drives that
+  workflow by hand using the existing planning skills. The gate is real; the orchestration
+  is Phase 2.
+- **The governance corpus is real and works offline today** (`docs/security/corpus/`,
+  ADR-0002) — but it is **partially vendored**. `corpus/MANIFEST.md` is the authority on
+  what is openable; a check whose source is not vendored says so and is never grounded
+  from model memory.
 - **Machine lane-boundary enforcement** (the `git diff`-vs-glob script, §3.2). Until it
   is built, lane boundaries are enforced by operator and reviewer attention.
 - **The full automated gate chain as a server-side merge wall** (`ci-enforced` mode,
@@ -288,6 +298,7 @@ via the `COMPUTE_PROFILE` init variable (§5, `docs/architecture/MODEL-PROFILES.
 
 | Story Type | First Agent | Then |
 |---|---|---|
+| **Phase-0 project inception (§2.3) — before any story** | **Atlas** | John/Winston/Sentinel (matrix) → Tori (gap + traceability gates) → human ratification |
 | New story writing | John | Tori (refinement) |
 | Story refinement / gap analysis | Tori | Bob (dispatch) |
 | Schema change / new ADR | Winston | Amelia |
@@ -296,6 +307,7 @@ via the `COMPUTE_PROFILE` init variable (§5, `docs/architecture/MODEL-PROFILES.
 | DevSecOps / pipeline / Helm | Frank | Sentinel |
 | New dependency | Sentinel (DP review) | Amelia |
 | All stories, post-implementation | Murat | Sentinel → manual review |
+| **Epic complete (cohesion gate, §3.5)** | **Atlas** | `COHERENT` → epic closes · `DRIFT` → correct-course |
 
 ### 3.2 Mandatory Read Protocol (human-attested, NOT machine-verified)
 
@@ -458,7 +470,9 @@ open findings count; blocking findings count.
 Critical → block, fix immediately, POA&M if no fix; High → block before merge, POA&M
 within 24h; Medium → flag, fix next maintenance cycle; Low → log, quarterly review.
 License policy (IL4): MIT/Apache-2.0/BSD-2/BSD-3/ISC/CC0 approved; GPL/AGPL prohibited;
-LGPL requires review; no unlicensed packages.
+LGPL requires review; no unlicensed packages. **A model is a dependency** — any LLM,
+embedding, or reranker model additionally passes the §8.2 base-weight provenance gate
+before approval (`DEPENDENCY_POLICY.md` §5).
 
 ### 4.4 Manual Security Review (Step 5) — the load-bearing human gate
 
@@ -683,6 +697,18 @@ rule, on par with the OPSEC rules above, and it cannot be relaxed by a story ins
 ---
 
 ## 10. Governance Document Index
+
+> **This index is the engine's full document set, not an inventory of this repo.** Three
+> kinds of path appear below and they are not interchangeable: **(a) engine files that
+> exist here** (this file, the gate docs, `ADR-LOG.md`, `MODEL-PROFILES.md`,
+> `CONTROLS-MAPPING.md`, `security/corpus/**`, `agents/manifest.json`, `scripts/**`);
+> **(b) per-app artifacts that live in the consuming app's repo, not here** (`docs/PRD.md`,
+> `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, story files, `_bmad-output/**` — gitignored in
+> this repo by design, §8.1 OPSEC); **(c) engine files still to be written** —
+> `docs/security/README.md`, `controls/IL4-baseline.md`, `controls/IL6-delta.md`,
+> `controls/CDS-guidance.md`, `providers/**`, `DEVSECOPS_SPEC.md`,
+> `agent-usage-guidelines.md`, `agent-cve-poam-guidelines.md`, `docs/context/**`. Do not
+> cite a (c) path as if it existed — an empty reference is a §9 over-claim.
 
 **Core governance:** `CLAUDE.md` (this file — engine constitution); `docs/PRD.md`;
 `docs/STORY_TEMPLATE.md`; `docs/DEFINITION_OF_DONE.md`; `docs/QUALITY_GATE.md`;

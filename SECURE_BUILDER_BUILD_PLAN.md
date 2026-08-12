@@ -15,7 +15,8 @@ so it should be *faster* than the original 3-week build.
 **Rules of the build:**
 - Clean-room: rebuild from the PRD + your own knowledge. Do NOT paste work code,
   CLAUDE.md, ADRs, controls mappings, or real boundary/account/network names.
-- Track A only. Track B (own the orchestration layer) and Track C (offline/RAG) are
+- Track A only. Track B (own the orchestration layer) and Track C (offline / local
+  models on owned hardware — ADR-0003, `docs/architecture/MODEL-PROFILES.md`) are
   explicitly out of this window — note them, don't build them.
 - Stop polishing the PRD once it's "good enough to build from" (see Week 0).
 - Tags: **[HEADS-DOWN]** = focused weekend/evening block · **[SLOTTABLE]** = fits
@@ -42,8 +43,12 @@ so it should be *faster* than the original 3-week build.
 - [ ] **[HEADS-DOWN] Gate definition docs:** `QUALITY_GATE.md` (Murat §5.2),
   `DEFINITION_OF_DONE.md`, `STORY_TEMPLATE.md`, `DEPENDENCY_POLICY.md`.
 - [ ] **[HEADS-DOWN] `CONTROLS-MAPPING.md` starter** — static control table for the
-  IL4 baseline checks (§5.4). RAG corpus is a *fast-follow*, not a blocker — a curated
-  static mapping is enough to demo. (RAG = stretch / post-window.)
+  IL4 baseline checks (§5.4). *(Done F-003; re-pointed at the corpus in F-012.)*
+- [x] **[HEADS-DOWN] Governance reference corpus** (`docs/security/corpus/`, ADR-0002) —
+  landed early in **F-010**: verbatim 800-53r5 + 53B baselines + ASD STIG + OWASP,
+  read-on-demand by control ID, **not** a vector store. Converters in `scripts/vendor/`.
+  Remaining sources are tracked honestly in `corpus/MANIFEST.md` and vendored only when
+  an active project's tiers cite them.
 - [ ] **[SLOTTABLE] `gate-log.md` schema** + handoff-prompt templates (`NEXT_PROMPT*`).
 - [ ] **[HEADS-DOWN] Enforcement mechanics (the machine-checkable guarantees):**
   - Pre-commit hook: TDD two-commit check (git log), secret scan, lint/typecheck/test,
@@ -57,20 +62,30 @@ so it should be *faster* than the original 3-week build.
 - [ ] **[SLOTTABLE] Customize built-in personas** onto stock skills: John (pm),
   Winston (architect), Sally (ux-designer), Amelia (dev), Paige (tech-writer).
 - [ ] **[HEADS-DOWN] Build custom skills from the §7 scaffold:** Tori (story analyst),
-  Bob (scrum master), Murat (test architect — one persona, cluster of test skills),
-  Frank (DevSecOps), **Sentinel** (security gatekeeper — the §5.4 checklist + control
-  lookup against `CONTROLS-MAPPING.md`).
+  Bob (scrum master), **Atlas** (contextualization lead — the Phase-0 workflow, PRD §15,
+  ADR-0001), Murat (test architect — one persona, cluster of test skills), Frank
+  (DevSecOps), **Sentinel** (security gatekeeper — the §5.4 checklist + control lookup
+  against `CONTROLS-MAPPING.md`, resolving into `docs/security/corpus/`).
+- [ ] **[HEADS-DOWN] Wire the two-context flow into the gate skills** (F-008): Murat and
+  Sentinel enter cold from `NEXT_PROMPT_GATES.md` and judge the diff only; Sentinel's
+  forced skill-load-and-attest (§3.2); the 3-round self-healing cap.
 - [ ] **[SLOTTABLE] Smoke-test each agent** in isolation on a throwaway story before
   wiring them together.
 
 ## Week 3 — Wire + first real run  *(prove the clean version reproduces the behavior)*
 
+- [ ] **[HEADS-DOWN] Run Phase 0 on App #1 first** (PRD §15, ADR-0001) — **no story runs
+  until the document matrix, the intent-traceable backlog, and the epic cohesion criteria
+  exist and a human has ratified them.** Atlas orchestrates; the matrix is drafted, not
+  authoritative, until ratified.
 - [ ] **[HEADS-DOWN] Drive App #1 through the full §4 lifecycle** for 5–10 real
   stories: dispatch → implement → Murat → Sentinel → manual review → approval → commit
   → handoff. Fix orchestration friction as it surfaces.
 - [ ] **[HEADS-DOWN] Confirm the gates actually fire:** TDD two-commit enforced,
   coverage measured on the diff, Sentinel catches a real planted issue, gate-log fills,
   handoff prompts carry context to a fresh session.
+- [ ] **[SLOTTABLE] Close one epic through the cohesion gate** (§4.5) — `COHERENT`/`DRIFT`
+  against the Phase-0 criteria, recorded in the gate log's Epic Cohesion Ledger.
 - [ ] **[SLOTTABLE] Capture friction notes** → feed back into §10 (the "what to rebuild"
   list) for the future Track B port.
 
@@ -114,7 +129,8 @@ even the aggregate metrics are cleared for release before they touch this laptop
 ## Explicitly NOT in this window (so scope stays honest)
 - Track B — owning the orchestration layer (build only after the design is proven
   clean here).
-- Track C — offline/air-gapped model + full RAG corpus. (Static `CONTROLS-MAPPING.md`
-  stands in for RAG during the window.)
+- Track C — offline/air-gapped local models (Devstral Small 2 build / Gemma 4 gate,
+  scaling to Llama 3.3 70B on an eGPU; ADR-0003, `COMPUTE_PROFILE`). *(The governance
+  corpus is **not** part of this deferral — it landed in F-010 and works offline today.)*
 - The risk-tiered light/full manual gate (F9) — revisit after real review-load data.
 - IL5 tier, additional providers — add when actually needed.

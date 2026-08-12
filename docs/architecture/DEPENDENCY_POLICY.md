@@ -2,8 +2,9 @@
 
 > **Owner:** Sentinel (Security Gatekeeper). **Read by:** Tori, Amelia, Frank, Sentinel
 > (mandatory reads, `CLAUDE.md` §3.2). **Source of record:** `SECURE_BUILDER_PRD.md`
-> §5.6, §12.3. **Controls evidenced:** SR-3, SR-5, SI-2, CM-10 (grounded in NIST SP
-> 800-161 Rev 1; GPL/AGPL basis 48 CFR § 227.7103).
+> §5.6, §11.1 (model provenance), §12.3. **Controls evidenced:** SR-3, SR-4, SR-5, SR-11,
+> SI-2, CM-10 (grounded in NIST SP 800-161 Rev 1; GPL/AGPL basis 48 CFR § 227.7103).
+> Control text: `docs/security/corpus/nist/sp-800-53r5/controls/SR.md`.
 >
 > **Today's reality (Phase 1):** Sentinel is a Phase-2 automated agent (PRD §3.1). Until
 > built, this policy is applied by the operator running the scan and the matrix by hand;
@@ -70,7 +71,34 @@ approval.
 
 ---
 
-## 5. Verdict record
+## 5. Model dependencies — the provenance rule (standing)
+
+**A model is a dependency.** Any model whose weights are run by the engine or embedded in
+a produced application — LLM, embedding model, or reranker — goes through this same DP
+review, plus one additional, non-negotiable check.
+
+**Provenance gate (`CLAUDE.md` §8.2, PRD §11.1, ADR-0003):** *no model whose **base
+weights** originate in a foreign-adversary nation.* It binds on the origin of the base
+weights, **not the uploader** — a Western fine-tune, distill, or merge of an
+adversarial-nation base model is still **BLOCKED**. Excluded (non-exhaustive): Qwen,
+DeepSeek and any R1-distill, Yi, GLM/CodeGeeX, InternLM, Baichuan, MiniCPM, Skywork,
+Hunyuan, Ernie, Stepfun; embeddings BGE (BAAI) and GTE (Alibaba). Acceptable origin is
+US or allied-nation open-weight. The engine's own binding is in
+`docs/architecture/MODEL-PROFILES.md`.
+
+**License policy applies unchanged** — a model's weight license is read the same way as a
+package's (§3): Apache-2.0/MIT approved; a non-commercial or use-restricted "open" license
+is **not** an approved license. Read the actual weight license, not the repo's.
+
+**Honest limit.** Acceptable origin is a **human-confirmed** judgment, not a
+machine-verified one — there is no official approved-model list to check against. It rests
+on supply-chain principles (NIST SP 800-161r1; SR-3 / SR-4 / SR-11; the covered-nation
+statutory framework — Section 889, FASC/FASCSA, Commerce ICTS). **Re-confirm on every
+model add or version change**; provenance claims move faster than catalogs do.
+
+---
+
+## 6. Verdict record
 
 For each dependency review Sentinel records:
 
@@ -79,6 +107,15 @@ DEPENDENCY REVIEW [APPROVED/BLOCKED] — <package>@<version>
 - Vulnerabilities: critical [n] | high [n] | medium [n] | low [n]
 - License: <SPDX id> → [approved | prohibited | review]
 - Decision basis: <matrix action + any POA&M id>
+```
+
+For a **model** dependency, add:
+
+```
+- Base-weight origin: <nation / lab> → [acceptable US-or-ally | BLOCKED adversarial-nation]
+- Derivation: <base model this is a fine-tune/distill/merge of, or "original weights">
+- Weight license: <SPDX id or name> → [approved | prohibited | review]
+- Provenance confirmed by: <human> on <date>   # human-confirmed, not machine-verified
 ```
 
 Blocked → the dependency is not added; the story finds another path or a POA&M is opened

@@ -223,6 +223,7 @@ protocol violation regardless of how correct the underlying work is.
 
 | Story Type | First Agent | Then |
 |---|---|---|
+| **Phase-0 project inception (§15) — before any story** | **Atlas** | John/Winston/Sentinel (matrix) → Tori (gap + traceability gates) → human ratification |
 | New story writing | John | Tori (refinement) |
 | Story refinement / gap analysis | Tori | Bob (dispatch) |
 | Schema change / new ADR | Winston | Amelia |
@@ -231,6 +232,7 @@ protocol violation regardless of how correct the underlying work is.
 | DevSecOps / pipeline / Helm | Frank | Sentinel |
 | New dependency | Sentinel (DP review) | Amelia |
 | All stories, post-implementation | Murat | Sentinel → manual review |
+| **Epic complete (cohesion gate, §4.5)** | **Atlas** | `COHERENT` → epic closes · `DRIFT` → correct-course |
 
 ### 4.2 Mandatory Read Protocol
 
@@ -644,7 +646,9 @@ gate sequences, routing, commit protocol); `docs/PRD.md`; `docs/STORY_TEMPLATE.m
 `docs/agent-usage-guidelines.md`; `docs/agent-cve-poam-guidelines.md`.
 
 **Architecture documents:** `ADR-LOG.md`; `API_CONTRACT.md`; `DB_SCHEMA_v2.md`;
-`DEPENDENCY_POLICY.md`; `DEVSECOPS_SPEC.md`; `sentinel-gate-log.md`.
+`DEPENDENCY_POLICY.md`; `DEVSECOPS_SPEC.md`; `MODEL-PROFILES.md` (Track-C local-model
+binding, `COMPUTE_PROFILE` — ADR-0003). *(The gate log is a sprint-output artifact,
+below — `_bmad-output/gate-log.md`, Sentinel-owned; it is not an architecture doc.)*
 
 **Project context (Phase 0, §15):** `docs/context/` — matrix index, reverse-engineered
 current-state pre-fill, intent-traceability map, and cohesion-gate criteria (Atlas-owned).
@@ -783,6 +787,27 @@ The following rules apply in every session, regardless of task. They are defined
 See `docs/agent-usage-guidelines.md` for the full guide applicable to all AI coding
 agents (Copilot, Claude Code, and others) on IL4/classified projects.
 
+### 11.1 Model provenance (standing rule — binds the engine *and* every app it produces)
+
+**No model whose base weights originate in a foreign-adversary nation may be used in the
+Secure Builder engine or embedded in any application it produces.** This sits alongside
+the OPSEC rules above — standing, and not relaxable by a story instruction. Decision of
+record: **ADR-0003**; binding config: `docs/architecture/MODEL-PROFILES.md`
+(`COMPUTE_PROFILE`, §9).
+
+- **It binds on the base weights' origin, not the uploader.** A Western fine-tune,
+  distill, or merge of an adversarial-nation base model is still excluded — **including
+  embedding and reranker models.** Excluded (non-exhaustive): Qwen, DeepSeek and any
+  R1-distill, Yi, GLM/CodeGeeX, InternLM, Baichuan, MiniCPM, Skywork, Hunyuan, Ernie,
+  Stepfun; embeddings BGE (BAAI) and GTE (Alibaba).
+- **Acceptable origin is US or allied-nation open-weight.** Track C's binding is build =
+  Mistral Devstral Small 2 (🇫🇷, Apache-2.0), gate = Google Gemma 4 (🇺🇸, Apache-2.0),
+  scaling the gate to Llama 3.3 70B on an external GPU (§14).
+- **The judgment is human-confirmed, not machine-verified** (§13). It rests on the
+  supply-chain principles in §12.3, **not** an official approved-model list — none exists.
+  Re-confirm on every model add or change; a model is a dependency and goes through
+  Sentinel's dependency review (§5.6) like any other.
+
 ---
 
 ## 12. Security Framework and Compliance Reference
@@ -825,9 +850,23 @@ GPL/AGPL prohibition).
 **Android / ATAK:** DISA Mobile Application STIG; TAK SDK documentation; WatchTower
 distribution requirements.
 
-**Application Security:** OWASP Top 10 (current — informs Sentinel gate checks);
-OWASP LLM Top 10 (current — LLM08 Excessive Agency grounds lane-boundary
-enforcement).
+**Application Security:** DISA Application Security & Development STIG (the web-track
+application STIG); OWASP Top 10 (informs Sentinel gate checks); OWASP ASVS (verification
+requirements); OWASP LLM Top 10 (LLM08 Excessive Agency grounds lane-boundary
+enforcement); OWASP MASVS (Android track).
+
+**Model provenance / supply chain (§11.1, ADR-0003):** NIST SP 800-161 Rev 1 (C-SCRM);
+SP 800-53 Rev 5 SR-3 / SR-4 / SR-11; and the covered-nation statutory framework
+(Section 889, FASC/FASCSA, Commerce ICTS) as *principles* — there is **no** official
+approved-model list, so the acceptable-origin judgment is human-confirmed, not
+machine-verified.
+
+> **Where the text lives.** These are the documents the engine cites; the verbatim
+> controlling text is vendored under `docs/security/corpus/` and read on demand by
+> control ID (§15.4, ADR-0002). Which of them are actually vendored — versus deliberately
+> deferred — is tracked honestly in `corpus/MANIFEST.md`. Listing a document here is not a
+> claim that its text is local; check the manifest before asserting a citation is
+> openable.
 
 ### 12.4 ATO Package Support
 
@@ -1061,7 +1100,8 @@ matrix.
   (`bmad-document-project`), PRD and architecture creation, epics/stories creation, and
   implementation-readiness/gap checks; Phase 0 orchestrates them into one guided flow with
   the two new gates. **Target substrate (Track B/C, §14):** own the pipeline and the
-  elicitation scripts; the compliance RAG stays a separate corpus.
+  elicitation scripts; the governance corpus (§15.4) stays a separate, read-on-demand body
+  of text — never merged into the matrix.
 
 ---
 
@@ -1098,7 +1138,10 @@ matrix.
 | **Negative authorization test** | A test asserting that an *un*authorized actor is denied — e.g., user A cannot read user B's resource (IDOR), or a role lacking a permission is rejected. Guarantee #8 requires every endpoint to ship with these, not just positive happy-path tests. |
 | **NIST** | National Institute of Standards and Technology. Publisher of the SP 800-series standards this engine produces evidence against — notably SP 800-53 (security controls) and SP 800-37 (RMF). |
 | **SP** | Special Publication. NIST's standards series (e.g., SP 800-53 Rev 5, SP 800-37 Rev 2). |
-| **RAG** | Retrieval-Augmented Generation. Grounding LLM output in retrieved source documents rather than model memory; the basis for the citation-grounded control mappings in Guarantee #4 (a fast-follow — see §14 Track C). |
+| **RAG** | Retrieval-Augmented Generation. Grounding LLM output in retrieved source documents rather than model memory. **Explicitly rejected as the citation path for Guarantee #4** (ADR-0002): control text is read on demand from the corpus by control ID, not fuzzily retrieved. Semantic retrieval is at most a later *discovery* aid. |
+| **Governance corpus** | `docs/security/corpus/` — verbatim authoritative source text (NIST/DISA/OWASP/DoD-AI), version-controlled and vendored so it works offline, read on demand keyed by control ID. Grounds Sentinel's citations (Guarantee #4). Not a vector store; not the document matrix (§15.4). |
+| **Document matrix** | The per-project set of governing documents (current state, desired delta, end-state intent) produced and human-ratified in Phase 0 (§15). Loaded into agent context via mandatory reads. Distinct from the governance corpus. |
+| **Intent element** | A single unit of intent in the document matrix. Every story is stamped with the intent element(s) it traces to; the Intent-Traceability Gate (§15.2) checks that mapping both directions. |
 | **SCA** | Software Composition Analysis. Scanning resolved dependencies for known-vulnerable components and license violations. |
 | **MCP** | Model Context Protocol. The protocol connecting agents to external tools and data sources; part of the integration surface in the Track-B rebuild inventory (§10.1). |
 | **CFR** | Code of Federal Regulations. The codification of US federal agency regulations (e.g., 48 CFR § 227.7103, government purpose rights). |

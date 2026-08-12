@@ -19,5 +19,7 @@
 > 3. Spot-check ≥2 rules; flip the row to `VENDORED` in `../../MANIFEST.md`.
 >
 > Only needed when the Android track is active (`APP_TRACK=android`). Converter:
-> `scripts/vendor/xccdf-stig-to-md.mjs` (verbatim-only, UNVERIFIED pending a real XCCDF).
+> `scripts/vendor/xccdf-stig-to-md.mjs` — verbatim-only, and **verified** against a real
+> benchmark (ASD STIG V6R4, 286 rules). What is missing here is the *source archive*, not
+> a working converter.
 > **Provenance/currency:** see `../../MANIFEST.md`.

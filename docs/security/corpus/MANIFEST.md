@@ -11,7 +11,7 @@ a source is added, vendored, or refreshed; git history is the tamper/currency re
 > authoritative source could not be obtained non-interactively; converter is ready and the
 > exact needed artifact is named in the file · `STALE` = source revision superseded, refresh due.
 
-> **Vendored on 2026-08-11** (F-corpus). Converters live in `scripts/vendor/` and are
+> **Vendored on 2026-08-11** (commit `336ebf0`, `[F-010/framework]`). Converters live in `scripts/vendor/` and are
 > re-runnable offline once sources are local. See the **Vendoring log** at the bottom.
 
 ## NIST

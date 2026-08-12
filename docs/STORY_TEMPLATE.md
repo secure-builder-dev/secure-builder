@@ -18,6 +18,9 @@
 ## Header  *(John — PM lane)*
 - **Story ID:** S-XXX
 - **Epic:** <epic name / id>
+- **Intent element(s):** <the matrix intent element(s) this story traces to, per the
+  Phase-0 traceability map (`docs/context/`, PRD §15.2). **Required** — a story with no
+  intent element fails the Intent-Traceability Gate and is rogue work.>
 - **Type:** <feature | endpoint | schema change | UI | devsecops | dependency | docs>
 - **Security-sensitive?** <yes/no — yes if it touches auth, RBAC, new endpoints, or a
   data boundary. Drives the §4.4 manual-review depth.>
@@ -35,6 +38,10 @@ As a <role>, I want <capability>, so that <outcome>.
 - ...
 
 ## SHALL NOT constraints  *(business rules the implementation must not violate)*
+> Carry forward every `SHALL NOT` the matrix attaches to this story's intent element(s),
+> plus any story-specific one. These are what the §4.4 manual gate and the §3.5 epic
+> cohesion gate check against — a criterion met in a way that violates one of these is a
+> business-rule bypass, not a pass.
 - <e.g., "a non-admin SHALL NOT reach another tenant's record">
 
 ## Endpoints touched  *(required for security-sensitive stories)*

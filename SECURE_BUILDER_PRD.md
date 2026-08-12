@@ -677,11 +677,13 @@ not runtime flags.
 | `PROVIDER` | `aws` \| `azure` \| `tactical` | Deployment target. `tactical` = team-owned classified perimeter network, Android-only; no managed cloud services. |
 | `APP_TYPE` | `native` \| `atak` | Android track only. `native` = standalone APK/MDM. `atak` = TAK SDK plugin, WatchTower distribution. |
 | `GATE_ENFORCEMENT` | `ci-enforced` \| `local-attested` | How the §2 gate chain is enforced. `ci-enforced` = server-side branch protection + required CI status checks — a true merge wall (requires a Git remote with CI). `local-attested` = local pre-commit hook + append-only audit + operator discipline, for air-gapped/offline targets with no remote CI. Determines the honest strength of Guarantee #2 (see §13). |
+| `COMPUTE_PROFILE` | `laptop-resident` \| `egpu-70b` | Track-C local substrate binding (US/ally open-weight only, §14; ADR-0003). `laptop-resident` (24 GB VRAM) = build **Devstral Small 2** + gate **Gemma 4**, hot-swapped (contexts are sequential). `egpu-70b` (external GPU/dedicated box) = build Devstral Small 2 on the internal GPU + gate **Llama 3.3 70B** on the external card. Design-time constant; full binding in `docs/architecture/MODEL-PROFILES.md`. Applies once Track C is active. |
 
 **Decision tree:** Web → impact level (IL4/IL6) → cloud provider (aws/azure).
 Android → `SECURITY_TIER=IL6` (always), `PROVIDER=tactical` (always), app type
 (native/atak). All tracks → gate enforcement (`ci-enforced` where a remote CI exists,
-`local-attested` for air-gapped targets).
+`local-attested` for air-gapped targets) → (Track C only) compute profile (`egpu-70b`
+where a second GPU is attached, else `laptop-resident`).
 
 ---
 
@@ -911,10 +913,18 @@ the proven design onto it. Debugging a novel design and a novel framework
 simultaneously is explicitly out of scope for this phase.
 
 **Track C — Offline / air-gapped transition.**
-Local models on owned hardware, one per context window: the **build context** on a local
-code model (e.g., Ollama + Qwen) and the **gate context** on a *different* local model
-(e.g., a Llama), so the §4 bias firewall is reinforced by genuinely different weights, not
-just different sessions. Begin by measuring the output-quality gap on an already-working
+Local models on owned hardware, one per context window, **US/allied-nation open-weight
+only** under the standing provenance rule (no adversarial-nation base weights — decision of
+record **ADR-0003**, binding config `docs/architecture/MODEL-PROFILES.md`): the **build
+context** on **Mistral Devstral Small 2** (🇫🇷, Apache-2.0) and the **gate context** on a
+*different-lineage* model — **Google Gemma 4** (🇺🇸, Apache-2.0) on the 24 GB laptop, scaling
+to **Llama 3.3 70B** on an external GPU — so the §4 bias firewall is reinforced by genuinely
+different weights, not just different sessions. The hardware binding is the `COMPUTE_PROFILE`
+init variable (§9): `laptop-resident` (hot-swap on one GPU, the forward/DDIL profile) vs.
+`egpu-70b` (beefy gate on an attached GPU). The real target is **complete-airgap codebase
+modification, forward-deployed at a unit in a DDIL environment**, which is why SWaP and
+air-gap simplicity drive the hardware choice. Begin by measuring the output-quality gap on
+an already-working
 app before redesigning anything. A **curated governance reference corpus** for Sentinel
 (`docs/security/corpus/`, §12.4): verbatim authoritative source text (NIST, DISA, OWASP,
 DoD AI) the security gate **reads on demand**, keyed by control ID — not a vector store. It

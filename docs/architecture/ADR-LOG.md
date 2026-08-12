@@ -155,3 +155,95 @@ Implement the corpus as a **version-controlled folder of verbatim source text**
   retired in favor of "read-on-demand reference corpus").
 - Corpus is **public standards only**; applied provider configs and real values stay out
   (§8/§11).
+
+---
+
+## ADR-0003 — Retire Qwen; US/allied open-weight local models under a standing provenance rule
+
+- **Status:** Accepted (F-011)
+- **Date:** 2026-08-11
+- **Deciders:** C.J. Houle (operator / approver)
+- **Relates to:** PRD §14 (Track C), §9 (init variables), §13; CLAUDE.md §3 (two-context
+  substrate), §5 (init variables), §8 (AI security rules); `docs/architecture/MODEL-PROFILES.md`
+- **Controls touched:** SR-3 (Supply Chain Controls & Processes), SR-4 (Provenance),
+  SR-11 (Component Authenticity); NIST SP 800-161 C-SCRM (principle only — corpus skeleton,
+  not vendored); SA-8
+
+### Context
+
+The Track-C offline substrate named **Qwen** (Alibaba) as the placeholder build model and
+"a Llama" as the gate model. Qwen is **People's-Republic-of-China origin.** For an engine
+whose entire purpose is producing security evidence for DoD apps — and whose real Track-C
+target is **complete-airgap codebase modification, forward-deployed at a unit in a DDIL
+environment** — running an adversarial-nation model in the toolchain (or shipping one inside
+a produced app) is an unacceptable supply-chain risk. The §3 two-context bias firewall also
+wants the build and gate contexts on *different-lineage* models, and the operator's hardware
+(one laptop: 24 GB VRAM, 64 GB RAM) bounds what can run locally — with an option to scale the
+gate up when an external GPU is attached. This decision was informed by an Aug-2026
+verification of current open-weight model availability, licenses, and origins.
+
+### Decision
+
+1. **Retire Qwen** as the target local model everywhere it appears (PRD §14, `NEXT_PROMPT.md`,
+   `memory/end-state-architecture.md`), and retire "a Llama" as a vague placeholder in favor
+   of named models per profile.
+2. **Standing provenance rule (new first-class engine rule, CLAUDE.md §8).** No model whose
+   **base weights** originate in a foreign-adversary nation enters the engine *or* any app it
+   produces. Binds on the **base weights' origin, not the uploader** — a Western fine-tune,
+   distill, or merge of a Chinese base is still excluded. Acceptable origin is **US or
+   allied-nation** open-weight. This is a **human-confirmed** judgment against supply-chain
+   principles (NIST SP 800-161 C-SCRM; 800-53 SR-3/SR-4/SR-11; the covered-nation statutory
+   framework — Section 889 / FASC-FASCSA / Commerce ICTS), **not** machine-verified: there is
+   **no** official US-government approved-open-weight-model list to defer to (approval runs
+   through procurement vehicles + a covered-nation *prohibition* framework).
+3. **Chosen models — build = Mistral Devstral Small 2** (24B dense, Apache-2.0, 🇫🇷 France,
+   agentic coding); **gate = Google Gemma 4** (31B dense / 26B-A4B MoE, Apache-2.0, 🇺🇸 USA).
+   Different company + nation + training lineage → a real bias firewall.
+4. **New init variable `COMPUTE_PROFILE`** (design-time, §5 pattern), one engine — **not a
+   fork** — binding roles to models by available hardware:
+   - `laptop-resident` (24 GB VRAM): build = Devstral Small 2 (Q4/Q5), gate = Gemma 4 (Q4),
+     **hot-swapped** (contexts are sequential, §3).
+   - `egpu-70b` (external GPU / dedicated box): build = Devstral Small 2 (internal GPU, stays
+     fast), gate = **Llama 3.3 70B** on the external card — the §13 capability jump placed
+     exactly on the security gate, where local-model weakness bites hardest and async speed
+     (~4–6 tok/s) is acceptable.
+5. **Optional roles, off by default:** a small utility model (Granite 4.1 3B / Gemma 4 E4B)
+   and — only if ADR-0002's optional semantic-discovery aid is kept — a US embedding model
+   (nomic-embed-text v1.5). Not added unless a concrete need names them (scope discipline).
+
+### Alternatives rejected
+
+- **Any adversarial-nation model.** Qwen/Qwen-Coder, DeepSeek + any R1-distill, Yi,
+  GLM/CodeGeeX, InternLM, Baichuan, MiniCPM, Skywork, Hunyuan, Ernie, Stepfun; embeddings
+  BGE (BAAI) and GTE (Alibaba). **Rejected on provenance** — the hard rule above.
+- **Allied but non-commercial-licensed models.** Cohere Command-R/R+/A (🇨🇦, CC-BY-NC);
+  Mistral Codestral (now proprietary/API-only); original Ministral 3B/8B 2024 (MRL).
+  **Rejected** — license precludes the build/gate roles.
+- **A forked "second version" of the engine for the 70B config.** **Rejected** — duplicates
+  the constitution and its append-only evidence, and diverges over time. One engine + a
+  `COMPUTE_PROFILE` init variable (the same universal-mechanism / conditional-content pattern
+  the security gate uses) is DRY and keeps a single governing law.
+- **Upgrade the laptop to 128 GB RAM to run a 70B locally.** **Rejected as the default** —
+  the offload cliff: past the 24 GB VRAM the model runs at ~90 GB/s system-RAM speed
+  (~2–4 tok/s for 70B). More RAM raises the capacity ceiling, not the speed floor. Fine for
+  occasional experimentation, not the working substrate.
+- **Llama for the *build* role / a single Llama for both.** **Rejected** — Llama shares no
+  firewall benefit if used on both sides, and its custom Llama Community License (AUP +
+  700M-MAU clause, not OSI) is less clean than Apache/MIT. Llama is used **only** as the
+  Profile-B gate, where its 70B reasoning is the point. Apache alternatives noted if a
+  cleaner license is later preferred: gpt-oss-120b (OpenAI, Apache-2.0, MoE) or a larger
+  Gemma 4 / OLMo 3-Think 32B.
+
+### Consequences
+
+- New config doc `docs/architecture/MODEL-PROFILES.md` (Winston lane) defines the profiles,
+  quant targets, VRAM budgets, and the deploy-time selection + GPU-detection launcher (design-
+  time constant per §5, reconfigured on hardware change — no runtime hot-toggle).
+- `COMPUTE_PROFILE` added to CLAUDE.md §5 and PRD §9 init-variable tables and decision trees;
+  §3 / §14 substrate wording retires "Qwen"; §8 gains the provenance rule; §10 index gains the
+  new doc.
+- **Llama 3.3 70B passes the provenance rule** (US-origin) but carries the Llama Community
+  License caveat — recorded here, fine for internal DoD tooling.
+- Honesty (§9 / PRD §13) unchanged and reinforced: forward + `local-attested` + a weaker local
+  model stack the risk; the provenance verdict is human-confirmed, not machine-verified; this
+  ADR certifies **no** model as ATO'd — that is the downstream platform team's authority.

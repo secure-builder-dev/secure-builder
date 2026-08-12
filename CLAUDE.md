@@ -234,8 +234,12 @@ scans the artifact cold and cannot be talked into the author's framing. It stren
 the *independence* of the automated self-check; it is **not** separation of duties — it
 is still AI reviewing AI under one operator, with one human approver (§9). Target
 substrate (Phase 2 / Track C): the build context runs on one local model and the gate
-context on a *different* local model, so the two are not even the same weights; on the
-current substrate both run on the same model in two separate sessions.
+context on a *different-lineage* local model, so the two are not even the same weights; on
+the current substrate both run on the same model in two separate sessions. The chosen
+local models — build = **Mistral Devstral Small 2** (🇫🇷, Apache-2.0), gate = **Google
+Gemma 4** (🇺🇸, Apache-2.0), scaling the gate to **Llama 3.3 70B** on an external GPU — and
+the standing model-provenance rule (§8) are recorded in **ADR-0003** and bound to hardware
+via the `COMPUTE_PROFILE` init variable (§5, `docs/architecture/MODEL-PROFILES.md`).
 
 **Context Window 1 — Build** (entered cold from `NEXT_PROMPT.md`):
 
@@ -502,11 +506,13 @@ flags.** They determine which gate checks activate and how the gate chain is enf
 | `PROVIDER` | `aws` \| `azure` \| `tactical` | Deployment target. `tactical` = team-owned classified perimeter network, Android-only, no managed cloud services. |
 | `APP_TYPE` | `native` \| `atak` | Android only. `native` = standalone APK/MDM. `atak` = TAK SDK plugin, WatchTower distribution. |
 | `GATE_ENFORCEMENT` | `ci-enforced` \| `local-attested` | How the §1 Guarantee-#2 chain is enforced. `ci-enforced` = server-side branch protection + required CI checks (a true merge wall; needs a Git remote with CI). `local-attested` = local pre-commit hook + append-only audit + operator discipline (air-gapped/offline, no remote CI). **Sets the honest strength of Guarantee #2.** |
+| `COMPUTE_PROFILE` | `laptop-resident` \| `egpu-70b` | Track-C local substrate: which US/ally open-weight models fill the build/gate roles, by available hardware. `laptop-resident` (24 GB VRAM) = build **Devstral Small 2** + gate **Gemma 4**, hot-swapped (contexts are sequential, §3). `egpu-70b` (external GPU/dedicated box) = build Devstral Small 2 on the internal GPU + gate **Llama 3.3 70B** on the external card. Design-time constant; full binding in `docs/architecture/MODEL-PROFILES.md` (ADR-0003). Applies once Track C is active. |
 
 **Decision tree:** Web → impact level (IL4/IL6) → provider (aws/azure). Android →
 `SECURITY_TIER=IL6` (always), `PROVIDER=tactical` (always), app type (native/atak). All
 tracks → gate enforcement (`ci-enforced` where a remote CI exists, `local-attested` for
-air-gapped targets).
+air-gapped targets) → (Track C only) compute profile (`egpu-70b` where a second GPU is
+attached, else `laptop-resident`).
 
 ---
 
@@ -613,6 +619,24 @@ ADRs, controls mappings, or real boundary / account / network names. Only
 aggregate, releasable metrics ever belong on this hardware (OPSEC). When unsure whether
 a value is releasable, leave it out.
 
+### 8.2 Model provenance rule (standing — binds the engine *and* every app it produces)
+
+**No model whose base weights originate in a foreign-adversary nation may be used in the
+Secure Builder engine or embedded in any application it produces.** This is a standing
+rule, on par with the OPSEC rules above, and it cannot be relaxed by a story instruction.
+
+- **Binds on the base weights' origin, not the uploader.** A Western fine-tune, distill, or
+  merge of a Chinese (or other adversarial-nation) base model is **still excluded** —
+  including embedding and reranker models. Excluded (non-exhaustive): Qwen, DeepSeek and any
+  R1-distill, Yi, GLM/CodeGeeX, InternLM, Baichuan, MiniCPM, Skywork, Hunyuan, Ernie,
+  Stepfun; embeddings BGE (BAAI) and GTE (Alibaba).
+- **Acceptable origin is US or allied-nation open-weight.** The engine's chosen models and
+  the hardware binding are recorded in **ADR-0003** and `docs/architecture/MODEL-PROFILES.md`.
+- **The "acceptable origin" judgment is human-confirmed, not machine-verified** (§9). It
+  rests on supply-chain principles — NIST SP 800-161 C-SCRM; 800-53 SR-3 / SR-4 / SR-11; the
+  covered-nation statutory framework (Section 889 / FASC-FASCSA / Commerce ICTS) — **not** an
+  official approved-model list, because none exists. Re-confirm on every model add/change.
+
 ---
 
 ## 9. No Over-Claiming Doctrine (honesty clause)
@@ -665,7 +689,8 @@ a value is releasable, leave it out.
 `docs/agent-usage-guidelines.md`; `docs/agent-cve-poam-guidelines.md`.
 
 **Architecture:** `docs/architecture/ADR-LOG.md`; `API_CONTRACT.md`; `DB_SCHEMA_v2.md`;
-`docs/architecture/DEPENDENCY_POLICY.md`; `docs/architecture/DEVSECOPS_SPEC.md`.
+`docs/architecture/DEPENDENCY_POLICY.md`; `docs/architecture/DEVSECOPS_SPEC.md`;
+`docs/architecture/MODEL-PROFILES.md` (Track-C local-model binding, `COMPUTE_PROFILE`).
 
 **Project context (Phase 0, §2.3):** `docs/context/` (matrix index, current-state
 pre-fill, traceability map, cohesion criteria — Atlas-owned). The fixed-core matrix itself

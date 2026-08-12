@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track C — Local Substrate & Field Hardware</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f141c; --panel2:#131a24; --line:#1f2833;
+    --ink:#c9d4e0; --dim:#7c8a9a; --faint:#586472;
+    --acc:#39d0a5; --acc2:#4aa8ff; --warn:#e8b33e; --bad:#f0616d; --good:#39d0a5; --viol:#b98bff;
+    --mono:"JetBrains Mono","Fira Code","Cascadia Code",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scrollbar-color:#2a3340 var(--bg)}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(74,168,255,.06), transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, rgba(57,208,165,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;padding:0 0 90px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  a{color:var(--acc2);text-decoration:none} a:hover{text-decoration:underline}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:20;background:rgba(10,14,20,.82);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 24px}
+  nav .brand{color:var(--acc);font-weight:700;margin-right:12px;font-size:13px;letter-spacing:.04em}
+  nav a{color:var(--dim);font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid transparent}
+  nav a:hover{color:var(--ink);text-decoration:none;border-color:var(--line)}
+  nav a.active{color:#04121b;background:var(--acc);font-weight:600}
+
+  header{padding:46px 0 22px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .kick{color:var(--acc);font-size:12px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 10px}
+  h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.5px;color:#eef4fb}
+  h1 .cursor{color:var(--acc);animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .sub{color:var(--dim);margin:12px 0 0;font-size:13px;max-width:820px}
+  .sub b{color:var(--ink);font-weight:600}
+  .meta{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:4px 11px;background:var(--panel)}
+  .pill b{color:var(--acc)}
+
+  section{padding-top:34px;margin-top:14px;border-top:1px dashed transparent}
+  h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+     margin:10px 0 16px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+  h2 .n{color:var(--acc);margin-right:8px}
+  h3{margin:22px 0 10px;font-size:14px;color:#eef4fb}
+  p.lead{color:var(--dim);font-size:13px;max-width:840px}
+  p.lead b{color:var(--ink)}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11.5px;color:var(--acc)}
+  pre{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc2);border-radius:8px;
+      padding:14px 16px;overflow-x:auto;font-size:12px;color:var(--ink);margin:14px 0}
+  pre .c{color:var(--faint)}
+
+  /* cards */
+  .rec{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.rec{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+        border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--acc)}
+  .card.gate::before{background:var(--acc2)} .card.gate2::before{background:var(--viol)}
+  .card .role{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .card .name{font-size:19px;font-weight:700;color:#eef4fb;margin:6px 0 2px}
+  .card .org{color:var(--acc);font-size:13px} .card.gate .org{color:var(--acc2)} .card.gate2 .org{color:var(--viol)}
+  .card p{color:var(--dim);font-size:12.5px;margin:12px 0 0}
+  .card .tags{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+        border-radius:8px;padding:14px 16px;color:var(--dim);font-size:12.5px;margin-top:16px}
+  .note b{color:var(--warn)}
+  .note.info{border-left-color:var(--acc2)} .note.info b{color:var(--acc2)}
+  .note.good{border-left-color:var(--good)} .note.good b{color:var(--good)}
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;
+            background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;
+            position:sticky;top:47px;z-index:8;backdrop-filter:blur(8px)}
+  .cgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .clabel{color:var(--faint);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-right:2px}
+  .chip{cursor:pointer;user-select:none;font-size:12px;color:var(--dim);background:var(--panel2);
+        border:1px solid var(--line);border-radius:7px;padding:6px 12px;transition:.15s}
+  .chip:hover{color:var(--ink);border-color:#2c3746}
+  .chip.on{color:#04121b;background:var(--acc);border-color:var(--acc);font-weight:600}
+  .cgroup.quant .chip.on{background:var(--acc2);border-color:var(--acc2);color:#03121f}
+
+  /* tables */
+  table{width:100%;border-collapse:separate;border-spacing:0;margin-top:16px;font-size:12.5px}
+  thead th{position:sticky;top:92px;background:var(--bg);color:var(--faint);text-align:left;
+    font-weight:600;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    padding:10px 12px;border-bottom:1px solid var(--line);z-index:3}
+  table.plain thead th{position:static}
+  tbody td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr{transition:.12s} tbody tr:hover{background:var(--panel)}
+  tbody tr.excl{opacity:.5} tbody tr.excl:hover{opacity:.85}
+  .mname{color:#eef4fb;font-weight:600;font-size:13px}
+  .mfam{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em}
+  .origin{white-space:nowrap} .flag{font-size:13px;margin-right:5px}
+
+  .badge{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:6px;border:1px solid;white-space:nowrap}
+  .b-apache,.b-mit{color:var(--good);border-color:rgba(57,208,165,.4);background:rgba(57,208,165,.08)}
+  .b-restr{color:var(--warn);border-color:rgba(232,179,62,.4);background:rgba(232,179,62,.08)}
+  .b-nc{color:var(--bad);border-color:rgba(240,97,109,.4);background:rgba(240,97,109,.08)}
+  .b-role{color:var(--dim);border-color:var(--line);background:var(--panel2)}
+  .b-moe{color:var(--acc2);border-color:rgba(74,168,255,.35);background:rgba(74,168,255,.07)}
+  .ok{color:var(--good)} .warn{color:var(--warn)} .no{color:var(--bad)} .hot{color:var(--warn)}
+
+  /* vram bar */
+  .vram{min-width:168px}
+  .vnum{font-size:12px;color:var(--ink);margin-bottom:5px} .vnum small{color:var(--faint)}
+  .bar{position:relative;height:8px;background:var(--panel2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+  .bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transition:width .35s ease}
+  .fit-ok>i{background:linear-gradient(90deg,#2e9e7c,var(--good))}
+  .fit-tight>i{background:linear-gradient(90deg,#c79a34,var(--warn))}
+  .fit-no>i{background:linear-gradient(90deg,#b84a54,var(--bad))}
+  .ceil{position:absolute;top:-3px;bottom:-3px;width:2px;background:#5a6b7d;opacity:.85}
+  .ceil::after{content:"24G";position:absolute;top:-14px;left:-8px;font-size:9px;color:var(--faint)}
+  .fitlabel{font-size:10px;margin-top:5px;letter-spacing:.06em;text-transform:uppercase}
+  .fit-ok .fitlabel{color:var(--good)} .fit-tight .fitlabel{color:var(--warn)} .fit-no .fitlabel{color:var(--bad)}
+
+  .excl-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .xtag{font-size:12px;color:var(--bad);border:1px solid rgba(240,97,109,.3);background:rgba(240,97,109,.06);
+        border-radius:6px;padding:5px 11px;text-decoration:line-through;text-decoration-color:rgba(240,97,109,.55)}
+  .xtag small{color:var(--faint);text-decoration:none;margin-left:4px}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:760px){.cols{grid-template-columns:1fr}}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .box h3{margin:0 0 10px;font-size:13px} .box ul{margin:0;padding-left:18px;color:var(--dim);font-size:12.5px}
+  .box li{margin:6px 0} .box li b{color:var(--ink)}
+  ol.flow{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+  ol.flow li{position:relative;padding:8px 0 8px 40px;color:var(--dim);font-size:12.5px;border-bottom:1px solid var(--line)}
+  ol.flow li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;
+    border:1px solid var(--acc);color:var(--acc);border-radius:7px;display:grid;place-items:center;font-size:12px}
+  ol.flow li b{color:var(--ink)}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--faint)}
+  .legend span{display:inline-flex;align-items:center;gap:6px} .dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:11.5px}
+  footer p{margin:6px 0} .src{word-break:break-all}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">◈ TRACK-C</span>
+  <a href="#rec">Decision</a>
+  <a href="#slate">Model slate</a>
+  <a href="#excluded">Excluded</a>
+  <a href="#hardware">Hardware</a>
+  <a href="#offload">Offload</a>
+  <a href="#egpu">eGPU</a>
+  <a href="#ddil">DDIL kit</a>
+  <a href="#honesty">Honesty</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <p class="kick">Secure Builder · Track C · Local / Air-Gapped Substrate</p>
+  <h1>Local Model &amp; Field Hardware<span class="cursor">▊</span></h1>
+  <p class="sub">Retiring <b>Qwen</b> (PRC-origin) for a <b>US / allied-nation</b> open-weight build+gate pair, sized to real hardware, and hardened for the true target: <b>complete-airgap codebase modification, forward-deployed at a unit in a DDIL environment.</b> Model facts verified <b>Aug 2026</b>; treat license/provenance as <b>human-confirmed</b>, not machine-verified.</p>
+  <div class="meta">
+    <span class="pill">Laptop: <b>24 GB VRAM</b> · 64 GB · RTX 5090m</span>
+    <span class="pill">Rule: <b>no adversarial-nation base weights</b></span>
+    <span class="pill"><b>local-attested</b> · offline</span>
+    <span class="pill">F-prefix · not committed</span>
+  </div>
+</header>
+
+<!-- ============ DECISION ============ -->
+<section id="rec">
+  <h2><span class="n">01</span>The decision — two compute profiles, one engine</h2>
+  <p class="lead">One engine, a design-time <code>COMPUTE_PROFILE</code> init variable (§5 pattern) that binds roles to concrete models by available hardware. <b>Build stays fast on the laptop; the gate scales up when a GPU is attached</b> — which is exactly where §9 says the local weakness bites hardest.</p>
+
+  <h3>Profile A — <span class="ok">laptop-resident</span> (24 GB, mobile / forward)</h3>
+  <div class="rec">
+    <div class="card build">
+      <div class="role">Build · CW1 · code-gen</div>
+      <div class="name">Devstral Small 2</div>
+      <div class="org">Mistral · 🇫🇷 France (ally)</div>
+      <p>24B dense, agentic coding (~68% SWE-Bench). Apache-2.0. Q4/Q5 in-VRAM, ~35–50 tok/s.</p>
+      <div class="tags"><span class="badge b-apache">Apache-2.0</span><span class="badge b-role">24B</span><span class="badge b-role">code</span></div>
+    </div>
+    <div class="card gate">
+      <div class="role">Gate · CW2 · security review</div>
+      <div class="name">Gemma 4</div>
+      <div class="org">Google · 🇺🇸 USA</div>
+      <p>31B dense / 26B-A4B MoE, Apache-2.0. Different company + nation + lineage from Mistral = real bias firewall. Q4 in-VRAM. Hot-swapped after build (contexts are sequential).</p>
+      <div class="tags"><span class="badge b-apache">Apache-2.0</span><span class="badge b-role">31B</span><span class="badge b-role">reasoning</span></div>
+    </div>
+  </div>
+
+  <h3>Profile B — <span class="hot">egpu-70b</span> (external GPU / dedicated box, garrison)</h3>
+  <div class="rec">
+    <div class="card build">
+      <div class="role">Build · CW1 · code-gen</div>
+      <div class="name">Devstral Small 2</div>
+      <div class="org">Mistral · 🇫🇷 (unchanged — fast on laptop GPU)</div>
+      <p>Build stays interactive on the internal 24 GB GPU. No reason to slow it down.</p>
+      <div class="tags"><span class="badge b-apache">Apache-2.0</span><span class="badge b-role">24B</span></div>
+    </div>
+    <div class="card gate2">
+      <div class="role">Gate · CW2 · security review (async)</div>
+      <div class="name">Llama 3.3 70B</div>
+      <div class="org">Meta · 🇺🇸 USA</div>
+      <p>The §9 capability jump, deployed exactly where it matters — the security gate. Async, so ~4–6 tok/s is fine. Runs on the eGPU / mini-PC when connected.</p>
+      <div class="tags"><span class="badge b-restr">Llama Community Lic.</span><span class="badge b-role">70B</span><span class="badge b-role">gate-only</span></div>
+    </div>
+  </div>
+  <div class="note info"><b>Swap logic:</b> profile is selected at deploy/clone time (a design-time constant per §5), with a launcher that detects whether the extra GPU is present and picks the profile. Build/gate contexts are <b>sequential, never concurrent</b> — so on one 24 GB GPU the two models hot-swap; with the eGPU attached the 70B gate loads on the external card while the build model keeps the internal GPU.</div>
+  <div class="note"><b>Llama license caveat:</b> Llama 3.3 70B <b>passes the provenance rule</b> (US-origin) but ships under Meta's custom Llama Community License (AUP + 700M-MAU clause), not OSI. Fine for internal DoD tooling; noted for honesty. Apache alternatives if a cleaner license is wanted: <b>gpt-oss-120b</b> (OpenAI, Apache-2.0, MoE) or a larger <b>Gemma 4 / OLMo 3-Think 32B</b>.</div>
+</section>
+
+<!-- ============ MODEL SLATE ============ -->
+<section id="slate">
+  <h2><span class="n">02</span>Candidate slate — interactive</h2>
+  <p class="lead">Verified Aug 2026. VRAM ≈ params × quant-factor + ~2 GB ctx. <b>Q4_K_M ≈ 0.60 · Q5_K_M ≈ 0.73 · Q8_0 ≈ 1.06 GB/B.</b> MoE VRAM = total params; speed = active params.</p>
+  <div class="controls">
+    <div class="cgroup role-f">
+      <span class="clabel">Role</span>
+      <span class="chip on" data-role="all">all</span>
+      <span class="chip" data-role="build">build</span>
+      <span class="chip" data-role="gate">gate</span>
+      <span class="chip" data-role="utility">utility</span>
+      <span class="chip" data-role="excluded">excluded</span>
+    </div>
+    <div class="cgroup quant">
+      <span class="clabel">Quant</span>
+      <span class="chip" data-q="0.60">Q4_K_M</span>
+      <span class="chip on" data-q="0.73">Q5_K_M</span>
+      <span class="chip" data-q="1.06">Q8_0</span>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Model</th><th>Origin</th><th>License</th><th>Params</th><th>VRAM (24 GB box)</th><th>Strength</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--good)"></i> comfortable ≤20 GB</span>
+    <span><i class="dot" style="background:var(--warn)"></i> fits / tight ≤24 GB</span>
+    <span><i class="dot" style="background:var(--bad)"></i> needs RAM offload — slow</span>
+  </div>
+</section>
+
+<!-- ============ EXCLUDED ============ -->
+<section id="excluded">
+  <h2><span class="n">03</span>Excluded — the hard provenance rule</h2>
+  <p class="lead">Binds on the <b>base weights' origin, not the uploader</b> — a Western fine-tune / distill / merge of a Chinese base is still excluded.</p>
+  <div class="excl-grid">
+    <span class="xtag">Qwen / Qwen-Coder <small>Alibaba</small></span>
+    <span class="xtag">DeepSeek + R1-distills</span>
+    <span class="xtag">Yi <small>01.AI</small></span>
+    <span class="xtag">GLM / CodeGeeX <small>Zhipu</small></span>
+    <span class="xtag">InternLM</span><span class="xtag">Baichuan</span><span class="xtag">MiniCPM</span>
+    <span class="xtag">Skywork</span><span class="xtag">Hunyuan <small>Tencent</small></span>
+    <span class="xtag">Ernie <small>Baidu</small></span><span class="xtag">Stepfun</span>
+    <span class="xtag">BGE <small>BAAI · embed</small></span><span class="xtag">GTE <small>Alibaba · embed</small></span>
+  </div>
+  <div class="note"><b>Also excluded on license</b> (allied but not freely usable): Cohere Command-R/R+/A (🇨🇦 CC-BY-NC non-commercial); Mistral <b>Codestral</b> (now proprietary/API-only); original Ministral 3B/8B 2024 (MRL non-commercial — but the <b>Ministral 3-gen Dec 2025 is Apache-2.0</b>).</div>
+  <h3>Embeddings (only if ADR-0002's optional discovery aid is kept — never the citation path)</h3>
+  <table class="plain">
+    <thead><tr><th>Model</th><th>Origin</th><th>License</th><th>Dims</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mname">nomic-embed-text v1.5</td><td class="origin"><span class="flag">🇺🇸</span>Nomic AI</td><td><span class="badge b-apache">Apache-2.0</span></td><td>768</td><td style="color:var(--dim)">~0.3 GB · 8192 ctx · recommended</td></tr>
+      <tr><td class="mname">snowflake-arctic-embed-l-v2.0</td><td class="origin"><span class="flag">🇺🇸</span>Snowflake</td><td><span class="badge b-apache">Apache-2.0</span></td><td>1024</td><td style="color:var(--dim)">~1.2 GB · multilingual</td></tr>
+      <tr><td class="mname">multilingual-e5-large</td><td class="origin"><span class="flag">🇺🇸</span>Microsoft</td><td><span class="badge b-mit">MIT</span></td><td>1024</td><td style="color:var(--dim)">512-token max</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ HARDWARE ============ -->
+<section id="hardware">
+  <h2><span class="n">04</span>Hardware — laptop vs GB10 (the two-number model)</h2>
+  <p class="lead">Every local-LLM box is two numbers: <b>capacity</b> (how big a model fits = memory size) and <b>speed</b> (tokens/sec = memory <b>bandwidth</b>). The GB10 inverts them vs the laptop.</p>
+  <table class="plain">
+    <thead><tr><th></th><th>Laptop — RTX 5090 mobile</th><th>Dell Pro Max / GB10</th></tr></thead>
+    <tbody>
+      <tr><td class="mfam">Memory</td><td>24 GB GDDR7 (dedicated)</td><td>128 GB LPDDR5x (unified)</td></tr>
+      <tr><td class="mfam">Bandwidth</td><td class="ok">~896 GB/s</td><td class="warn">~273 GB/s</td></tr>
+      <tr><td class="mfam">Model ceiling</td><td>~32B dense (Q4)</td><td class="ok">~200B (Q4)</td></tr>
+      <tr><td class="mfam">Best at</td><td>speed on models that fit</td><td>capacity + big MoE throughput</td></tr>
+    </tbody>
+  </table>
+  <p class="lead" style="margin-top:16px">Decode speed (dense) ≈ bandwidth ÷ model-bytes-in-memory. So: <b>for anything ≤24 GB the laptop is faster; for anything bigger the GB10 wins because the laptop can't hold it at all.</b></p>
+  <table class="plain">
+    <thead><tr><th>Model (Q4)</th><th>Laptop (896 GB/s, 24 GB)</th><th>GB10 (273 GB/s, 128 GB)</th></tr></thead>
+    <tbody>
+      <tr><td>8B dense</td><td class="ok">~80–120 tok/s 🔥</td><td>~30–45 tok/s</td></tr>
+      <tr><td>24B dense (Devstral/Gemma)</td><td class="ok">~35–50 tok/s</td><td>~12–18 tok/s</td></tr>
+      <tr><td>32B dense</td><td>~25–40 (tight)</td><td>~9–14 tok/s</td></tr>
+      <tr><td>70B dense (Llama 3.3)</td><td class="no">❌ ~2–4 (RAM offload)</td><td class="ok">✅ ~4–6 tok/s</td></tr>
+      <tr><td>120B MoE (~5B active, gpt-oss)</td><td class="no">❌ impractical</td><td class="ok">✅ ~30–50 tok/s 🔥</td></tr>
+    </tbody>
+  </table>
+  <div class="note info"><b>Sequential, not concurrent:</b> build (CW1) finishes and writes <code>NEXT_PROMPT_GATES.md</code> before gate (CW2) starts — so each context can use the full 24 GB and hot-swap. On the GB10, 128 GB holds <b>both</b> models co-resident (true parallel two-context). Big MoE is the GB10's killer app: fits huge, runs fast (only active params read per token).</div>
+</section>
+
+<!-- ============ OFFLOAD ============ -->
+<section id="offload">
+  <h2><span class="n">05</span>The offload cliff — why "just add RAM" fails</h2>
+  <p class="lead">When a model overflows 24 GB VRAM, the rest spills to system RAM and runs on CPU. The pools differ by <b>~10×</b> — VRAM ~896 GB/s vs laptop DDR5 ~90 GB/s — and speed is set by the <b>slowest pool weighted by how much sits there.</b></p>
+  <pre><span class="c"># 70B dense Q4 (~40 GB): 20 GB in VRAM + 20 GB in RAM</span>
+time/token ≈ 20/896  +  20/90   =  0.022s  +  0.222s   → ~4 tok/s
+             (VRAM 9%)  (RAM 91%)
+<span class="c"># half the model offloaded — but that half is 91% of the time</span></pre>
+  <table class="plain">
+    <thead><tr><th>Model (Q4)</th><th>Split</th><th>Est. speed</th><th>Feel</th></tr></thead>
+    <tbody>
+      <tr><td>≤32B</td><td>all in VRAM</td><td class="ok">25–40 tok/s</td><td>snappy</td></tr>
+      <tr><td>~49B</td><td>~20 VRAM + ~8 RAM</td><td class="warn">~6–10 tok/s</td><td>sluggish</td></tr>
+      <tr><td>70B</td><td>~20 VRAM + ~20 RAM</td><td class="no">~2–4 tok/s</td><td>slow (needs 64 GB)</td></tr>
+      <tr><td>120B dense</td><td>~20 VRAM + ~48 RAM</td><td class="no">~1–2 tok/s</td><td>painful (needs 128 GB)</td></tr>
+    </tbody>
+  </table>
+  <h3>Laptop + 128 GB RAM ≠ GB10 128 GB unified</h3>
+  <p class="lead">Adding laptop RAM raises the <b>capacity ceiling, not the speed floor</b> — the moment a model leaves the 24 GB VRAM it runs at ~90 GB/s. The GB10's whole 128 GB runs at 273 GB/s — <b>~3× faster</b> for the overflow portion. That's the entire value of unified memory: no slow second pool to fall off into.</p>
+</section>
+
+<!-- ============ EGPU ============ -->
+<section id="egpu">
+  <h2><span class="n">06</span>eGPU — the surprising part &amp; the size reality</h2>
+  <p class="lead">The Thunderbolt link (~32–80 Gbps) is <b>not</b> the decode bottleneck: model weights live on the eGPU's own VRAM and are read at the card's full internal bandwidth. The link only carries the one-time load + tiny per-token activations. <b>What matters is total VRAM across all GPUs.</b> Use <b>layer split</b> (llama.cpp default), never tensor-parallel, across the slow link.</p>
+  <div class="note good"><b>Cheapest route to 70B:</b> your internal 24 GB stacks with an eGPU — CUDA sees both. <b>Internal 24 + eGPU 24 = 48 GB → holds 70B Q4</b> at ~10–20 tok/s. Used RTX 3090 + enclosure ≈ <b>~$1,000</b>.</div>
+  <div class="cols">
+    <div class="box">
+      <h3>Buy options</h3>
+      <ul>
+        <li><b>Internal 5090m + used 3090 eGPU</b> — 48 GB · 70B ~10–20 tok/s · ~$1,000 (best bang/buck)</li>
+        <li>Internal + RTX 4090 eGPU — 48 GB · ~15–25 tok/s · ~$1,900</li>
+        <li>Single <b>RTX A6000 48 GB</b> eGPU — 70B on one card · ~20–30 tok/s · ~$3–4k used</li>
+        <li>RTX PRO 6000 Blackwell 96 GB — 70B@Q8 / 120B · ~$8k+</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Size reality — it's a desk fixture</h3>
+      <ul>
+        <li>Razer Core X — <b>37 × 23 × 17 cm, ~7–8 kg</b> loaded (toaster-sized)</li>
+        <li>Aoostar AG02 (compact) — ~25 × 13 × 18 cm, ~3 kg + card</li>
+        <li>Sits on the desk, <b>one Thunderbolt cable</b> to laptop (some push 100 W back to charge it)</li>
+        <li>Model: <b>portable laptop + stationary GPU dock.</b> Undock the cable → mobile.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><b>Forward-deployed?</b> The eGPU is <b>garrison-only</b> — bulky, fragile (external card + PSU), ~750 W. For the field, a compact self-contained mini-PC (GB10 1.3 kg / Strix Halo ~2–3 kg, ~120–240 W) beats it — and is smaller than the eGPU rig. See DDIL kit →</div>
+</section>
+
+<!-- ============ DDIL ============ -->
+<section id="ddil">
+  <h2><span class="n">07</span>DDIL field kit — complete air-gap, forward at a unit</h2>
+  <p class="lead">The real Track-C target: modify a codebase forward, in a <b>Denied / Degraded / Intermittent / Limited</b> environment, fully air-gapped. Here <b>SWaP, field power, ruggedness, and air-gap <i>simplicity</i> outrank raw speed.</b> Fewer boxes = simpler air-gap.</p>
+  <table class="plain">
+    <thead><tr><th>Kit</th><th>Capability</th><th>Weight / Power</th><th>Air-gap</th><th>Field fit</th></tr></thead>
+    <tbody>
+      <tr><td class="mname">Laptop only (RF-killed)</td><td>≤32B build+gate (2 sessions)</td><td>~2.5 kg / 150–330 W</td><td class="ok">simplest — no network at all</td><td class="ok">✅ best</td></tr>
+      <tr><td class="mname">Laptop + compact mini-PC</td><td>70B gate on mini, fast build on laptop</td><td>+1.3–3 kg / +120–240 W</td><td class="ok">one direct cable, both RF-killed</td><td class="ok">✅ good</td></tr>
+      <tr><td class="mname">Laptop + eGPU enclosure</td><td>48 GB / 70B</td><td>+7 kg / +400–750 W</td><td>one cable, one machine</td><td class="no">⚠️ garrison</td></tr>
+    </tbody>
+  </table>
+  <div class="cols" style="margin-top:16px">
+    <div class="box">
+      <h3>Complete-airgap controls</h3>
+      <ul>
+        <li><b>Kill the radios</b> — wifi/BT/cellular firmware-disabled or physically removed. No RF path.</li>
+        <li><b>Provision everything at base</b> — OS, models, engine, corpus, repo — <b>hash-verified</b> vs a manifest. Nothing pulled in field.</li>
+        <li><b>No telemetry / auto-update</b> — Ollama fully offline; verified in a test air-gap first.</li>
+        <li><b>Data in/out via controlled scanned media only</b> — never a live link.</li>
+        <li><b>§8 OPSEC on the box</b> — placeholders only, no real infra values (box is physically at risk).</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>SSH ≠ internet</h3>
+      <ul>
+        <li>Two boxes join over a <b>direct Ethernet or Thunderbolt cable</b> — static IPs, no switch, no WAN.</li>
+        <li>Traffic is <b>tiny</b> (prompts + verdicts, not weights) — even 1 GbE is overkill.</li>
+        <li>An air-gapped <b>two-box</b> split makes the §3 bias firewall <i>more</i> real: build on laptop, 70B gate on the mini — different hardware, different weights, still offline.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Offline workflow</h3>
+  <ol class="flow">
+    <li><b>Provision</b> the kit at base (models + engine + corpus + repo), hash-verified.</li>
+    <li><b>Modify code fully offline</b> — local build/gate loop, no connectivity; human runs the §5.5 manual review.</li>
+    <li><b>Evidence in local git</b> — TDD two-commit, append-only gate-log, ADRs. Git history = tamper record.</li>
+    <li><b>Exfil minimally</b> when a pipe appears — <code>git bundle</code> / <code>format-patch</code> = tiny diff+evidence file, sneakernet or narrow link.</li>
+    <li><b>Downstream platform team reviews</b> — the real separation of duties. The kit's gates are pre-flight, <b>not an ATO.</b></li>
+  </ol>
+</section>
+
+<!-- ============ HONESTY ============ -->
+<section id="honesty">
+  <h2><span class="n">08</span>Honesty — §9 stacks worst forward</h2>
+  <div class="note"><b>Three weaknesses compound here:</b> the local model is weaker at security reasoning · <code>local-attested</code> is the weakest enforcement · forward is where a miss is least recoverable — all at once. The forward air-gapped build needs <b>more</b> human rigor, not the same. If you can carry the mini-PC for a 70B gate, that capability jump is most valuable <i>precisely here</i>. Don't over-quant the gate model to save weight — that trades away the reasoning you deployed it for.</div>
+  <div class="cols" style="margin-top:8px">
+    <div class="box">
+      <h3>What's machine-verified</h3>
+      <ul><li>Nothing about model <b>provenance</b> is. There is <b>no US-gov approved-model whitelist</b> — approval runs via procurement (GSA OneGov, FedRAMP) + a covered-nation <i>prohibition</i> framework.</li>
+      <li>"This origin is acceptable" = a <b>human ratification.</b></li></ul>
+    </div>
+    <div class="box">
+      <h3>Principle cited (not fabricated)</h3>
+      <ul><li><b>NIST SP 800-161</b> C-SCRM (skeleton in our corpus — cite principle, not verbatim)</li>
+      <li><b>800-53 SR-3 / SR-4 / SR-11</b> (supply chain, provenance, component authenticity)</li>
+      <li>Section 889 / FASC-FASCSA / Commerce ICTS covered-nation framework</li></ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><b>License key:</b> <span class="badge b-apache" style="font-size:10px">Apache/MIT</span> permissive · <span class="badge b-restr" style="font-size:10px">restricted</span> usable w/ caveats (OpenRAIL, Llama AUP, NVIDIA+Llama) · <span class="badge b-nc" style="font-size:10px">non-commercial</span> excluded for build/gate.</p>
+  <p>Sources (Aug 2026): NVIDIA DGX Spark / GB10 (273 GB/s) · Dell Pro Max GB10 review (128 GB, ≤200B) · RTX 5090 Laptop (24 GB GDDR7, 896 GB/s) · Google OSS blog (Gemma 4 → Apache-2.0) · Mistral docs (Devstral Small 2; Codestral now proprietary) · IBM Research (Granite 4.1) · Ai2 (OLMo 3) · congress.gov / acquisition.gov (FASC, FAR 52.204-30) · govexec (no approved-model list).</p>
+  <p class="src">Track-C reading aid — not governance. Analysis of record: ADR-0003 + PRD §14/§5 + CLAUDE.md §3/§5/§8 + docs/architecture/MODEL-PROFILES.md. F-prefix · no commit until told.</p>
+</footer>
+
+</div>
+
+<script>
+const CEILING=24, OVERHEAD=2;
+const models=[
+  {n:"Devstral Small 2",fam:"Mistral lineage",flag:"🇫🇷",org:"Mistral",lic:"apache",p:24,str:"Agentic code · ~68% SWE-Bench · BUILD",roles:["build"]},
+  {n:"Mistral Small 4",fam:"Mistral lineage",flag:"🇫🇷",org:"Mistral",lic:"apache",p:24,str:"General purpose",roles:["build"]},
+  {n:"Gemma 4 (31B dense)",fam:"Gemma lineage",flag:"🇺🇸",org:"Google",lic:"apache",p:31,str:"General + reasoning · GATE (Profile A)",roles:["gate"]},
+  {n:"Gemma 4 (26B-A4B)",fam:"Gemma lineage · MoE",flag:"🇺🇸",org:"Google",lic:"apache",p:26,moe:true,act:4,str:"General · MoE, fast",roles:["gate"]},
+  {n:"Llama 3.3 70B",fam:"Llama lineage",flag:"🇺🇸",org:"Meta",lic:"restr",licTxt:"Llama Community",p:70,str:"GATE (Profile B) · needs eGPU/box",roles:["gate"]},
+  {n:"OLMo 3-Think 32B",fam:"OLMo lineage",flag:"🇺🇸",org:"Ai2",lic:"apache",p:32,str:"Reasoning · open auditable traces",roles:["gate"]},
+  {n:"Granite 4.1 (30B dense)",fam:"Granite lineage",flag:"🇺🇸",org:"IBM",lic:"apache",p:30,str:"Enterprise/regulated · signed weights",roles:["gate","build"]},
+  {n:"Granite-Code 34B",fam:"Granite lineage",flag:"🇺🇸",org:"IBM",lic:"apache",p:34,str:"Code · 116 languages",roles:["build"]},
+  {n:"Phi-4-reasoning-plus",fam:"Phi lineage",flag:"🇺🇸",org:"Microsoft",lic:"mit",p:14,str:"Reasoning / math · small & fast",roles:["gate"]},
+  {n:"Granite 4.1 8B",fam:"Granite lineage",flag:"🇺🇸",org:"IBM",lic:"apache",p:8,str:"General / utility",roles:["utility"]},
+  {n:"Ministral 3 8B",fam:"Mistral lineage",flag:"🇫🇷",org:"Mistral",lic:"apache",p:8,str:"Small / utility (Dec 2025 gen)",roles:["utility"]},
+  {n:"Gemma 4 E4B",fam:"Gemma lineage · edge",flag:"🇺🇸",org:"Google",lic:"apache",p:4,str:"Edge / utility",roles:["utility"]},
+  {n:"StarCoder2 15B",fam:"BigCode lineage",flag:"🌐",org:"BigCode",lic:"restr",licTxt:"OpenRAIL-M",p:15,str:"Code · behavioral-use restrictions",roles:["build"]},
+  {n:"Qwen3-Coder",fam:"Alibaba",flag:"🇨🇳",org:"Alibaba",lic:"nc",licTxt:"PRC origin",p:30,str:"EXCLUDED — adversarial-nation base",roles:["excluded"],excl:true},
+  {n:"DeepSeek-Coder V2",fam:"DeepSeek",flag:"🇨🇳",org:"DeepSeek",lic:"nc",licTxt:"PRC origin",p:16,moe:true,act:2,str:"EXCLUDED — incl. any R1-distill",roles:["excluded"],excl:true},
+  {n:"GLM-4 / CodeGeeX",fam:"Zhipu",flag:"🇨🇳",org:"Zhipu",lic:"nc",licTxt:"PRC origin",p:9,str:"EXCLUDED — adversarial-nation base",roles:["excluded"],excl:true},
+];
+const licBadge=m=>{
+  if(m.lic==="apache")return'<span class="badge b-apache">Apache-2.0</span>';
+  if(m.lic==="mit")return'<span class="badge b-mit">MIT</span>';
+  if(m.lic==="restr")return'<span class="badge b-restr">'+(m.licTxt||"restricted")+'</span>';
+  return'<span class="badge b-nc">'+(m.licTxt||"non-commercial")+'</span>';
+};
+let quant=0.73,role="all";
+const vram=p=>p*quant+OVERHEAD;
+const fitClass=v=>v<=20?"fit-ok":(v<=CEILING?"fit-tight":"fit-no");
+const fitLabel=v=>v<=20?"comfortable":(v<=CEILING?"fits · tight":"offload · slow");
+function render(){
+  const rows=document.getElementById("rows");rows.innerHTML="";
+  models.filter(m=>role==="all"?!m.excl:(role==="excluded"?m.excl:m.roles.includes(role))).forEach(m=>{
+    const v=vram(m.p),pct=Math.min(100,v/(CEILING*1.35)*100),ceilPct=(CEILING/(CEILING*1.35))*100,fc=fitClass(v);
+    const tr=document.createElement("tr");if(m.excl)tr.className="excl";
+    const roleTags=m.roles.filter(r=>r!=="excluded").map(r=>'<span class="badge b-role">'+r+'</span>').join(" ");
+    const moeTag=m.moe?' <span class="badge b-moe">MoE · '+m.act+'B act</span>':'';
+    tr.innerHTML=`
+      <td><div class="mname">${m.n}</div><div class="mfam">${m.fam}</div></td>
+      <td class="origin"><span class="flag">${m.flag}</span>${m.org}</td>
+      <td>${licBadge(m)}</td>
+      <td>${m.p}B${moeTag}<div style="margin-top:5px">${roleTags}</div></td>
+      <td class="vram ${fc}">
+        <div class="vnum">~${v.toFixed(1)} GB <small>@ ${quant===0.60?"Q4":quant===0.73?"Q5":"Q8"}</small></div>
+        <div class="bar"><i style="width:${pct}%"></i><span class="ceil" style="left:${ceilPct}%"></span></div>
+        <div class="fitlabel">${fitLabel(v)}</div></td>
+      <td style="color:var(--dim)">${m.str}</td>`;
+    rows.appendChild(tr);
+  });
+}
+document.querySelectorAll(".role-f .chip").forEach(c=>c.addEventListener("click",()=>{
+  document.querySelectorAll(".role-f .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");role=c.dataset.role;render();}));
+document.querySelectorAll(".quant .chip").forEach(c=>c.addEventListener("click",()=>{
+  document.querySelectorAll(".quant .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");quant=parseFloat(c.dataset.q);render();}));
+render();
+// nav active-section highlight
+const navlinks=[...document.querySelectorAll('nav a')];
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
+  navlinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));}});},{rootMargin:"-40% 0px -55% 0px"});
+document.querySelectorAll('section[id]').forEach(s=>io.observe(s));
+</script>
+</body>
+</html>

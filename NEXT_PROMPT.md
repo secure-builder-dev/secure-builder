@@ -25,8 +25,11 @@ aggregate/releasable metrics ever touch this laptop.
 
 **End state (not the current scaffolding):** Claude + BMAD are temporary scaffolding to
 prove the design. The target is **own-orchestration (Track B) + local models on owned
-hardware (Track C)** — now with a specific split: the **build context on a local code
-model (Qwen)** and the **gate context on a different local model (Llama)** so the bias
+hardware (Track C)** — **US/allied open-weight only** under the standing provenance rule
+(no adversarial-nation base weights; **Qwen retired** — ADR-0003, CLAUDE.md §8.2): the
+**build context on Devstral Small 2** (Mistral/FR) and the **gate context on a
+different-lineage model — Gemma 4** on the laptop, scaling to **Llama 3.3 70B** on an
+external GPU (`COMPUTE_PROFILE`, `docs/architecture/MODEL-PROFILES.md`) — so the bias
 firewall is reinforced by different weights, not just different sessions. Both tracks are
 deliberately *out* of the 4-week window, gated on Track A proving the design first.
 
@@ -74,7 +77,7 @@ stub), hooks are **not installed**, and the `pre-commit` hook is fail-closed.
 - **Promotion (not commit) is the gated event**; local TDD commits are audit evidence.
 - **Sentinel authors the gate log**, live in CW2 + the DONE row on approval. Bob owns the
   `NEXT_PROMPT*` handoffs only.
-- **Track C model split: Qwen (build) / Llama (gates)** — target, out of the 4-week window.
+- **Track C model split: Devstral Small 2 (build) / Gemma 4 (gates), scaling to Llama 3.3 70B on eGPU** — US/ally open-weight only, Qwen retired (ADR-0003); target, out of the 4-week window.
 - Operating mode: **team-owned, single-operator-per-session.**
 - **Gitignore the framework** (`_bmad/`, `_bmad-output/`, `.claude/`) — done. Evidence
   schema/templates tracked here; live instances live in the consuming app's repo (OPSEC).

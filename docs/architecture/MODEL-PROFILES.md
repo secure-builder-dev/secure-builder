@@ -75,11 +75,38 @@ a larger **Gemma 4 / OLMo 3-Think 32B**.
 ## Selection & swap (design-time, per §5)
 
 `COMPUTE_PROFILE` is a **design-time constant set at clone/deploy time**, not a runtime flag.
-Changing hardware = a reconfigure step, not a hot toggle. A launcher helper (PowerShell / Node
-— **no Python on the clean-room laptop**) may **detect** whether the external GPU is present
-and select/confirm the profile, then point the local server (Ollama / llama.cpp) at the
-profile's models. In an air-gapped kit, all profile models are **provisioned and hash-verified
-at base** before deployment — nothing is pulled in the field (see [[ddil-forward-deployment]]).
+Changing hardware = a reconfigure step, not a hot toggle.
+
+**The engine never silently auto-scales the gate on hardware presence.** The gate model is
+part of the evidence — *which* model judged a story is recorded in the gate-log. If the gate
+silently ran Gemma 4 one day and Llama 3.3 70B the next merely because an eGPU happened to be
+attached, two runs of the same story could return **different verdicts with nothing explaining
+why**, and the gate's *rigor* would depend on undocumented hardware state — exactly the hidden
+variability §9 forbids. So the active profile is an **explicit, recorded operator choice**, not
+an ambient side effect of what is plugged in.
+
+A launcher helper (PowerShell / Node — **no Python on the clean-room laptop**) may therefore
+**offer, not impose**:
+
+1. **Enumerate GPUs / VRAM** (`nvidia-smi --query-gpu=memory.total`, or CUDA device count).
+   Total VRAM ≥ ~40 GB across devices ⇒ `egpu-70b` is *available*.
+2. **Prompt the operator to confirm** the profile (e.g., "external GPU detected — run
+   `egpu-70b` [gate = Llama 3.3 70B]?"). The human decides; the engine does not.
+3. **Start the local server with placement** — point Ollama / llama.cpp at the profile's
+   models, pinning the build model to the internal GPU and the 70B gate to the external card
+   (`CUDA_VISIBLE_DEVICES` + layer split); fall back to `laptop-resident` (Gemma 4, hot-swapped)
+   when no eGPU is present.
+4. **Record the active profile** so the gate-log / evidence shows which model actually judged
+   the story.
+
+The gate context itself is hardware-agnostic — it loads whatever model the active profile
+names; only the launcher touches GPUs, and only the operator selects the profile. In an
+air-gapped kit, all profile models are **provisioned and hash-verified at base** before
+deployment — nothing is pulled in the field (see [[ddil-forward-deployment]]).
+
+> **Status:** design only. The launcher, the local server wiring, and the gate agents
+> (Murat / Sentinel) are **Phase-2 / Track-C work — not yet built** (CLAUDE.md §0). This
+> section is the intended mechanism, not running code.
 
 ---
 

@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Secure Builder — How the Engine Works</title>
+<meta name="description" content="End-to-end walkthrough of the Secure Builder workflow, written for a non-technical reader." />
+</head>
+<body>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#14181f; --ink-2:#4a5361;
+    --ink-3:#79828f; --line:#e2e6ec; --line-2:#eef1f5;
+    --accent:#2f6bd8; --accent-soft:#e8f0ff;
+    --done:#1f8a5b; --done-soft:#e6f4ec;
+    --warn:#a4610a; --warn-soft:#fdf1de;
+    --block:#b03636; --block-soft:#fdeaea;
+    --radius:10px;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1216; --panel:#161b22; --panel-2:#1b212a; --ink:#e6eaf0; --ink-2:#aab3c0;
+      --ink-3:#7b8593; --line:#262d38; --line-2:#1e242d;
+      --accent:#6f9cf0; --accent-soft:#1a2740;
+      --done:#4cc38a; --done-soft:#14301f;
+      --warn:#e0a55a; --warn-soft:#33260f;
+      --block:#e57373; --block-soft:#331a1a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1216; --panel:#161b22; --panel-2:#1b212a; --ink:#e6eaf0; --ink-2:#aab3c0;
+    --ink-3:#7b8593; --line:#262d38; --line-2:#1e242d;
+    --accent:#6f9cf0; --accent-soft:#1a2740;
+    --done:#4cc38a; --done-soft:#14301f;
+    --warn:#e0a55a; --warn-soft:#33260f;
+    --block:#e57373; --block-soft:#331a1a;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.6 var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1060px; margin:0 auto; padding:34px 20px 90px}
+  .prose{max-width:70ch}
+  p{margin:0 0 12px}
+  a{color:var(--accent)}
+  strong{color:var(--ink); font-weight:600}
+  code{font-family:var(--mono); font-size:.87em; background:var(--panel-2);
+       border:1px solid var(--line-2); border-radius:4px; padding:1px 4px; color:var(--ink-2)}
+
+  /* ---- masthead --------------------------------------------------------- */
+  .mast{border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:30px}
+  .eyebrow{font:11px/1 var(--mono); letter-spacing:.13em; text-transform:uppercase;
+           color:var(--ink-3); margin:0 0 12px}
+  h1{font-size:30px; line-height:1.15; letter-spacing:-.02em; margin:0 0 14px;
+     text-wrap:balance; max-width:20ch}
+  .lede{font-size:17px; line-height:1.55; color:var(--ink-2); max-width:62ch; margin:0}
+  .lede b{color:var(--ink); font-weight:600}
+  .mast .tools{display:flex; gap:8px; margin-top:20px}
+  button{font:13px var(--sans); color:var(--ink-2); background:var(--panel);
+         border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer}
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* ---- sections --------------------------------------------------------- */
+  .sec{margin:0 0 44px}
+  .sec-head{display:flex; align-items:baseline; gap:12px; margin:0 0 16px;
+            border-bottom:1px solid var(--line-2); padding-bottom:9px}
+  .sec-head .n{font:11px/1 var(--mono); color:var(--ink-3); letter-spacing:.08em; flex:none;
+               padding-top:3px}
+  h2{font-size:20px; letter-spacing:-.012em; margin:0; font-weight:600; text-wrap:balance}
+  h3{font-size:15px; margin:26px 0 9px; font-weight:600; letter-spacing:-.005em}
+
+  /* ---- legend / stamps -------------------------------------------------- */
+  .stamp{font:10.5px/1 var(--mono); letter-spacing:.09em; text-transform:uppercase;
+         border:1px solid var(--line); border-radius:5px; padding:3.5px 7px;
+         color:var(--ink-3); background:var(--panel-2); white-space:nowrap; display:inline-block}
+  .stamp.auto{color:var(--accent); border-color:var(--accent); background:var(--accent-soft)}
+  .stamp.att{color:var(--warn); border-color:var(--warn); background:var(--warn-soft)}
+  .stamp.stop{color:var(--block); border-color:var(--block); background:var(--block-soft)}
+  .stamp.ok{color:var(--done); border-color:var(--done); background:var(--done-soft)}
+
+  .legend{display:flex; flex-wrap:wrap; gap:10px 22px; background:var(--panel);
+          border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 30px}
+  .legend div{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--ink-2)}
+
+  /* ---- cards ------------------------------------------------------------ */
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+        padding:18px 20px}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px}
+  .card h4{margin:0 0 7px; font-size:13.5px; font-weight:600}
+  .card p{margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.55}
+
+  .note{border-left:3px solid var(--accent); background:var(--panel);
+        border-radius:0 var(--radius) var(--radius) 0; padding:14px 18px; margin:16px 0;
+        font-size:14px; color:var(--ink-2); max-width:72ch}
+  .note.warnbox{border-left-color:var(--warn)}
+  .note .lbl{display:block; font:10.5px/1 var(--mono); letter-spacing:.1em;
+             text-transform:uppercase; color:var(--ink-3); margin-bottom:7px}
+  .note p:last-child{margin-bottom:0}
+
+  /* ---- the inspection spine --------------------------------------------- */
+  .cw{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      overflow:hidden; margin:0}
+  .cw-head{padding:13px 18px; background:var(--panel-2); border-bottom:1px solid var(--line);
+           display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  .cw-head .tag{font:10.5px/1 var(--mono); letter-spacing:.11em; text-transform:uppercase;
+                color:var(--accent)}
+  .cw-head h3{margin:0; font-size:15px}
+  .cw-head .sub{font-size:12.5px; color:var(--ink-3); margin-left:auto}
+
+  .steps{list-style:none; margin:0; padding:0}
+  .step{display:grid; grid-template-columns:34px 1fr; gap:16px; padding:18px;
+        border-top:1px solid var(--line-2)}
+  .step:first-child{border-top:none}
+  .step > .num{font:12px/1 var(--mono); color:var(--ink-3); text-align:right;
+               padding-top:3px; position:relative}
+  .step > .num::after{content:""; position:absolute; right:-16.5px; top:20px; bottom:-22px;
+                      width:1px; background:var(--line)}
+  .step:last-child > .num::after{display:none}
+  .step .body{min-width:0}
+  .step .st-title{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:6px}
+  .step .st-title b{font-size:15px; font-weight:600}
+  .step .body p{font-size:14px; color:var(--ink-2); margin:0 0 9px; max-width:68ch}
+  .step .body p:last-child{margin-bottom:0}
+  .step ul{margin:8px 0 0; padding-left:19px; font-size:13.5px; color:var(--ink-2)}
+  .step li{margin-bottom:5px}
+  .step.hardstop{background:var(--block-soft)}
+  :root[data-theme="dark"] .step.hardstop{background:var(--block-soft)}
+  .step.hardstop .st-title b{color:var(--block)}
+
+  .why{background:var(--panel-2); border:1px solid var(--line-2); border-radius:8px;
+       padding:12px 15px; margin:10px 0 0; font-size:13.5px; color:var(--ink-2); max-width:68ch}
+  .why b{color:var(--ink)}
+
+  /* ---- firewall divider -------------------------------------------------- */
+  .firewall{display:flex; align-items:center; gap:14px; margin:0; padding:22px 4px}
+  .firewall .rule{flex:1; height:0; border-top:2px dashed var(--block); opacity:.55}
+  .firewall .txt{font:11px/1.5 var(--mono); letter-spacing:.09em; text-transform:uppercase;
+                 color:var(--block); text-align:center; flex:none; max-width:34ch}
+  .firewall .txt span{display:block; text-transform:none; letter-spacing:0;
+                      font-family:var(--sans); font-size:12.5px; color:var(--ink-3); margin-top:6px}
+
+  /* ---- tables ------------------------------------------------------------ */
+  .tbox{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius);
+        background:var(--panel)}
+  table{border-collapse:collapse; width:100%; min-width:520px; font-size:13.5px}
+  th,td{text-align:left; padding:10px 14px; border-top:1px solid var(--line-2); vertical-align:top}
+  thead th{border-top:none; background:var(--panel-2); border-bottom:1px solid var(--line);
+           font:11px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase;
+           color:var(--ink-3); font-weight:400; white-space:nowrap}
+  tbody td:first-child{white-space:nowrap; font-weight:600}
+  td{color:var(--ink-2)}
+  tbody tr:hover{background:var(--panel-2)}
+
+  /* ---- stage list (phase 0) ---------------------------------------------- */
+  .stages{list-style:none; counter-reset:s; margin:0; padding:0; display:grid; gap:1px;
+          background:var(--line); border:1px solid var(--line); border-radius:var(--radius);
+          overflow:hidden}
+  .stages li{counter-increment:s; background:var(--panel); padding:14px 18px 14px 46px;
+             position:relative; font-size:14px; color:var(--ink-2)}
+  .stages li::before{content:counter(s); position:absolute; left:18px; top:15px;
+                     font:11px/1 var(--mono); color:var(--ink-3)}
+  .stages li b{display:block; color:var(--ink); font-size:14px; margin-bottom:3px}
+  .stages li.gate{background:var(--panel-2)}
+
+  /* ---- status ------------------------------------------------------------ */
+  .status{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+  .status .card ul{margin:8px 0 0; padding-left:18px; font-size:13.5px; color:var(--ink-2)}
+  .status .card li{margin-bottom:4px}
+
+  .foot{margin-top:50px; padding-top:20px; border-top:1px solid var(--line);
+        font-size:12.5px; color:var(--ink-3); line-height:1.7; max-width:72ch}
+
+  @media (max-width:620px){
+    h1{font-size:25px}
+    .step{grid-template-columns:24px 1fr; gap:12px; padding:15px}
+    .step > .num::after{right:-12.5px}
+    .cw-head .sub{margin-left:0; width:100%}
+    .firewall .rule{display:none}
+  }
+  @media print{
+    body{background:#fff}
+    .mast .tools{display:none}
+    .sec{break-inside:avoid}
+    .step{break-inside:avoid}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Secure Builder · engine walkthrough · for the whole team</p>
+    <h1>How the engine actually works</h1>
+    <p class="lede">Secure Builder is <b>not an app — it's a factory that builds apps.</b> Its real
+    product is the paper trail proving each app was built safely enough to be allowed onto a
+    military network. This is the whole workflow, end to end, written for someone who doesn't
+    write code.</p>
+    <div class="tools"><button id="theme" type="button">Switch theme</button></div>
+  </header>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">01</span><h2>The problem it exists to solve</h2></div>
+    <div class="prose">
+      <p>When a team builds software for a Department of Defense network, they can't just ship it.
+      A separate <strong>platform team</strong> inspects it first and decides whether it's allowed to
+      run — that permission is called an <strong>ATO</strong>, Authority to Operate. That inspection
+      is the bottleneck: it finds dozens of problems, the dev team fixes them, resubmits, waits
+      again. Months.</p>
+      <p>Secure Builder's bet: <strong>do the inspection during the build, not after.</strong> If
+      every feature is checked against the same rules the platform team will use, the app arrives
+      at intake nearly clean, with the evidence already attached. The bottleneck shrinks.</p>
+    </div>
+    <div class="note warnbox">
+      <span class="lbl">Say this out loud, every time</span>
+      <p>Secure Builder <strong>does not grant that permission.</strong> It's a pre-flight check, not
+      the flight clearance. The platform team remains the only approval authority. Overstating this
+      is the one failure mode that turns the engine from an asset into a liability.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">02</span><h2>How to read the rest of this page</h2></div>
+    <p class="prose">Every check in the engine falls into one of three classes. The difference
+    between them is the most important thing on this page — the engine is deliberately blunt about
+    which of its own gates are real automation and which rest on a person paying attention.</p>
+    <div class="legend">
+      <div><span class="stamp auto">Machine</span> Provable from the record — exit codes, coverage
+        numbers, commit order. Can't be talked out of.</div>
+      <div><span class="stamp att">Attested</span> A person says it happened. Genuinely useful,
+        <em>not</em> verifiable. Never call it "verified."</div>
+      <div><span class="stamp stop">Hard stop</span> Work cannot advance without a human typing
+        something specific.</div>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">03</span><h2>The cast — eleven specialists, one job each</h2></div>
+    <p class="prose">Instead of one AI doing everything (and quietly making decisions outside its
+    competence), the engine uses eleven named roles. Each has a single responsibility and a specific
+    list of files it is permitted to touch.</p>
+    <div class="tbox">
+      <table>
+        <thead><tr><th>Role</th><th>Job, in plain terms</th></tr></thead>
+        <tbody>
+          <tr><td>Atlas</td><td>Onboarding lead. Works out what the project even <em>is</em>, before anyone builds anything</td></tr>
+          <tr><td>Charter</td><td>Product manager. Writes what the product should do</td></tr>
+          <tr><td>Scribe</td><td>Story analyst. Hunts gaps and contradictions in the work descriptions</td></tr>
+          <tr><td>Marshal</td><td>Scrum master. Hands out the work, one piece at a time</td></tr>
+          <tr><td>Keystone</td><td>Architect. Structural decisions — database shape, how systems talk to each other</td></tr>
+          <tr><td>Prism</td><td>UX designer. Screens, interactions, accessibility</td></tr>
+          <tr><td>Forge</td><td>Developer. Writes the actual code</td></tr>
+          <tr><td>Crucible</td><td>Test architect. The <strong>quality</strong> inspector</td></tr>
+          <tr><td>Sentinel</td><td>Security gatekeeper. The <strong>security</strong> inspector</td></tr>
+          <tr><td>Bastion</td><td>DevSecOps. Deployment plumbing and hardening</td></tr>
+          <tr><td>Codex</td><td>Tech writer. Documentation</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <span class="lbl">The rule that makes this matter</span>
+      <p><strong>No role acts outside its lane.</strong> If the developer starts making architectural
+      decisions, that is a recorded finding — not a shrug. This is a deliberate defense against what
+      the industry calls <em>excessive agency</em>: an AI quietly expanding its own authority. The
+      file-ownership half of this is mechanically checkable; the judgment half — a decision buried
+      inside a file the role <em>was</em> allowed to edit — stays with the reviewer. The engine says
+      so rather than claiming full automation.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">04</span><h2>Setup — answered once, permanent</h2></div>
+    <p class="prose">Cloning the engine for a new project starts with a short decision tree. These
+    are <strong>design-time constants, not switches you flip later.</strong> The answers decide which
+    security checks turn on for the life of the project.</p>
+    <div class="grid2">
+      <div class="card"><h4>Track</h4><p>A web app, or an Android app?</p></div>
+      <div class="card"><h4>Security tier</h4><p>IL4 (sensitive but unclassified) or IL6 (classified). Android is always IL6.</p></div>
+      <div class="card"><h4>Provider</h4><p>AWS, Azure, or <em>tactical</em> — a team-owned classified network with no cloud services at all.</p></div>
+      <div class="card"><h4>Enforcement</h4><p>Can a central server block a bad merge, or is this an offline machine where enforcement rests on local checks plus discipline?</p></div>
+      <div class="card"><h4>Compute profile</h4><p>Which local AI models fit the available hardware.</p></div>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">05</span><h2>Loop A · Phase 0 — work out the project</h2></div>
+    <p class="prose">Runs once, before any code exists. <strong>Nothing is built until a human has
+    approved a written description of what's being built.</strong> Atlas runs six stages with a
+    checkpoint between each.</p>
+    <ol class="stages">
+      <li><b>Intake</b>If a codebase already exists, the engine reads it and drafts a "here's what
+        exists today" document. A privacy filter strips real server names, account numbers and
+        passwords <em>before</em> anything is written down — replaced with placeholders like
+        <code>&lt;ACCOUNT_ID&gt;</code>. Every extracted fact is tagged with where it came from.</li>
+      <li><b>Guided authoring</b>The engine interviews you and drafts the core set: what the product
+        is for, how it will be structured, what security posture it must hold, and how to get from
+        today to there.</li>
+      <li class="gate"><b>Gap check — a gate</b>Does any document contradict another? Is anything
+        left unspecified? Loop until clean.</li>
+      <li><b>Backlog</b>Break it into epics and individual work items — "stories" — each stamped with
+        which piece of the intent it serves.</li>
+      <li class="gate"><b>Traceability check — a gate</b>Every story must trace to a stated goal, and
+        every stated goal must have at least one story. No orphans in either direction.</li>
+      <li><b>Cohesion criteria</b>Write down <em>in advance</em> how you will later judge whether a
+        finished epic actually delivered what it promised. This is what Loop C checks against.</li>
+    </ol>
+    <div class="note">
+      <span class="lbl">Anti-bloat rule worth knowing</span>
+      <p>Beyond the core set, the engine may recommend <strong>at most three</strong> extra documents,
+      targets two or fewer, and defaults to zero — and only where it can name the <em>specific
+      build failure</em> that happens without that document. If it can't name the failure, it doesn't
+      ask. The cap is a ceiling, never a quota.</p>
+    </div>
+    <div class="note warnbox">
+      <span class="lbl">Honesty stamp</span>
+      <p>Everything Phase 0 produces is an AI-assisted <strong>draft</strong>. It is not authoritative
+      until a human ratifies it. An AI ratifying its own output is a protocol violation — the same
+      violation as an AI approving its own code.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">06</span><h2>Loop B · One story, start to finish</h2></div>
+    <p class="prose">This is the heart of the machine. Every single piece of work runs this exact
+    sequence — no step skipped, no step reordered. The unusual part: it runs across
+    <strong>two separate AI sessions that cannot see each other.</strong></p>
+
+    <div class="cw">
+      <div class="cw-head">
+        <span class="tag">Session 1</span><h3>Build</h3>
+        <span class="sub">Starts cold, from a written brief. Ends without judging its own work.</span>
+      </div>
+      <ol class="steps">
+
+        <li class="step">
+          <div class="num">01</div>
+          <div class="body">
+            <div class="st-title"><b>Dispatch</b><span class="stamp">Marshal</span></div>
+            <p>Marshal picks the next story and routes it to the right first specialist. A database
+            change starts with Keystone. A screen starts with Prism. A plain feature starts with
+            Forge.</p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">02</div>
+          <div class="body">
+            <div class="st-title"><b>Write the failing test first</b><span class="stamp auto">Machine</span></div>
+            <p>Before any code is written, Forge writes the <em>test</em> that proves the feature
+            works — and runs it. It <strong>must fail</strong>, because the feature doesn't exist
+            yet. The failure output is pasted into the story file as evidence, and saved as its own
+            timestamped checkpoint in the project history.</p>
+            <div class="why"><b>Why this is backwards on purpose.</b> A test written <em>after</em>
+            the code tends to be shaped to pass it. A test proven to fail first, then passing,
+            actually demonstrates something. And because these are two separate timestamped
+            checkpoints, the order is <b>verifiable later</b> — it's a receipt, not a claim. If the
+            failing-test checkpoint isn't there, the story fails automatically, no matter what the
+            AI asserts.</div>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">03</div>
+          <div class="body">
+            <div class="st-title"><b>Write the code</b><span class="stamp auto">Machine</span></div>
+            <p>Second checkpoint. The tests now pass. Two checkpoints, in that order, or the story
+            is dead on arrival at the next gate.</p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">04</div>
+          <div class="body">
+            <div class="st-title"><b>Hand off blind</b></div>
+            <p>The build session writes a self-contained brief for the inspection session, and then
+            <strong>ends</strong>. It does not inspect its own work. Ever.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="firewall">
+      <div class="rule"></div>
+      <div class="txt">The bias firewall
+        <span>The inspection session sees only the story and the code changes — never the builder's
+        reasoning, justifications, or self-assessment.</span></div>
+      <div class="rule"></div>
+    </div>
+
+    <div class="cw">
+      <div class="cw-head">
+        <span class="tag">Session 2</span><h3>Gates</h3>
+        <span class="sub">A fresh session. No memory of how the work was argued for.</span>
+      </div>
+      <ol class="steps">
+
+        <li class="step">
+          <div class="num">05</div>
+          <div class="body">
+            <div class="st-title"><b>Quality gate</b><span class="stamp">Crucible</span><span class="stamp auto">Machine</span></div>
+            <p>Pass or fail. No partial credit.</p>
+            <ul>
+              <li>Were the two checkpoints made, in the right order?</li>
+              <li>Is enough of the new code covered by tests — 80% for core logic, 70% for request
+                handlers — <strong>measured on this story's changes</strong>, not the project
+                average, so a weak story can't hide behind a well-tested past</li>
+              <li><strong>Negative tests.</strong> It is not enough to prove the feature works for an
+                authorized user. Every endpoint must prove it <em>rejects</em>: someone not logged
+                in, someone with the wrong role, someone reaching for another customer's data, and a
+                malformed request</li>
+              <li>Does every acceptance criterion have a matching test, by name?</li>
+              <li>Do the linter, the type checker and the full test suite pass clean, with nothing
+                skipped?</li>
+              <li>Do unreliable tests pass three times running?</li>
+            </ul>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">06</div>
+          <div class="body">
+            <div class="st-title"><b>Security gate</b><span class="stamp">Sentinel</span><span class="stamp auto">Machine</span><span class="stamp att">Attested</span></div>
+            <p>Also binary. Before judging anything, Sentinel must <strong>open and read each of its
+            own checklist files and state out loud what it loaded.</strong> A gate run that skipped
+            that is invalid and re-runs — forcing a real read pulls the instructions into working
+            memory instead of trusting the model to recall them.</p>
+            <p>Then the baseline: no passwords in the code, authentication runs before every request
+            handler, roles enforced, database queries that can't be hijacked, error messages that
+            don't leak internals, approved dependencies only. Stricter checks switch on for IL6 and
+            Android projects.</p>
+            <div class="why"><b>Every check cites a real control.</b> Not a paraphrase — the actual
+            government standards (NIST SP 800-53, DISA STIGs) are copied into the repository itself,
+            so a citation points at a paragraph a person can open. That matters doubly on an offline
+            network. Where a source hasn't been copied in yet, the manifest says so and the engine
+            refuses to fake it from memory.</div>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">↺</div>
+          <div class="body">
+            <div class="st-title"><b>The self-healing loop — and its limit</b></div>
+            <p>A FAIL sends specific findings back to the builder, who fixes and resubmits. But the
+            loop is <strong>capped at three rounds.</strong> After the third it stops and escalates
+            to a person.</p>
+            <div class="why"><b>Why cap it.</b> Two AIs auto-fixing to each other's checklists will
+            eventually optimize for passing the checklist rather than for being correct. The cap is
+            there because the failure mode is predictable.</div>
+          </div>
+        </li>
+
+        <li class="step hardstop">
+          <div class="num">07</div>
+          <div class="body">
+            <div class="st-title"><b>Manual security review</b><span class="stamp stop">Hard stop</span></div>
+            <p>The gate the whole design leans on, because it targets exactly what automated checks
+            <em>cannot</em> catch. A person sits down and answers, in their own words:</p>
+            <ul>
+              <li>Can a user reach data outside their role through an unexpected <em>sequence</em> of
+                otherwise-legal actions?</li>
+              <li>Can an acceptance criterion be satisfied in a way that violates a stated
+                "SHALL NOT"?</li>
+              <li>Does a chain of individually valid steps produce an unauthorized end state?</li>
+              <li>Is every data lookup scoped to who owns it, <em>before</em> anything is returned?</li>
+              <li>Can any combination of endpoints escalate someone's privileges?</li>
+            </ul>
+            <div class="why"><b>Anti-rubber-stamp rules.</b> The prompt names the actual endpoints
+            from <em>this</em> change, never a generic checklist. For security-sensitive work the
+            reviewer must name each endpoint touched and state <b>who can call it and what stops
+            everyone else.</b> A bare "looks good" is rejected. And the recorded approval says what
+            was actually reviewed — so the audit trail never claims more diligence than occurred.</div>
+          </div>
+        </li>
+
+        <li class="step hardstop">
+          <div class="num">08</div>
+          <div class="body">
+            <div class="st-title"><b>Human approval</b><span class="stamp stop">Hard stop</span></div>
+            <p>An explicit, typed <strong>"approved."</strong> Nothing else unlocks the next step —
+            not a high test score, not a clean security scan, not an AI's confident assertion that
+            everything is fine.</p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="num">09</div>
+          <div class="body">
+            <div class="st-title"><b>Promotion</b><span class="stamp ok">Recorded</span></div>
+            <p>Only now does the work become official. Three things happen, in order:</p>
+            <ul>
+              <li>Sentinel appends rows to the <strong>gate log</strong> — the permanent evidence
+                record</li>
+              <li>The work is merged</li>
+              <li>Marshal writes the brief for the next story, fully self-contained, because the next
+                session begins with no memory of this one</li>
+            </ul>
+            <div class="why"><b>The gate log is append-only.</b> Nothing is ever edited or deleted.
+            Corrections are new entries. A security finding that's later fixed gets an
+            <em>additional</em> row, not a rewrite. The project history itself is the tamper
+            detector.</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">07</span><h2>Loop C · Closing an epic</h2></div>
+    <div class="prose">
+      <p>Individual stories can each pass and the assembled result can still drift away from the
+      original intent. So when an epic completes, Atlas runs the <strong>cohesion gate</strong>
+      against the criteria written back in Phase 0: does the finished whole still satisfy what it was
+      for? Did any story hit its target in a way that violated a "SHALL NOT"? Is everything promised
+      actually shipped?</p>
+      <p>The verdict is <strong>COHERENT</strong> or <strong>DRIFT</strong>. Drift blocks the epic
+      from closing and sends it back to re-scoping.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">08</span><h2>What's automated, and what isn't</h2></div>
+    <p class="prose">The engine's constitution has a dedicated section for this, and it is
+    unusually blunt. Summarized:</p>
+    <div class="tbox">
+      <table>
+        <thead><tr><th>Check</th><th>Class</th><th>How it's established</th></tr></thead>
+        <tbody>
+          <tr><td>Test-before-code order</td><td><span class="stamp auto">Machine</span></td><td>Visible in the project history — the order can't be faked after the fact</td></tr>
+          <tr><td>Coverage, linting, types, no skipped tests</td><td><span class="stamp auto">Machine</span></td><td>Exit codes and numbers</td></tr>
+          <tr><td>Flaky tests</td><td><span class="stamp auto">Machine</span></td><td>Three consecutive clean runs</td></tr>
+          <tr><td>Acceptance criteria → tests</td><td><span class="stamp auto">Partial</span></td><td>Name matching gets most of the way; judgment finishes it</td></tr>
+          <tr><td>Control citations</td><td><span class="stamp auto">Partial</span></td><td>The citation is grounded in real source text; whether the <em>mapping</em> is right is human-confirmed</td></tr>
+          <tr><td>"Did the agent read its required documents?"</td><td><span class="stamp att">Attested</span></td><td><strong>Not verifiable.</strong> Caught only by its consequences — output that contradicts a document it was supposed to have read</td></tr>
+          <tr><td>Manual security review</td><td><span class="stamp att">Attested</span></td><td><strong>Not verifiable</strong>, by design. A person, or nothing</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warnbox">
+      <span class="lbl">Why the wording matters</span>
+      <p>Those last two are called out repeatedly with an instruction never to describe them as
+      "verified." The reason is simple: <strong>a plausible-but-wrong compliance claim is worse than
+      no claim</strong>, because it gets believed.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">09</span><h2>The honesty clause — the part that protects us</h2></div>
+    <p class="prose">There is a whole section of the constitution whose only job is to stop the
+    engine being oversold. In plain terms:</p>
+    <div class="grid2">
+      <div class="card"><h4>This is not an ATO</h4><p>It authorizes nothing. The platform team for each target network is the sole approval authority.</p></div>
+      <div class="card"><h4>Not separation of duties</h4><p>In a normal session the person who built it is the person who approves it. One human checking their own team's work. The two-session split makes the <em>AI</em> review more independent — it does not make it separation of duties, and the constitution forbids describing it that way in a README or a briefing.</p></div>
+      <div class="card"><h4>The real independent review is downstream</h4><p>The platform team. Always. Everything here is an input to that review, never a substitute for it.</p></div>
+      <div class="card"><h4>What "approved" means</h4><p>One developer performed a structured self-check of a defined depth. Not senior security sign-off — unless a qualified senior reviewer actually did it.</p></div>
+      <div class="card"><h4>Automation has a ceiling</h4><p>Automated gates reliably catch mechanical issues. They do <strong>not</strong> reliably catch authorization-logic flaws. The human gate is only as good as the human.</p></div>
+      <div class="card"><h4>Name which one ran</h4><p>Never write evidence implying an automated gate ran when a person worked through the checklist by hand. Say which it was.</p></div>
+    </div>
+    <div class="note warnbox">
+      <span class="lbl">The uncomfortable overlap, stated on purpose</span>
+      <p>Offline and air-gapped projects get the <strong>weakest</strong> enforcement — there's no
+      server to block a bad merge — <em>and</em> the weakest local AI reasoning, while being exactly
+      where a miss costs the most. The conclusion drawn is not "close enough." It's that offline
+      builds need <strong>more</strong> human rigor, not the same.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">10</span><h2>Two rules that override everything</h2></div>
+    <div class="grid2">
+      <div class="card">
+        <h4>Sensitive values never enter the AI's view</h4>
+        <p>Real account IDs, server addresses, secrets, credentials — never read, never repeated,
+        never stored. Placeholders everywhere. And the primary control is <strong>structural</strong>:
+        keep those values somewhere the AI physically cannot see them. Ignore-files are a backup, not
+        the defense.</p>
+      </div>
+      <div class="card">
+        <h4>Model provenance</h4>
+        <p>No AI model whose original weights came from an adversary nation may be used in the engine
+        or embedded in anything it produces — and this binds on <strong>where the base model came
+        from, not who uploaded it.</strong> A Western repackaging of a Chinese base model is still
+        excluded. This judgment is human-confirmed, because no official approved-model list exists to
+        check against.</p>
+      </div>
+    </div>
+    <p class="prose" style="margin-top:14px">Neither can be relaxed by a work instruction. They apply
+    in every session regardless of the task.</p>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">11</span><h2>Where the project actually stands</h2></div>
+    <div class="status">
+      <div class="card">
+        <h4><span class="stamp ok">Built</span></h4>
+        <ul>
+          <li>The constitution</li>
+          <li>The quality and security gate criteria</li>
+          <li>The controls mapping</li>
+          <li>The evidence-log schema</li>
+          <li>The session handoff templates</li>
+          <li>Local pre-commit enforcement</li>
+          <li>The vendored government standards, working offline</li>
+          <li>The local-model architecture decisions</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="stamp att">Not yet automated</span></h4>
+        <ul>
+          <li>The gate agents themselves — Crucible, Sentinel, Atlas, Scribe, Marshal and Bastion don't exist as
+            software yet</li>
+          <li>The script that mechanically catches lane violations</li>
+          <li>Server-side merge blocking</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="stamp">Next</span></h4>
+        <p>Building those roles as skills. Then a first real run: drive a live app through five to
+        ten stories end to end and confirm the gates genuinely fire — including catching a
+        deliberately planted flaw.</p>
+      </div>
+    </div>
+    <div class="note">
+      <span class="lbl">Read this before quoting the status above</span>
+      <p>"Not yet automated" does <strong>not</strong> mean "not happening." Those checklists run
+      today — by hand, with the same binary verdicts, recorded the same way. <strong>The gate is
+      real; the automation is what's pending.</strong> That distinction is the whole point of the
+      previous section.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <section class="sec">
+    <div class="sec-head"><span class="n">12</span><h2>Where it's headed</h2></div>
+    <p class="prose">Today the engine runs on a hosted commercial model. The target is a fully
+    offline machine at a forward-deployed unit — no internet at all — running two
+    <strong>different</strong> local models: one builds, a different one inspects, with a larger
+    model available on an external graphics card where the hardware allows it.</p>
+    <p class="prose">The reason for two different model families isn't redundancy. It's that the bias
+    firewall becomes structural: the reviewer isn't just a second session of the same system, it's a
+    genuinely different one.</p>
+  </section>
+
+  <p class="foot">
+    Written for the team, from the engine's own governing documents. Where this page and those
+    documents disagree, the documents win and this page is the bug. Nothing here contains real
+    infrastructure values, account identifiers, network names, or findings — placeholders only,
+    per the engine's own clean-room rules.
+  </p>
+
+</div>
+
+<script>
+(function(){
+  var btn = document.getElementById('theme');
+  if(!btn) return;
+  btn.addEventListener('click', function(){
+    var root = document.documentElement;
+    var cur = root.getAttribute('data-theme');
+    if(!cur){
+      cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>

@@ -98,7 +98,36 @@ buys nothing. (Gemma having no system role is a non-issue: ~5 lines in the per-m
 deterministic layer — every check a script owns is a check the small model never has to be
 trusted with.**
 
-**2. Then Week 2 — agents — built as decomposed checks, not one big review prompt.** The
+**2. HARDEN THE STRUCTURE BEFORE ANY EPICS — this is the priority.** Decision (2026-08-11):
+the engine's own structure gets nailed down and pressure-tested *before* a backlog is
+generated. This is not a detour — it is **Phase 0's own ordering** (stage 3 Gap-Analysis Gate,
+*then* stage 4 backlog). The engine follows the sequence it imposes on everything else.
+
+*Structural decisions that do not yet exist, in dependency order:*
+- **The skill-file format** — the keystone. Eleven personas, zero skill files; PRD §10 requires
+  a defined format (persona, capabilities, owned artifacts, activation pattern) and it must now
+  satisfy §5.1: declared budget, sliceable, self-contained, no runtime-specific syntax.
+  Everything in Week 2 blocks on this.
+- **The CLAUDE.md slicing map** — which §-slices each agent receives. Determines whether a
+  skill file restates a rule or references it. Blocks skill authoring.
+- **The check registry** — a gate run is currently prose. Mechanically it is a data file: check
+  ID · the single question · input scope · **who answers (script / model / human)** · control ID
+  · output schema. This is where the competence taxonomy lives.
+- **The harness contract** — §5.1 rules 7–9 assume something assembles context, extracts control
+  anchors, and constrains output. Nothing specifies that component's responsibilities.
+- **Declared-but-absent docs** — CLAUDE.md §10 category (c) already lists them honestly.
+
+*Pressure-test methods, cheapest first:*
+- **Paper dry-run.** Walk one imaginary story end-to-end — dispatch → build → handoff → gate
+  context → both gates → manual review → approval → gate log → next handoff — and record every
+  point where you cannot actually proceed. Highest yield per hour.
+- **Completeness script** (stdlib-only): verify every file path referenced in the docs exists.
+  Catches §10 category-(c) drift automatically.
+- **Coherence sweep**: docs that contradict each other (F-012 did one; the rename forced another).
+- **Falsifiability check**: for each gate, can it actually FAIL? §3.4 has this table for the
+  original gates; the newer ones (cohesion, portability) have not been through it.
+
+**3. Then Week 2 — agents — built as decomposed checks, not one big review prompt.** The
 design response to a fixed 24 GB substrate:
 - **One narrow question per model call**, fanned out — not "review this diff."
 - **Script everything decidable**; the model only sees genuine judgment calls.
@@ -113,15 +142,20 @@ design response to a fixed 24 GB substrate:
 
 ## Open items (carried, none blocking)
 
-- **There is still no epic/story backlog for building Secure Builder.** The build plan +
-  F-track commits stand in for one. The fix is to run the engine's own Phase 0 on itself and
-  produce an intent-traceable backlog, including Track B decomposed against PRD §10.1 tiers.
-  *(Worth doing: the engine forbids downstream exactly what its own build is doing.)*
+- **No epic/story backlog exists for building Secure Builder — deliberately deferred.** The
+  build plan + F-track commits stand in for one. **Do not generate epics until the structure is
+  hardened** (see "What's next" item 2) — operator decision 2026-08-11, and it matches Phase 0's
+  own ordering: gap-hardening (stage 3) precedes backlog generation (stage 4). When it is time,
+  the move is to run the engine's Phase 0 on itself and produce an intent-traceable backlog,
+  including Track B decomposed against PRD §10.1 tiers.
 - **CLAUDE.md is ~13,035 tokens — over budget for whole-file injection.** Slicing (rule 2) is
   known work, not a contingency. None done yet.
 - **Rule 10 not yet written**: static-prefix-first + prefix-tree call ordering. Agreed useful;
   add to CLAUDE.md §5.1 when Week 2 starts.
-- `html-presentations/engine-workflow.html` is **untracked** — decide whether it's committed.
+- `html-presentations/engine-workflow.html` is now **tracked** — plain-English engine walkthrough
+  for onboarding the team. Like the sprint board it is **explanatory, not evidence.** It carries
+  the roster, so re-sweep it on any future rename (it was untracked during the F-013 sweep and
+  had to be caught by hand).
 
 **Watch for:** mark honestly enforced-today vs Phase-2; independent-review ≠ SoD; forced-read
 is stronger than ambient context but not proof of *application*; a `✓` corpus citation means

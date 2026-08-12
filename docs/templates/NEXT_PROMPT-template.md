@@ -1,6 +1,6 @@
 # NEXT_PROMPT-template.md — Story-stream handoff template (S-prefix)
 
-> **Stream:** `_bmad-output/NEXT_PROMPT.md` — written by Bob after each **S-prefix
+> **Stream:** `_bmad-output/NEXT_PROMPT.md` — written by Marshal after each **S-prefix
 > (story)** commit. **Source of record:** `SECURE_BUILDER_PRD.md` §4.3.
 > **Operationalized by:** `CLAUDE.md` §3.3.
 >

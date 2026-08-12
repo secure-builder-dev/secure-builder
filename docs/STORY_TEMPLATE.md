@@ -1,13 +1,13 @@
 # STORY_TEMPLATE.md — Story file structure
 
-> **Lane:** Core governance. **Read by:** John (authoring), Tori (refinement), Amelia
-> (implementation), Murat / Sentinel (gates). **Source of record:**
+> **Lane:** Core governance. **Read by:** Charter (authoring), Scribe (refinement), Forge
+> (implementation), Crucible / Sentinel (gates). **Source of record:**
 > `SECURE_BUILDER_PRD.md` §4, §5.1, §8.1. **Operationalized by:** `CLAUDE.md` §3, §4.
 >
 > Copy everything below the line into `docs/stories/S-XXX-<slug>.md` (or
-> `F-XXX-<slug>.md` for engine/framework work) and fill it in. The **header** is John's
-> lane; **ACs and refinement** are Tori's; the **TDD Red-Phase Evidence** and code are
-> Amelia's; the **Gate Results** are written by the gates. A section left as a `TODO`
+> `F-XXX-<slug>.md` for engine/framework work) and fill it in. The **header** is Charter's
+> lane; **ACs and refinement** are Scribe's; the **TDD Red-Phase Evidence** and code are
+> Forge's; the **Gate Results** are written by the gates. A section left as a `TODO`
 > placeholder when a gate runs is itself a finding.
 
 ---
@@ -15,7 +15,7 @@
 ```markdown
 # S-XXX — <short story title>
 
-## Header  *(John — PM lane)*
+## Header  *(Charter — PM lane)*
 - **Story ID:** S-XXX
 - **Epic:** <epic name / id>
 - **Intent element(s):** <the matrix intent element(s) this story traces to, per the
@@ -32,7 +32,7 @@
 ## User Story
 As a <role>, I want <capability>, so that <outcome>.
 
-## Acceptance Criteria  *(Tori — each AC is named; each maps to ≥1 test by name)*
+## Acceptance Criteria  *(Scribe — each AC is named; each maps to ≥1 test by name)*
 - **AC-1:** <criterion>
 - **AC-2:** <criterion>
 - ...
@@ -58,21 +58,21 @@ As a <role>, I want <capability>, so that <outcome>.
 
 ---
 
-### TDD Red-Phase Evidence  *(Amelia — paste before the impl commit)*
+### TDD Red-Phase Evidence  *(Forge — paste before the impl commit)*
 Commit (tests only): `<hash>`  →  `[S-XXX/tests] failing tests for <description>`
 ```
 <first 20–30 lines of the failing-test run output>
 ```
 
-### Implementation note  *(Amelia)*
+### Implementation note  *(Forge)*
 Commit (impl only): `<hash>`  →  `[S-XXX/impl] implementation for <description>`
-<brief note on approach; any decision that belongs in an ADR goes to Winston, not here>
+<brief note on approach; any decision that belongs in an ADR goes to Keystone, not here>
 
 ---
 
 ## Gate Results  *(written by the gates — append, do not overwrite)*
 
-### Quality Gate — Murat
+### Quality Gate — Crucible
 ```
 QUALITY GATE VERDICT [PASS/FAIL]
 <full verdict per QUALITY_GATE.md §4>
@@ -93,7 +93,7 @@ open findings: [n]   blocking findings: [n]
 - Privilege escalation: <...>
 - **For security-sensitive stories:** per-endpoint "who can call it / what stops everyone
   else" stated in the reviewer's own words above.
-- **Verdict:** [CLEAR | FINDINGS → returned to Amelia]
+- **Verdict:** [CLEAR | FINDINGS → returned to Forge]
 
 ### Human Approval  *(hard stop — Guarantee #1)*
 - **APPROVED by:** <name>  —  <what was reviewed, in their words>

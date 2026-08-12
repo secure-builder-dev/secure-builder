@@ -1,6 +1,6 @@
 # DEPENDENCY_POLICY.md — Supply-chain & dependency policy
 
-> **Owner:** Sentinel (Security Gatekeeper). **Read by:** Tori, Amelia, Frank, Sentinel
+> **Owner:** Sentinel (Security Gatekeeper). **Read by:** Scribe, Forge, Bastion, Sentinel
 > (mandatory reads, `CLAUDE.md` §3.2). **Source of record:** `SECURE_BUILDER_PRD.md`
 > §5.6, §11.1 (model provenance), §12.3. **Controls evidenced:** SR-3, SR-4, SR-5, SR-11,
 > SI-2, CM-10 (grounded in NIST SP 800-161 Rev 1; GPL/AGPL basis 48 CFR § 227.7103).
@@ -10,7 +10,7 @@
 > built, this policy is applied by the operator running the scan and the matrix by hand;
 > the block/flag decisions and the verdict are recorded the same way.
 
-A new dependency is itself a story routed **Sentinel (DP review) → Amelia** (`CLAUDE.md`
+A new dependency is itself a story routed **Sentinel (DP review) → Forge** (`CLAUDE.md`
 §3.1). No dependency enters the codebase without passing this policy.
 
 ---
@@ -64,7 +64,7 @@ approval.
 - Every new dependency must appear on the approved list before use (Sentinel IL4 baseline
   check: *all new dependencies in approved list* → SA-12, CM-3, SR-3).
 - Adding a dependency is a deliberate, reviewed act — not a side effect of an
-  implementation story. If Amelia needs a package mid-story, it routes back through
+  implementation story. If Forge needs a package mid-story, it routes back through
   Sentinel DP review first.
 - Transitive dependencies are in scope: the scan evaluates the **resolved** graph, not
   just direct declarations.

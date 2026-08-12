@@ -12,8 +12,8 @@ judgment (CLAUDE.md §2.2, PRD §3.2). A clean run here is necessary, not suffic
 Stdlib only — no third-party deps (air-gap friendly).
 
 Usage:
-    check_lanes.py --agent Amelia --range <base>..<head>
-    check_lanes.py --agent Amelia --staged          # check staged changes
+    check_lanes.py --agent Forge --range <base>..<head>
+    check_lanes.py --agent Forge --staged          # check staged changes
     check_lanes.py --list-agents
 
 Exit codes: 0 = in-lane (or no touched files), 1 = out-of-lane finding(s), 2 = usage error.

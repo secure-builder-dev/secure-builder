@@ -188,7 +188,7 @@ const BOARD = [
     { id:"f010d", t:"Corpus converters saved for repeatable refresh", note:"scripts/vendor/ — OSCAL catalog, OSCAL baselines, XCCDF STIG, OWASP fetch.", tags:["F-010"], seed:true },
     { id:"f011a", t:"Retire Qwen → US/ally open-weight local models", note:"Standing provenance rule: binds on base-weight origin, not the uploader; includes embedding + reranker models. ADR-0003.", tags:["F-011","f56496a","ADR-0003"], seed:true },
     { id:"f011b", t:"COMPUTE_PROFILE init variable + MODEL-PROFILES.md", note:"laptop-resident (Devstral Small 2 / Gemma 4, hot-swapped) vs egpu-70b (gate scales to Llama 3.3 70B). Gate profile is a recorded choice, never a silent auto-scale.", tags:["F-011","d2ad293"], seed:true },
-    { id:"f012", t:"Cohesion pass — align the whole project to F-010/F-011", note:"Gate-log owner Bob→Sentinel + Epic Cohesion Ledger · CONTROLS-MAPPING de-RAG'd onto real corpus anchors · Atlas in both routing tables · story intent-element field · epic-close bar in DoD · PRD §11.1 model provenance · DEPENDENCY_POLICY §5 (a model is a dependency) · no-Python claims retired.", tags:["F-012","uncommitted"], tagClass:{"uncommitted":"warn"} },
+    { id:"f012", t:"Cohesion pass — align the whole project to F-010/F-011", note:"Gate-log owner Marshal→Sentinel + Epic Cohesion Ledger · CONTROLS-MAPPING de-RAG'd onto real corpus anchors · Atlas in both routing tables · story intent-element field · epic-close bar in DoD · PRD §11.1 model provenance · DEPENDENCY_POLICY §5 (a model is a dependency) · no-Python claims retired.", tags:["F-012","uncommitted"], tagClass:{"uncommitted":"warn"} },
   ]},
 
   { group:"Now — unblock the enforcement layer", when:"Week 1 remainder", items:[
@@ -201,24 +201,24 @@ const BOARD = [
   ]},
 
   { group:"Week 2 — Personas onto stock skills", when:"[SLOTTABLE]", items:[
-    { id:"p-john", t:"John — Product Manager", tags:["persona"] },
-    { id:"p-winston", t:"Winston — Architect", tags:["persona"] },
-    { id:"p-sally", t:"Sally — UX Designer", tags:["persona"] },
-    { id:"p-amelia", t:"Amelia — Developer (TDD)", tags:["persona"] },
-    { id:"p-paige", t:"Paige — Tech Writer", tags:["persona"] },
+    { id:"p-charter", t:"Charter — Product Manager", tags:["persona"] },
+    { id:"p-keystone", t:"Keystone — Architect", tags:["persona"] },
+    { id:"p-prism", t:"Prism — UX Designer", tags:["persona"] },
+    { id:"p-forge", t:"Forge — Developer (TDD)", tags:["persona"] },
+    { id:"p-codex", t:"Codex — Tech Writer", tags:["persona"] },
   ]},
 
   { group:"Week 2 — Custom skills (no stock equivalent)", when:"[HEADS-DOWN]", items:[
-    { id:"c-tori", t:"Tori — Story Analyst", note:"Also drives both Phase-0 gates: Gap-Analysis and Intent-Traceability.", tags:["custom"] },
-    { id:"c-bob", t:"Bob — Scrum Master", note:"Dispatch + the NEXT_PROMPT* handoffs. Does NOT author the gate log.", tags:["custom"] },
+    { id:"c-scribe", t:"Scribe — Story Analyst", note:"Also drives both Phase-0 gates: Gap-Analysis and Intent-Traceability.", tags:["custom"] },
+    { id:"c-marshal", t:"Marshal — Scrum Master", note:"Dispatch + the NEXT_PROMPT* handoffs. Does NOT author the gate log.", tags:["custom"] },
     { id:"c-atlas", t:"Atlas — Contextualization Lead (Phase 0)", note:"PRD §15. Owns docs/context/** only; triggers lane owners to write the matrix into their own artifacts.", tags:["custom","new in F-010"], tagClass:{"new in F-010":"gate"} },
-    { id:"c-murat", t:"Murat — Test Architect (skill cluster)", tags:["custom"] },
-    { id:"c-frank", t:"Frank — DevSecOps", tags:["custom"] },
+    { id:"c-crucible", t:"Crucible — Test Architect (skill cluster)", tags:["custom"] },
+    { id:"c-bastion", t:"Bastion — DevSecOps", tags:["custom"] },
     { id:"c-sentinel", t:"Sentinel — Security Gatekeeper", note:"§4.3 checklist + control lookup + dependency policy + adversarial testing.", tags:["custom"] },
   ]},
 
   { group:"Week 2 — Gate mechanics the skills must encode", when:"[HEADS-DOWN]", items:[
-    { id:"g-cw2", t:"Murat + Sentinel enter cold from NEXT_PROMPT_GATES.md", note:"Judge the diff only. Never the builder's reasoning.", tags:["F-008"] },
+    { id:"g-cw2", t:"Crucible + Sentinel enter cold from NEXT_PROMPT_GATES.md", note:"Judge the diff only. Never the builder's reasoning.", tags:["F-008"] },
     { id:"g-attest", t:"Sentinel forced skill-load-and-attest before any verdict", note:"CLAUDE.md §3.2. A run that skipped it is invalid and re-runs. Fill the <path> placeholders in the gates template.", tags:["F-008"] },
     { id:"g-reads", t:"Add Sentinel skill paths to manifest.json mandatory_reads", note:"Once the skill files exist.", tags:["F-008"] },
     { id:"g-corpus", t:"Control lookup resolves into docs/security/corpus/", note:"Family file → ## <ID> anchor. Never from model memory. corpus/MANIFEST.md says what is actually openable.", tags:["F-010"] },
@@ -229,7 +229,7 @@ const BOARD = [
 
   { group:"Week 3 — Wire + first real run", when:"App #1", items:[
     { id:"w3-phase0", t:"Run Phase 0 on App #1 — before any story", note:"Hardened matrix + intent-traceable backlog + cohesion criteria, all human-ratified. Agent self-ratification is a protocol violation.", tags:["gate","prerequisite"], tagClass:{"gate":"gate","prerequisite":"block"} },
-    { id:"w3-run", t:"Drive 5–10 real stories through the full lifecycle", note:"Dispatch → TDD → Murat → Sentinel → manual review → approval → promotion → handoff.", tags:[] },
+    { id:"w3-run", t:"Drive 5–10 real stories through the full lifecycle", note:"Dispatch → TDD → Crucible → Sentinel → manual review → approval → promotion → handoff.", tags:[] },
     { id:"w3-fire", t:"Confirm the gates actually fire", note:"TDD two-commit enforced · coverage on the diff · Sentinel catches a planted issue · gate log fills · handoffs carry a cold session.", tags:[] },
     { id:"w3-epic", t:"Close one epic through the cohesion gate", note:"COHERENT/DRIFT recorded in the gate log's Epic Cohesion Ledger.", tags:["F-010"] },
     { id:"w3-friction", t:"Capture friction notes → PRD §10 Track-B rebuild inventory", tags:["[SLOTTABLE]"] },

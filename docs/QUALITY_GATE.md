@@ -1,14 +1,14 @@
-# QUALITY_GATE.md — Murat's Quality Gate
+# QUALITY_GATE.md — Crucible's Quality Gate
 
-> **Owner:** Murat (Test Architect). **Source of record:** `SECURE_BUILDER_PRD.md`
+> **Owner:** Crucible (Test Architect). **Source of record:** `SECURE_BUILDER_PRD.md`
 > §5.2 / §5.3 / §4.4. **Operationalized by:** `CLAUDE.md` §4.2.
 >
-> **Today's reality (Phase 1):** Murat is not yet built as an automated agent (PRD §3.1,
+> **Today's reality (Phase 1):** Crucible is not yet built as an automated agent (PRD §3.1,
 > Phase 2). Until then this checklist is run by the operator and the AI assistant **by
 > hand**, and the verdict is recorded the same way. The gate is real now; its automation
 > is Phase 2.
 
-The Quality Gate runs **after Amelia (implementation), before Sentinel (security).** It
+The Quality Gate runs **after Forge (implementation), before Sentinel (security).** It
 is **binary — PASS or FAIL. No partial credit, no "PASS with notes."** A single failing
 criterion is a FAIL and returns the story to the implementer for remediation and a
 re-run.
@@ -83,7 +83,7 @@ is flaky and blocks PASS until stabilized.
 
 ## 2. Android Track additions (`APP_TRACK=android`)
 
-When the story is on the Android track, these apply **in addition** to §1 before Murat
+When the story is on the Android track, these apply **in addition** to §1 before Crucible
 issues PASS:
 
 - **ktlint** — zero violations.
@@ -115,7 +115,7 @@ exhaustive.
 
 ## 4. Verdict format
 
-Murat issues exactly this shape:
+Crucible issues exactly this shape:
 
 ```
 QUALITY GATE VERDICT [PASS/FAIL]
@@ -129,5 +129,5 @@ QUALITY GATE VERDICT [PASS/FAIL]
 ```
 
 **FAIL** → return to implementer with the failing criteria named; remediate; re-run the
-full gate. **PASS** → proceed to Sentinel (Security Gate). Nothing about a Murat PASS
+full gate. **PASS** → proceed to Sentinel (Security Gate). Nothing about a Crucible PASS
 substitutes for the Security Gate, the Manual Review, or human approval.

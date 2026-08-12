@@ -40,7 +40,7 @@ so it should be *faster* than the original 3-week build.
 
 - [ ] **[HEADS-DOWN] `CLAUDE.md`** — engine constitution: agent rules, gate sequence
   (§4), routing (§4.1), commit protocol, AI security rules (§11). This is the spine.
-- [ ] **[HEADS-DOWN] Gate definition docs:** `QUALITY_GATE.md` (Murat §5.2),
+- [ ] **[HEADS-DOWN] Gate definition docs:** `QUALITY_GATE.md` (Crucible §5.2),
   `DEFINITION_OF_DONE.md`, `STORY_TEMPLATE.md`, `DEPENDENCY_POLICY.md`.
 - [ ] **[HEADS-DOWN] `CONTROLS-MAPPING.md` starter** — static control table for the
   IL4 baseline checks (§5.4). *(Done F-003; re-pointed at the corpus in F-012.)*
@@ -59,16 +59,22 @@ so it should be *faster* than the original 3-week build.
 
 ## Week 2 — Agents  *(rebuild the manifest as skills)*
 
-- [ ] **[SLOTTABLE] Customize built-in personas** onto stock skills: John (pm),
-  Winston (architect), Sally (ux-designer), Amelia (dev), Paige (tech-writer).
-- [ ] **[HEADS-DOWN] Build custom skills from the §7 scaffold:** Tori (story analyst),
-  Bob (scrum master), **Atlas** (contextualization lead — the Phase-0 workflow, PRD §15,
-  ADR-0001), Murat (test architect — one persona, cluster of test skills), Frank
+- [ ] **[SLOTTABLE] Customize built-in personas** onto stock skills: Charter (pm),
+  Keystone (architect), Prism (ux-designer), Forge (dev), Codex (tech-writer).
+- [ ] **[HEADS-DOWN] Build custom skills from the §7 scaffold:** Scribe (story analyst),
+  Marshal (scrum master), **Atlas** (contextualization lead — the Phase-0 workflow, PRD §15,
+  ADR-0001), Crucible (test architect — one persona, cluster of test skills), Bastion
   (DevSecOps), **Sentinel** (security gatekeeper — the §5.4 checklist + control lookup
   against `CONTROLS-MAPPING.md`, resolving into `docs/security/corpus/`).
-- [ ] **[HEADS-DOWN] Wire the two-context flow into the gate skills** (F-008): Murat and
+- [ ] **[HEADS-DOWN] Wire the two-context flow into the gate skills** (F-008): Crucible and
   Sentinel enter cold from `NEXT_PROMPT_GATES.md` and judge the diff only; Sentinel's
   forced skill-load-and-attest (§3.2); the 3-round self-healing cap.
+- [ ] **[HEADS-DOWN] Author every skill file to the `CLAUDE.md` §5.1 portability rules** (PRD §10.2,
+  ADR-0005) — declared token budget, sliceable, self-contained slices, data over prose,
+  imperative gate checklists, no runtime-specific chat/tool-call syntax. These files are
+  *prompts* that must eventually run on Devstral Small 2 / Gemma 4 / Llama 3.3, not just on
+  the frontier model they're drafted against. **Cheaper to write this way than to retrofit** —
+  which is the whole reason the rules landed before this week's work.
 - [ ] **[SLOTTABLE] Smoke-test each agent** in isolation on a throwaway story before
   wiring them together.
 
@@ -79,7 +85,7 @@ so it should be *faster* than the original 3-week build.
   exist and a human has ratified them.** Atlas orchestrates; the matrix is drafted, not
   authoritative, until ratified.
 - [ ] **[HEADS-DOWN] Drive App #1 through the full §4 lifecycle** for 5–10 real
-  stories: dispatch → implement → Murat → Sentinel → manual review → approval → commit
+  stories: dispatch → implement → Crucible → Sentinel → manual review → approval → commit
   → handoff. Fix orchestration friction as it surfaces.
 - [ ] **[HEADS-DOWN] Confirm the gates actually fire:** TDD two-commit enforced,
   coverage measured on the diff, Sentinel catches a real planted issue, gate-log fills,

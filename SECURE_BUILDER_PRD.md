@@ -124,19 +124,19 @@ that lane (enforced at gate time — OWASP LLM08 compliance).
 
 | Agent | Persona | Lane (single responsibility) | Owned Artifacts |
 |---|---|---|---|
-| John | Product Manager | PRD, epics, high-level story scoping | `docs/PRD.md`, story headers |
-| Tori | Story Analyst | Story writing, refinement, gap analysis, story-vs-contract alignment | Story files |
-| Bob | Scrum Master | Sprint dispatch, gate enforcement, sprint artifacts | `_bmad-output/planning-artifacts/`, `_bmad-output/NEXT_PROMPT.md` |
+| Charter | Product Manager | PRD, epics, high-level story scoping | `docs/PRD.md`, story headers |
+| Scribe | Story Analyst | Story writing, refinement, gap analysis, story-vs-contract alignment | Story files |
+| Marshal | Scrum Master | Sprint dispatch, gate enforcement, sprint artifacts | `_bmad-output/planning-artifacts/`, `_bmad-output/NEXT_PROMPT.md` |
 | Atlas | Contextualization Lead | **Phase-0 inception (§15):** guide authoring + gap-hardening of the document matrix, backlog generation + intent-traceability, cohesion-gate criteria; orchestrate lane owners for reverse-engineered current-state — writes no other lane's artifact | `docs/context/**` (matrix index, current-state pre-fill, traceability map, cohesion criteria) |
-| Winston | Architect | ADR decisions, DB schema, API contract design | `docs/architecture/ADR-LOG.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md` |
-| Sally | UX Designer | UX/UI design — interaction patterns, component specs, accessibility, frontend design specs (web track) | `docs/UX-SPEC.md`, design-spec files |
-| Amelia | Developer | TDD implementation — tests first, always | All `src/` implementation files |
-| Murat | Test Architect | Test strategy, ATDD, coverage gates, quality gates | `docs/QUALITY_GATE.md` |
-| Frank | DevSecOps | Pipeline, Helm, Terraform, image compliance, STIG | `docs/architecture/DEVSECOPS_SPEC.md`, `helm/`, Terraform |
+| Keystone | Architect | ADR decisions, DB schema, API contract design | `docs/architecture/ADR-LOG.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md` |
+| Prism | UX Designer | UX/UI design — interaction patterns, component specs, accessibility, frontend design specs (web track) | `docs/UX-SPEC.md`, design-spec files |
+| Forge | Developer | TDD implementation — tests first, always | All `src/` implementation files |
+| Crucible | Test Architect | Test strategy, ATDD, coverage gates, quality gates | `docs/QUALITY_GATE.md` |
+| Bastion | DevSecOps | Pipeline, Helm, Terraform, image compliance, STIG | `docs/architecture/DEVSECOPS_SPEC.md`, `helm/`, Terraform |
 | Sentinel | Security Gatekeeper | Security, architecture, dependency gate — binary verdicts only | `docs/architecture/DEPENDENCY_POLICY.md`, `_bmad-output/gate-log.md` |
-| Paige | Tech Writer | User- and developer-facing documentation; doc curation and indexing | `README.md`, user/developer guides under `docs/` (excluding governance, architecture, and security docs owned by other lanes), doc index |
+| Codex | Tech Writer | User- and developer-facing documentation; doc curation and indexing | `README.md`, user/developer guides under `docs/` (excluding governance, architecture, and security docs owned by other lanes), doc index |
 
-> **Murat** is a single Test Architect persona whose lane is delivered through a
+> **Crucible** is a single Test Architect persona whose lane is delivered through a
 > *cluster* of test-architecture skills (test design, ATDD mapping, coverage analysis,
 > quality-gate evaluation, flaky-test detection, and related) rather than one
 > monolithic skill — one agent, many skills.
@@ -147,10 +147,10 @@ Agents are activated by invoking a per-agent skill; the persona persists through
 session until dismissed, and nested skill calls inherit the active persona.
 
 On the current substrate, the planning, design, implementation, and documentation
-personas (John, Winston, Sally, Amelia, Paige) are layered onto the base framework's
+personas (Charter, Keystone, Prism, Forge, Codex) are layered onto the base framework's
 stock agent skills (`bmad-agent-pm`, `-architect`, `-ux-designer`, `-dev`,
-`-tech-writer`). The orchestration and gatekeeper personas — Tori (story analyst),
-Bob (scrum master), Atlas (contextualization lead), Murat (test architect), Frank
+`-tech-writer`). The orchestration and gatekeeper personas — Scribe (story analyst),
+Marshal (scrum master), Atlas (contextualization lead), Crucible (test architect), Bastion
 (DevSecOps), and Sentinel (security gatekeeper) — have no stock equivalent and are
 **custom skills built to the §7 scaffold**; building them is part of Phase 2 (see §14). Invocation names are an
 implementation detail of the substrate, not a guarantee — the §10 orchestration spec
@@ -191,9 +191,9 @@ the current substrate both run on the same model in two separate sessions.
 
 **Context Window 1 — Build** (entered cold from `NEXT_PROMPT.md`):
 
-1. **Dispatch.** Bob routes the story to the correct first agent per the routing
+1. **Dispatch.** Marshal routes the story to the correct first agent per the routing
    table (§4.1).
-2. **Implementation.** The assigned agent implements. For Amelia, the TDD two-commit
+2. **Implementation.** The assigned agent implements. For Forge, the TDD two-commit
    sequence is mandatory (test-only failing commit precedes implementation commit, §5.1).
    These are **local working commits** — audit evidence, not approval and not promotion
    (Guarantee #2, §8.1).
@@ -203,7 +203,7 @@ the current substrate both run on the same model in two separate sessions.
 
 **Context Window 2 — Gates** (entered cold from `NEXT_PROMPT_GATES.md`, blind to CW1's reasoning):
 
-4. **Quality gate (Murat).** FAIL → remediation note back to the builder, re-run.
+4. **Quality gate (Crucible).** FAIL → remediation note back to the builder, re-run.
    PASS → proceed.
 5. **Security gate (Sentinel).** Sentinel first loads and attests its full skill set —
    including adversarial testing (§4.2) — before judging. FAIL → remediation note back to
@@ -212,7 +212,7 @@ the current substrate both run on the same model in two separate sessions.
 6. **Manual security review (human + the AI assistant) — hard stop.** Findings → back to
    the builder with remediation notes, then full re-gate. CLEAR → proceed (§5.5, §6).
 7. **Human approval (hard stop).** Explicit "approved" — the only thing that unlocks
-   promotion. On approval: Sentinel appends the gate-log DONE row (§8.1), then Bob writes
+   promotion. On approval: Sentinel appends the gate-log DONE row (§8.1), then Marshal writes
    the next story's handoff (§4.3).
 
 **Nothing is promoted without: Quality PASS + Security PASS + Manual CLEAR + explicit
@@ -223,41 +223,41 @@ protocol violation regardless of how correct the underlying work is.
 
 | Story Type | First Agent | Then |
 |---|---|---|
-| **Phase-0 project inception (§15) — before any story** | **Atlas** | John/Winston/Sentinel (matrix) → Tori (gap + traceability gates) → human ratification |
-| New story writing | John | Tori (refinement) |
-| Story refinement / gap analysis | Tori | Bob (dispatch) |
-| Schema change / new ADR | Winston | Amelia |
-| UI/frontend feature with design surface | Sally | Amelia → Murat → Sentinel |
-| Feature / API endpoint | Amelia | Murat → Sentinel |
-| DevSecOps / pipeline / Helm | Frank | Sentinel |
-| New dependency | Sentinel (DP review) | Amelia |
-| All stories, post-implementation | Murat | Sentinel → manual review |
+| **Phase-0 project inception (§15) — before any story** | **Atlas** | Charter/Keystone/Sentinel (matrix) → Scribe (gap + traceability gates) → human ratification |
+| New story writing | Charter | Scribe (refinement) |
+| Story refinement / gap analysis | Scribe | Marshal (dispatch) |
+| Schema change / new ADR | Keystone | Forge |
+| UI/frontend feature with design surface | Prism | Forge → Crucible → Sentinel |
+| Feature / API endpoint | Forge | Crucible → Sentinel |
+| DevSecOps / pipeline / Helm | Bastion | Sentinel |
+| New dependency | Sentinel (DP review) | Forge |
+| All stories, post-implementation | Crucible | Sentinel → manual review |
 | **Epic complete (cohesion gate, §4.5)** | **Atlas** | `COHERENT` → epic closes · `DRIFT` → correct-course |
 
 ### 4.2 Mandatory Read Protocol
 
 Every agent receives a mandatory read list before starting work. Skipping a
-mandatory read is a gate failure at Murat or Sentinel.
+mandatory read is a gate failure at Crucible or Sentinel.
 
 | Agent | Mandatory Reads |
 |---|---|
-| John | `docs/STORY_TEMPLATE.md`, `docs/PRD.md` |
-| Tori | Story file(s), `STORY_TEMPLATE.md`, `PRD.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
+| Charter | `docs/STORY_TEMPLATE.md`, `docs/PRD.md` |
+| Scribe | Story file(s), `STORY_TEMPLATE.md`, `PRD.md`, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
 | Atlas | `PRD.md`, `STORY_TEMPLATE.md`, the target repo/source (brownfield current-state), the existing governing docs in the matrix, `docs/context/**` |
-| Amelia | Story file, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
-| Murat | Story file, `QUALITY_GATE.md` |
+| Forge | Story file, `API_CONTRACT.md`, `DB_SCHEMA_v2.md`, `DEPENDENCY_POLICY.md` |
+| Crucible | Story file, `QUALITY_GATE.md` |
 | Sentinel | `CLAUDE.md` (always in context), `DEPENDENCY_POLICY.md`, **all Sentinel gate skill files — incl. adversarial testing — loaded and attested (see below)** |
-| Frank | `DEVSECOPS_SPEC.md`, `DEPENDENCY_POLICY.md`, provider-specific STIG checklist |
-| Winston | `ADR-LOG.md`, `DB_SCHEMA_v2.md`, `API_CONTRACT.md` |
-| Sally | Story file, `PRD.md`, `API_CONTRACT.md` |
-| Paige | `PRD.md`, the source/story files being documented, existing doc index |
+| Bastion | `DEVSECOPS_SPEC.md`, `DEPENDENCY_POLICY.md`, provider-specific STIG checklist |
+| Keystone | `ADR-LOG.md`, `DB_SCHEMA_v2.md`, `API_CONTRACT.md` |
+| Prism | Story file, `PRD.md`, `API_CONTRACT.md` |
+| Codex | `PRD.md`, the source/story files being documented, existing doc index |
 
 **Verification status — human-attested, not machine-verified (stated honestly).**
 There is no reliable way to prove an agent *read and used* a file versus the file
 merely being present in its context window. An agent can also assert it read
 something it did not meaningfully process. Therefore the mandatory-read gate is
 **human-attested**: the operator confirms the required artifacts were supplied to the
-agent before work began, and gate reviewers (Murat/Sentinel) treat an obvious
+agent before work began, and gate reviewers (Crucible/Sentinel) treat an obvious
 contradiction with a mandatory source (e.g., output that conflicts with
 `API_CONTRACT.md`) as evidence the read did not occur. This is a *negative* check —
 it can catch a missed read by its consequences, but it cannot positively verify one.
@@ -278,7 +278,7 @@ instructions were *applied* (§13).
 The next session has no memory of the current one, so every handoff must be fully
 self-contained. Three handoff artifacts exist, on two axes:
 
-**Inter-story (a completed story → the next story's session), written by Bob:**
+**Inter-story (a completed story → the next story's session), written by Marshal:**
 
 - `_bmad-output/NEXT_PROMPT.md` — written after each **S-prefix (story)** commit.
 - `_bmad-output/NEXT_PROMPT_FRAMEWORK.md` — written after each **F-prefix
@@ -350,10 +350,10 @@ that gap.
 
 ## 5. Testing Strategy
 
-### 5.1 TDD — enforced, not preferred (Amelia's lane)
+### 5.1 TDD — enforced, not preferred (Forge's lane)
 
-TDD is enforced by a mandatory two-commit sequence. Amelia's verbal assertion of
-compliance is not accepted; Murat requires verifiable git artifacts.
+TDD is enforced by a mandatory two-commit sequence. Forge's verbal assertion of
+compliance is not accepted; Crucible requires verifiable git artifacts.
 
 - **Red phase (commit 1):** write all test files for the story's acceptance
   criteria; run tests — they MUST fail (passing-before-implementation tests are
@@ -362,12 +362,12 @@ compliance is not accepted; Murat requires verifiable git artifacts.
   tests for <description>`).
 - **Green phase (commit 2):** write implementation; all tests MUST pass; commit
   implementation files only (`[S-XXX/impl] implementation for <description>`).
-- If no test-only commit predates the implementation commit in `git log`, Murat
+- If no test-only commit predates the implementation commit in `git log`, Crucible
   returns TDD FAIL regardless of any agent assertion.
 
-### 5.2 Quality Gate — Murat's criteria (`docs/QUALITY_GATE.md`)
+### 5.2 Quality Gate — Crucible's criteria (`docs/QUALITY_GATE.md`)
 
-Runs after Amelia, before Sentinel. Binary — PASS or FAIL. No partial credit.
+Runs after Forge, before Sentinel. Binary — PASS or FAIL. No partial credit.
 
 - **TDD compliance:** two-commit sequence in `git log`; red-phase evidence in story
   file; no skipped tests; no DB mocks.
@@ -390,20 +390,20 @@ Runs after Amelia, before Sentinel. Binary — PASS or FAIL. No partial credit.
   with no skipped tests; no debug statements in production paths.
 - **Flaky-test check:** non-deterministic tests pass 3 consecutive runs.
 
-**Murat Verdict Format:** QUALITY GATE VERDICT [PASS/FAIL]; TDD compliance; per-layer
+**Crucible Verdict Format:** QUALITY GATE VERDICT [PASS/FAIL]; TDD compliance; per-layer
 coverage with PASS/FAIL; negative tests present; ATDD [x/x ACs covered]; CI stage;
 flaky check [PASS/FAIL/N/A]; open findings count; blocking findings count.
 
 ### 5.3 Android Track Quality Gate
 
-When `APP_TRACK=android`, additional checks before Murat issues PASS: ktlint zero
+When `APP_TRACK=android`, additional checks before Crucible issues PASS: ktlint zero
 violations; Detekt zero `error`-severity issues; JUnit 5 coverage meets the same
 thresholds as web; TDD two-commit sequence with the same red-phase JUnit failure
 requirement (both commit hashes required in the gate record).
 
 ### 5.4 Security Gate — Sentinel's checklist (`CLAUDE.md` / `CONTROLS-MAPPING.md`)
 
-Runs after Murat. Every gate check traces to a NIST SP 800-53 Rev 5 control ID in
+Runs after Crucible. Every gate check traces to a NIST SP 800-53 Rev 5 control ID in
 `CONTROLS-MAPPING.md`. Binary — PASS or FAIL. No partial credit, no deferred
 findings. Checks activate conditionally on the initialization variables (§9).
 
@@ -454,7 +454,7 @@ After Sentinel PASS, the human and the AI assistant conduct a manual review targ
 logic-layer vulnerabilities automated checklists cannot detect (authorization
 logic, business-rule bypass, multi-step attack chains, IDOR, privilege
 escalation). If no logic flaws are found, the review is noted CLEAR in the story
-record. Any findings return the story to Amelia with remediation notes, then back
+record. Any findings return the story to Forge with remediation notes, then back
 to Sentinel for a full re-gate. (Full contract in §6.)
 
 ### 5.6 Dependency Vulnerability Management
@@ -593,9 +593,9 @@ Append-only record of every story that passed the full gate sequence. RMF eviden
 artifact feeding the SSP under CA-2 (Control Assessments) and SA-11 (Developer
 Testing).
 
-- **Quick Ledger:** one row per story — Date | Story | Murat | Sentinel | Manual
+- **Quick Ledger:** one row per story — Date | Story | Crucible | Sentinel | Manual
   Security | Human | Commit.
-- **Detailed Ledger:** full verdict tuple (Murat/Sentinel/Manual/Human), blocking
+- **Detailed Ledger:** full verdict tuple (Crucible/Sentinel/Manual/Human), blocking
   vs. non-blocking finding counts, pointer to the story's `## Gate Results`
   section, a concrete risk note (what the finding was and why it matters), and an
   explicit follow-up owner when anything is left open.
@@ -609,7 +609,7 @@ Testing).
 - A story does not appear in the log until it has passed all four gates. Stories in
   progress have no entries.
 
-**Verdict vocabulary (Quick Ledger):** Murat PASS = coverage met, TDD two-commit
+**Verdict vocabulary (Quick Ledger):** Crucible PASS = coverage met, TDD two-commit
 verified, no skipped tests. Sentinel PASS (0 findings) = all gate checks clear.
 Sentinel PASS (1 non-blocking) = passed with documented carry-forward (see Issue
 Lifecycle Ledger). Sentinel PASS (1 remediated) = blocking finding caught and fixed
@@ -619,7 +619,7 @@ explicit "approved" in conversation — the only thing that unlocks promotion.
 
 **Update protocol:** Sentinel owns the gate log (§3 manifest) and authors every row — its
 verdict and finding rows live during the gate context, the terminal rows on approval
-(earlier drafts assigned this to Bob, which contradicted the manifest; corrected here). It
+(earlier drafts assigned this to Marshal, which contradicted the manifest; corrected here). It
 appends one Quick Ledger row, one Detailed Ledger row, a `DETECTED` row for any new
 finding, and the matching terminal row when a prior finding closes — `REMEDIATED` if fixed, `ACCEPTED` if carried forward
 as documented risk (never edit the `DETECTED` row). Append-only; do not rewrite,
@@ -663,9 +663,9 @@ under `corpus/` (NIST / DISA / OWASP / DoD-AI, read on demand — §15.4; ledger
 
 **Sprint output artifacts** (all in `_bmad-output/`): `gate-log.md` (Sentinel — verdict
 and finding rows live in the gate context, terminal DONE row on approval); `NEXT_PROMPT.md`
-(Bob, after each S-prefix commit); `NEXT_PROMPT_FRAMEWORK.md` (Bob, after each F-prefix
+(Marshal, after each S-prefix commit); `NEXT_PROMPT_FRAMEWORK.md` (Marshal, after each F-prefix
 commit); `NEXT_PROMPT_GATES.md` (build context — intra-story build→gate handoff);
-`planning-artifacts/` (Bob, John — epics, sprint plan, retrospectives).
+`planning-artifacts/` (Marshal, Charter — epics, sprint plan, retrospectives).
 
 ---
 
@@ -717,6 +717,12 @@ The orchestration layer must:
   the prior one can continue.
 - **Enforce mandatory-read lists per agent** before work begins (see §4.2 for the
   honesty caveat on verification).
+- **Assemble each agent's context deterministically.** Select the instruction slices,
+  policy data, and control text a role needs, inject them explicitly (no reliance on a
+  runtime that auto-loads a constitution), and fail loudly when the assembled context
+  exceeds the profile's measured budget rather than silently truncating (§10.2).
+- **Constrain structured output** where a verdict or record must be machine-parsed —
+  grammar- or schema-level enforcement at generation time, not post-hoc parsing (§10.2).
 - **Provide core workflow skills:** sprint planning, story creation, retrospectives,
   brainstorming, code review, gap analysis, PRD creation/validation,
   implementation-readiness checks.
@@ -765,6 +771,91 @@ IDE/CLI/terminal integration. Adopt or stub as needed.
 > **Sequencing reminder (Track B is gated on Track A).** None of this is built until
 > the design is provably correct on the current substrate (§14). Debugging a novel
 > design and a novel runtime at the same time is out of scope by deliberate choice.
+
+### 10.2 Instruction-artifact portability (the `.md` files must run on the target models)
+
+> The engine's instruction artifacts — `CLAUDE.md`, the agent skill files, the manifest, the
+> gate docs, the handoff templates — are **not** neutral documents. They are *prompts*. Every
+> one of them was authored against a frontier model with a very large context window, strong
+> adherence to long cross-referenced prose, and a runtime that **auto-loads** `CLAUDE.md` into
+> every session. **None of those three properties hold on the Track-C substrate** (§14): the
+> build role runs a ~24B, the gate role a ~31B (or a 70B on `egpu-70b`), served by
+> llama.cpp/Ollama, which has no auto-load mechanism at all. Artifacts that work today can
+> fail silently there — not by erroring, but by the model quietly not carrying the whole
+> instruction set. This section is the authoring contract that prevents that.
+
+**The measured problem (as of this writing, engine artifacts only):**
+
+| Artifact | ~Tokens | Note |
+|---|---|---|
+| `CLAUDE.md` | **~11,800** | declared "always in context" for the security gate (§4.2) |
+| `CONTROLS-MAPPING.md` | ~2,850 | security-gate mandatory read |
+| `GATE_LOG_SCHEMA.md` | ~1,600 | |
+| `DEFINITION_OF_DONE.md` | ~1,480 | |
+| `DEPENDENCY_POLICY.md` | ~1,460 | security-gate mandatory read |
+| `QUALITY_GATE.md` | ~1,330 | quality-gate mandatory read |
+| `agents/manifest.json` | ~1,240 | |
+| `NEXT_PROMPT_GATES-template.md` | ~1,160 | gate-context entry prompt |
+| `STORY_TEMPLATE.md` | ~1,150 | |
+| **Largest single 800-53 corpus family file (`SA.md`)** | **~39,200** | **read on demand by the security gate** |
+
+Two numbers carry the whole argument. A gate context assembled the way §4.2 currently
+describes it — constitution + policy + mapping + its own skill files + the entry prompt —
+spends **roughly 20k tokens before it has seen one line of the diff it exists to judge.** And
+a single control-family file is **~39k tokens on its own**: if the gate "opens the family file
+and finds the `## <ID>` anchor," it has exceeded the practical working context of the
+`laptop-resident` gate model **on one citation**. On a frontier model with a million-token
+window both facts are invisible. On the target substrate the first is expensive and the second
+is fatal.
+
+**Why nominal context length does not settle this.** The target models advertise long
+contexts, but on a fixed 24 GB card the KV cache competes with the weights for the *same*
+VRAM: a 24B at Q4 occupies ~14–17 GB (§ hardware notes in `MODEL-PROFILES.md`), leaving only
+single-digit GB for cache and overhead. **Usable working context is therefore a hardware
+property, not a model spec** — it must be *measured per `COMPUTE_PROFILE` and recorded*, never
+assumed from a model card. Long-context degradation compounds it: retrieval accuracy in the
+middle of a long window falls off well before the nominal limit, and it falls off hardest on
+smaller models — exactly the ones doing this job.
+
+**Authoring rules (binding on every instruction artifact the engine ships):**
+
+1. **Declared budget.** Each artifact declares a token budget and stays under it. The
+   *assembled* context for each agent role has a budget too, recorded per `COMPUTE_PROFILE`.
+2. **Sliceable, not monolithic.** Artifacts are sectioned so a harness can load *the slices an
+   agent needs* rather than the whole file. `CLAUDE.md` is the priority target: no role needs
+   all eleven of its sections.
+3. **Self-contained slices.** A slice must be actionable without chasing a cross-reference. It
+   may *cite* another section for provenance, but any rule it depends on is **restated in one
+   line**. Chained references ("per §3.2, subject to the §9 caveat") are a frontier-model
+   luxury and must not be load-bearing.
+4. **Data over prose.** Anything a machine can hold as data lives as data — `agents/manifest.json`
+   is the pattern. Lanes, globs, read lists, severity matrices, and thresholds are parsed and
+   injected, never inferred from narrative.
+5. **Imperative checklists for gates.** Gate criteria are numbered, binary, individually
+   checkable items. Narrative rationale belongs in the PRD, not in the prompt the gate runs on.
+6. **No runtime-specific syntax in skill files.** Chat templates and tool-call encodings differ
+   across Mistral / Gemma / Llama. Skill files stay plain structured Markdown; a thin per-model
+   adapter owns template and tool-call formatting.
+7. **Deterministic corpus extraction.** The harness slices the `## <ID>` anchor out of the
+   family file and injects **only that control's text**. The model never opens a family file.
+   This is a hard requirement, not an optimization — see the `SA.md` figure above. It does not
+   alter ADR-0002 (the corpus stays a read-on-demand git folder keyed by control ID, not a
+   vector store); it makes the *retrieval step* deterministic code rather than model behavior.
+8. **Constrained verdict output.** The §5.2 / §5.4 verdict formats are enforced by constrained
+   decoding (a grammar or JSON schema at the sampler), not by trusting a small model to hold a
+   format across a long generation. An unparseable verdict is an invalid gate run, not a
+   judgment call.
+9. **Per-profile conformance test.** Before a `COMPUTE_PROFILE` is declared usable, the same
+   story runs through it end-to-end and the assembled context is confirmed to fit the measured
+   budget with the whole instruction set demonstrably present.
+
+**Honest limits (§13).** These rules make the artifacts *portable*; they do **not** make the
+models *equivalent*. A local model can receive the entire instruction set, emit a
+schema-valid verdict, and still reason worse than the model the checks were written against —
+format portability is not judgment parity. Rule 9 confirms the instructions arrived; it does
+**not** establish that the gate is as rigorous. Closing that gap is the measurement work Track
+C opens with (§14), and it is the reason offline builds need *more* human rigor at the §6
+manual gate, not the same (§9).
 
 ---
 
@@ -937,6 +1028,41 @@ real boundary names in any copy of this document kept on non-authorized hardware
 
 ## 14. Roadmap / Phases
 
+### End state (what the three tracks are converging on)
+
+The engine is finished when it is **100% owned, 100% local, and 100% runnable on a single
+laptop.** Stated as acceptance criteria rather than aspiration:
+
+- **100% owned.** No third-party framework sits in the **runtime path**. The guarantees, gate
+  sequence, agent lanes and their content, personas (ADR-0004), and the orchestration layer
+  itself are engine IP. *This is a constraint on the end state, not on the build:* the current
+  framework is deliberately used **as the method to build Secure Builder** — that is Track A
+  working as designed. The distinction that matters is **build-time scaffolding vs. run-time
+  dependency**; scaffolding is expected to come down. Track B (§10, §10.1) is what removes it,
+  and §10.1 Tier 1 stands: adopt an agent SDK for the model loop and tool dispatch, own Tiers
+  2–4 (skill/persona system, workflow skills, run state). "Owned" means *no framework in the
+  product*, not *every line hand-written*.
+- **100% local.** No network dependency at run time. Models, the governance corpus, and the
+  toolchain are provisioned and hash-verified at base and run air-gapped (ADR-0002 keeps the
+  corpus a vendored git folder for exactly this reason; gate scripts stay stdlib-only for the
+  same reason). This is what makes the real target — complete-airgap codebase modification,
+  forward-deployed at a unit in a DDIL environment — reachable at all.
+- **100% laptop-runnable.** The whole engine fits the `laptop-resident` `COMPUTE_PROFILE`
+  (24 GB VRAM, build and gate models hot-swapped, never co-resident). `egpu-70b` is an
+  **augmentation for garrison use, not the target** — if the engine only works with a second
+  GPU attached, it has missed the goal.
+
+**The third criterion is load-bearing on the second and first.** A 24 GB budget is what forces
+§10.2: instruction artifacts are prompts with token budgets, `CLAUDE.md` at ~11,800 tokens is
+already over budget for whole-file injection at the gate, and control text must be extracted by
+anchor rather than by opening a family file. Those are not stylistic preferences — on this
+hardware they are the difference between the engine running and not running.
+
+**Sequencing is deliberate and unchanged:** Track A proves the design on borrowed plumbing →
+Track B replaces the plumbing → Track C replaces the models. Nothing is skipped forward;
+debugging a novel design, a novel runtime, and a weaker model simultaneously is the failure
+mode this ordering exists to prevent.
+
 **Track A — Harden the engine on the existing substrate.**
 Formalize this PRD → run one real app through a full story lifecycle and record
 where gates mislead → strengthen the manual-review gate (§6) — including evaluating
@@ -1006,10 +1132,10 @@ transcribes. Encoding that tacit question-and-check sequence *is* the automation
 
 | Document | Captures | Lane |
 |---|---|---|
-| PRD / intent | Current state, desired delta, end-state intent | John |
-| Target architecture + API/DB contracts | The system the build is moving *toward* | Winston |
+| PRD / intent | Current state, desired delta, end-state intent | Charter |
+| Target architecture + API/DB contracts | The system the build is moving *toward* | Keystone |
 | Target security posture | Impact level, enclave/boundary target, control baseline | Sentinel |
-| Migration / delta plan | The path from current state to end-state (brownfield) | John + Winston |
+| Migration / delta plan | The path from current state to end-state (brownfield) | Charter + Keystone |
 
 **Needed-only additions (capped, human-approved).** After the core is drafted, a needs-
 analysis inspects the project and may recommend *additional* governing documents —
@@ -1026,25 +1152,25 @@ lane boundaries hold.
 
 ### 15.2 The workflow (staged, gated between stages)
 
-Orchestrated by **Atlas** (§3) — the Phase-0 analogue of Bob, coordinating the lane owners.
+Orchestrated by **Atlas** (§3) — the Phase-0 analogue of Marshal, coordinating the lane owners.
 
 0. **Intake & current-state pre-fill.** Greenfield or brownfield; point at the repo. For
    brownfield, deterministic extraction (file walk, AST parse, route/schema introspection,
    dependency scan) pre-fills the current-state fields; the OPSEC filter (§11) strips
    sensitive values to placeholders before anything is written. Facts are provenance-tagged
    (`[extracted: path@commit]` / `[human-asserted]`). *(Greenfield: thin — little code yet.)*
-1. **Author the matrix (guided).** Structured elicitation drives John/Winston to capture
+1. **Author the matrix (guided).** Structured elicitation drives Charter/Keystone to capture
    the delta and end-state intent. The needs-analysis then runs and presents its capped,
    needed-only recommendations (§15.1) for human decision.
 2. **Harden — Gap-Analysis Gate.** Gap analysis runs across **every** document in the
    matrix, checking two properties: **coherence** (no document contradicts another) and
-   **completeness** (no intent element left unspecified). Driver: **Tori** (gap analysis is
-   her lane). Loops with findings until the matrix is clean.
+   **completeness** (no intent element left unspecified). Driver: **Scribe** (gap analysis is
+   its lane). Loops with findings until the matrix is clean.
 3. **Generate the backlog.** Epics and stories derived from the hardened matrix, each
-   stamped with the intent element(s) it traces to. Driver: **John**.
+   stamped with the intent element(s) it traces to. Driver: **Charter**.
 4. **Pressure-test — Intent-Traceability Gate.** Bidirectional: **every story maps to an
    intent element** (no rogue work) and **every intended delta is covered by ≥ 1 story**
-   (no gap). Driver: **Tori**. Failures return to step 3.
+   (no gap). Driver: **Scribe**. Failures return to step 3.
 5. **Establish cohesion criteria.** Atlas generates the per-epic intent-integrity checklist
    from the matrix and wires it into the §4.5 epic-boundary gate.
 

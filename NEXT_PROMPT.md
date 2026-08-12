@@ -46,14 +46,14 @@ intake findings as third-party proof.
 (ADR-0001, ADR-0002; `ADR-LOG.md` created as the append-only engine ADR log):
 
 - **Atlas**, a new Contextualization Lead persona owning only `docs/context/**`, who
-  **triggers** the lane owners (John/Winston/Sentinel) to write the document matrix into
+  **triggers** the lane owners (Charter/Keystone/Sentinel) to write the document matrix into
   *their* artifacts so Guarantee #5 lane boundaries hold.
 - **Phase 0 is a prerequisite** (CLAUDE.md §2.3, PRD §15): **no story runs** until a
   hardened **document matrix**, an **intent-traceable backlog**, and the project's
   **cohesion-gate criteria** exist *and a human has ratified them.* Matrix = fixed core +
   needed-only additions (**cap 3, target ≤ 2, default zero**, each justified by a named
-  build failure). Staged: intake/pre-fill → guided authoring → Gap-Analysis Gate (Tori) →
-  backlog (John) → Intent-Traceability Gate (Tori) → cohesion criteria (Atlas).
+  build failure). Staged: intake/pre-fill → guided authoring → Gap-Analysis Gate (Scribe) →
+  backlog (Charter) → Intent-Traceability Gate (Scribe) → cohesion criteria (Atlas).
 - **Epic-boundary cohesion gate** (CLAUDE.md §3.5, PRD §4.5) — `COHERENT` / `DRIFT`,
   fires at every epic close, catches intent drift the per-story gates structurally cannot.
 - **Governance reference corpus** `docs/security/corpus/` — verbatim controlling text,
@@ -79,7 +79,7 @@ intake findings as third-party proof.
 
 **3. Cohesion pass (this session, uncommitted at handoff time — intended as `[F-012/docs]`)**
 — swept the whole project against those three commits and fixed the stale/contradicting
-instances: gate-log schema owner (Bob → **Sentinel**) + a new **Epic Cohesion Ledger**;
+instances: gate-log schema owner (Marshal → **Sentinel**) + a new **Epic Cohesion Ledger**;
 `CONTROLS-MAPPING.md` de-RAG'd and re-pointed at real corpus anchors; build plan de-RAG'd
 and given Phase 0 + Atlas; **Atlas added to both routing tables**; story template gained an
 **Intent element** field; DoD gained an **epic-close bar**; `scripts/README.md` documents
@@ -106,7 +106,7 @@ fail-closed, so install them only after the scripts actually pass a smoke test.
   it as SoD in a README/briefing. Genuine SoD remains the external platform team.
 - **Loop cap = 3 rounds**, then escalate to human.
 - **Promotion (not commit) is the gated event**; local TDD commits are audit evidence.
-- **Sentinel authors the gate log**, live in CW2 + the DONE row on approval. Bob owns the
+- **Sentinel authors the gate log**, live in CW2 + the DONE row on approval. Marshal owns the
   `NEXT_PROMPT*` handoffs only.
 - **Phase 0 is a prerequisite, not an option** — and its output is a *draft* until a human
   ratifies it. Agent self-ratification is a protocol violation, exactly like self-approval.
@@ -130,13 +130,13 @@ fail-closed, so install them only after the scripts actually pass a smoke test.
 fail-closed and will block every commit if a script errors). Keep them stdlib-only.
 
 **Then Week 2 — Agents — which now must carry the two-context flow *and* Phase 0:**
-- **[SLOTTABLE]** Customize built-in personas onto stock skills: John, Winston, Sally,
-  Amelia, Paige.
-- **[HEADS-DOWN]** Build the custom skills (no stock equivalent): Tori, Bob, **Atlas**
+- **[SLOTTABLE]** Customize built-in personas onto stock skills: Charter, Keystone, Prism,
+  Forge, Codex.
+- **[HEADS-DOWN]** Build the custom skills (no stock equivalent): Scribe, Marshal, **Atlas**
   (Phase-0 workflow — PRD §15; the stock seeds are `bmad-document-project`, PRD/architecture
-  creation, epics/stories, implementation-readiness), **Murat** (one persona, cluster of
-  test skills), Frank, **Sentinel**. The gate skills must encode:
-  - **Sentinel/Murat run in CW2 against the diff only** — wire `NEXT_PROMPT_GATES.md` as
+  creation, epics/stories, implementation-readiness), **Crucible** (one persona, cluster of
+  test skills), Bastion, **Sentinel**. The gate skills must encode:
+  - **Sentinel/Crucible run in CW2 against the diff only** — wire `NEXT_PROMPT_GATES.md` as
     their entry (template: `docs/templates/NEXT_PROMPT_GATES-template.md`).
   - **Sentinel forced read-and-attest** of all its skill files incl. adversarial testing —
     fill the `<path>` placeholders in the gates template and add those skill paths to

@@ -26,14 +26,14 @@
 
 > You are the **gate context (CW2)** for this story. You did not build this code and you
 > have no access to the builder's reasoning — by design. Scan the artifact below on its
-> own terms. Run Murat (quality), then Sentinel (security). Kick FAILs back with concrete
+> own terms. Run Crucible (quality), then Sentinel (security). Kick FAILs back with concrete
 > findings. Do not approve anything — approval is a human act (Guarantee #1).
 
 ## 0. Sentinel skill-load — DO THIS FIRST, before judging any code (§3.2)
 Open and read each skill file below, and echo a one-line attestation of each (what you
 loaded) before any verdict. A gate run that skips this is **invalid** and re-runs. Do not
 improvise or recall these from memory — read them.
-- [ ] Quality-gate checks (Murat cluster) — `<path>`
+- [ ] Quality-gate checks (Crucible cluster) — `<path>`
 - [ ] Security-gate checklist (Sentinel) — `<path>`
 - [ ] Control lookup against `docs/security/controls/CONTROLS-MAPPING.md` — `<path>`
 - [ ] Dependency policy — `docs/architecture/DEPENDENCY_POLICY.md`
@@ -55,7 +55,7 @@ APP_TRACK=<> · SECURITY_TIER=<> · PROVIDER=<> · APP_TYPE=<> · GATE_ENFORCEME
 - Endpoints/resources introduced or changed (for negative-test + IDOR review): <list>
 
 ## 4. What to produce
-- **Murat:** `QUALITY GATE VERDICT [PASS/FAIL]` per §4.2 format (TDD two-commit present in
+- **Crucible:** `QUALITY GATE VERDICT [PASS/FAIL]` per §4.2 format (TDD two-commit present in
   `git log`; per-layer coverage on the diff; negative tests 401/403/IDOR/400/conflict;
   ATDD [x/x ACs]; CI stage; flaky check). FAIL → findings back to the builder, re-scan.
 - **Sentinel:** `GATE VERDICT [PASS/FAIL] | SECURITY_TIER [IL4/IL6]` per §4.3; every check
@@ -69,7 +69,7 @@ APP_TRACK=<> · SECURITY_TIER=<> · PROVIDER=<> · APP_TYPE=<> · GATE_ENFORCEME
 - After gates PASS: the **manual security review (§4.4)** is a human gate — present the
   concrete endpoints/resources and the §4.4 questions; do not self-clear.
 - **Human approval (§3 step 7)** is the only thing that unlocks promotion. On "approved":
-  append the gate-log DONE row (Sentinel), then Bob writes the next story's `NEXT_PROMPT.md`.
+  append the gate-log DONE row (Sentinel), then Marshal writes the next story's `NEXT_PROMPT.md`.
 ```
 
 ---

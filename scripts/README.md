@@ -25,7 +25,7 @@ without the `pre-commit` framework — both paths call the same `gates/*.py`.
 | TDD two-commit ordering | `gates/check_tdd.py --story S-XXX` | Guarantee #3 — tests commit precedes impl commit | that red tests truly failed; trivially-neutered tests |
 | Lane boundary | `gates/check_lanes.py --agent X` | Guarantee #5 — file-ownership (diff vs globs) | semantic over-reach inside an allowed file |
 
-The automated gate **agents** (Murat, Sentinel) that orchestrate these are Phase-2 builds
+The automated gate **agents** (Crucible, Sentinel) that orchestrate these are Phase-2 builds
 (PRD §3.1). Today the operator runs these scripts and the checklists by hand; the scripts
 make the mechanical parts repeatable, not the judgment.
 
@@ -94,7 +94,7 @@ pre-commit install --hook-type commit-msg
 python scripts/gates/check_tdd.py --story S-001 --range main..HEAD
 
 # Lane boundary for the agent that did the work:
-python scripts/gates/check_lanes.py --agent Amelia --range main..HEAD
+python scripts/gates/check_lanes.py --agent Forge --range main..HEAD
 
 # List known agents and their lanes:
 python scripts/gates/check_lanes.py --list-agents

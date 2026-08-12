@@ -14,7 +14,7 @@
 A story is **done** only when **all four** of the following are true, **in order**, with
 no step skipped, reordered, or auto-approved:
 
-1. **Quality gate PASS** (Murat — `QUALITY_GATE.md`).
+1. **Quality gate PASS** (Crucible — `QUALITY_GATE.md`).
 2. **Security gate PASS** (Sentinel — `CONTROLS-MAPPING.md` / PRD §5.4).
 3. **Manual security review CLEAR** (human + AI assistant — `CLAUDE.md` §4.4).
 4. **Explicit human approval** — the human types "approved." This is the **hard stop**
@@ -40,7 +40,7 @@ through.
   are exempt by nature.
 - **`### TDD Red-Phase Evidence`** section in the story file (failing-test output).
 - **`## Gate Results`** section in the story file carrying the verdict tuple
-  (Murat / Sentinel / Manual / Human).
+  (Crucible / Sentinel / Manual / Human).
 - **Negative authorization tests** for every endpoint touched (401 / 403 / IDOR / 400 /
   conflict — Guarantee #8).
 - **Security checks mapped to controls** — each Sentinel check carries a control ID from
@@ -49,6 +49,12 @@ through.
   memory.
 - **Intent element recorded** in the story header — the matrix element this story traces
   to (Phase 0, PRD §15.2). A story with none is rogue work.
+- **Instruction-artifact portability** (F-prefix stories that add or change an instruction
+  artifact — `CLAUDE.md`, an agent skill file, the manifest, a gate doc, a handoff
+  template): the artifact declares its token budget and obeys the CLAUDE.md §5.1 authoring
+  rules in force (1–6) — sliceable, self-contained slices, data over prose, imperative gate
+  checklists, no runtime-specific syntax. These artifacts are prompts that must run on the
+  Track-C local models, not documents (PRD §10.2).
 - For **security-sensitive** stories (auth, RBAC, new endpoints, data-boundary changes):
   the human has **named the endpoints touched** and stated, in their own words, *who can
   call each one and what stops everyone else.* A bare approval is not accepted.
@@ -69,7 +75,7 @@ On human approval, before the story is **promoted** (closed out / pushed / merge
    `REMEDIATED` / `ACCEPTED` row for any finding that closed. Sentinel owns this artifact
    (`CLAUDE.md` §2, §7.2). **Append-only** — never edit or delete a prior row
    (Guarantee #6).
-3. **Bob writes the handoff prompt** — `NEXT_PROMPT.md` (S-prefix) or
+3. **Marshal writes the handoff prompt** — `NEXT_PROMPT.md` (S-prefix) or
    `NEXT_PROMPT_FRAMEWORK.md` (F-prefix), fully self-contained for a fresh session.
 
 A story does **not** appear in the gate log until it has passed all four gates.
@@ -109,6 +115,6 @@ structured self-check with a human confirming, not proof (`CLAUDE.md` §9).
   operator, not separation of duties (`CLAUDE.md` §9). "Approved" evidences one
   developer's structured self-check at the §4.4 depth — not senior security sign-off
   unless a qualified senior reviewer actually performed it.
-- **Not proof an automated gate ran.** While Murat and Sentinel are Phase-2 builds, the
+- **Not proof an automated gate ran.** While Crucible and Sentinel are Phase-2 builds, the
   gate verdicts are produced by a human running the checklist by hand. Evidence and
   briefings must say which it was.

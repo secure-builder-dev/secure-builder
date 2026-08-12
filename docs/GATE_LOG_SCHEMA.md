@@ -1,7 +1,7 @@
 # GATE_LOG_SCHEMA.md — Gate log structure & update protocol
 
 > **Owner:** Sentinel (Security Gatekeeper) — owns the file and authors **every** row
-> (`CLAUDE.md` §2 manifest, §7.2; PRD §8.1). Bob owns the `NEXT_PROMPT*` handoffs only.
+> (`CLAUDE.md` §2 manifest, §7.2; PRD §8.1). Marshal owns the `NEXT_PROMPT*` handoffs only.
 > **Source of record:** `SECURE_BUILDER_PRD.md` §8.1. **Operationalized by:** `CLAUDE.md`
 > §7.2. **Controls evidenced:** CA-2 (Control Assessments), SA-11 (Developer Testing).
 >
@@ -23,7 +23,7 @@ or retroactively rewritten — corrections are new entries (Guarantee #6).
 
 ### 1.1 Quick Ledger — one row per story
 
-| Date | Story | Murat | Sentinel | Manual Security | Human | Commit |
+| Date | Story | Crucible | Sentinel | Manual Security | Human | Commit |
 |---|---|---|---|---|---|---|
 | 2026-06-11 | S-001 | PASS | PASS (0 findings) | CLEAR | APPROVED | `<impl-hash>` |
 
@@ -33,7 +33,7 @@ or retroactively rewritten — corrections are new entries (Guarantee #6).
 
 Full verdict tuple + risk context:
 
-| Date | Story | Verdict (Murat / Sentinel / Manual / Human) | Blocking | Non-blocking | Gate Results ptr | Risk note | Follow-up owner |
+| Date | Story | Verdict (Crucible / Sentinel / Manual / Human) | Blocking | Non-blocking | Gate Results ptr | Risk note | Follow-up owner |
 |---|---|---|---|---|---|---|---|
 | 2026-06-11 | S-001 | PASS / PASS / CLEAR / APPROVED | 0 | 0 | `stories/S-001#gate-results` | none | — |
 
@@ -83,7 +83,7 @@ is recorded like any other gate — one row appended when the epic closes.
 
 | Token | Meaning |
 |---|---|
-| **Murat PASS** | Coverage met, TDD two-commit verified, no skipped tests. |
+| **Crucible PASS** | Coverage met, TDD two-commit verified, no skipped tests. |
 | **Sentinel PASS (0 findings)** | All gate checks clear. |
 | **Sentinel PASS (1 non-blocking)** | Passed with a documented carry-forward (see Issue Lifecycle Ledger). |
 | **Sentinel PASS (1 remediated)** | Blocking finding caught and fixed in-session before the final verdict. |

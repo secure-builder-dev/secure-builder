@@ -9,14 +9,14 @@
     "This same file is the intended data source for the Phase-2 agent skills."
   ],
   "agents": {
-    "John": {
+    "Charter": {
       "persona": "Product Manager",
       "lane": "PRD, epics, high-level story scoping",
       "owned_globs": ["docs/PRD.md", "docs/epics/**"],
       "owned_semantic": ["story headers (intra-file; not glob-checkable)"],
       "mandatory_reads": ["docs/STORY_TEMPLATE.md", "docs/PRD.md"]
     },
-    "Tori": {
+    "Scribe": {
       "persona": "Story Analyst",
       "lane": "Story writing, refinement, gap analysis, story-vs-contract alignment",
       "owned_globs": ["docs/stories/**"],
@@ -26,7 +26,7 @@
         "docs/architecture/DEPENDENCY_POLICY.md"
       ]
     },
-    "Bob": {
+    "Marshal": {
       "persona": "Scrum Master",
       "lane": "Sprint dispatch, gate enforcement, sprint artifacts",
       "owned_globs": [
@@ -42,7 +42,7 @@
       "persona": "Contextualization Lead",
       "lane": "Phase-0 inception (PRD §15): document matrix authoring + gap-hardening, backlog intent-traceability, cohesion-gate criteria; orchestrates lane owners for current-state — writes no other lane's artifact",
       "owned_globs": ["docs/context/**"],
-      "owned_semantic": ["orchestrates John/Winston/Sentinel writes into their own lane artifacts (not glob-owned here)"],
+      "owned_semantic": ["orchestrates Charter/Keystone/Sentinel writes into their own lane artifacts (not glob-owned here)"],
       "mandatory_reads": [
         "docs/PRD.md",
         "docs/STORY_TEMPLATE.md",
@@ -53,7 +53,7 @@
         "the existing governing docs in the project's document matrix"
       ]
     },
-    "Winston": {
+    "Keystone": {
       "persona": "Architect",
       "lane": "ADR decisions, DB schema, API contract design",
       "owned_globs": [
@@ -67,13 +67,13 @@
         "docs/architecture/API_CONTRACT.md"
       ]
     },
-    "Sally": {
+    "Prism": {
       "persona": "UX Designer",
       "lane": "UX/UI design — interaction patterns, component specs, accessibility (web track)",
       "owned_globs": ["docs/UX-SPEC.md", "docs/design/**"],
       "mandatory_reads": ["docs/stories/**", "docs/PRD.md", "docs/architecture/API_CONTRACT.md"]
     },
-    "Amelia": {
+    "Forge": {
       "persona": "Developer",
       "lane": "TDD implementation — tests first, always",
       "owned_globs": ["src/**", "test/**", "tests/**"],
@@ -83,13 +83,13 @@
         "docs/architecture/DEPENDENCY_POLICY.md"
       ]
     },
-    "Murat": {
+    "Crucible": {
       "persona": "Test Architect",
       "lane": "Test strategy, ATDD, coverage gates, quality gates",
       "owned_globs": ["docs/QUALITY_GATE.md"],
       "mandatory_reads": ["docs/QUALITY_GATE.md"]
     },
-    "Frank": {
+    "Bastion": {
       "persona": "DevSecOps",
       "lane": "Pipeline, Helm, Terraform, image compliance, STIG",
       "owned_globs": ["docs/architecture/DEVSECOPS_SPEC.md", "helm/**", "terraform/**", "**/*.tf"],
@@ -108,7 +108,7 @@
       ],
       "mandatory_reads": ["CLAUDE.md", "docs/architecture/DEPENDENCY_POLICY.md"]
     },
-    "Paige": {
+    "Codex": {
       "persona": "Tech Writer",
       "lane": "User/developer docs; doc curation and indexing (excl. governance/architecture/security)",
       "owned_globs": ["README.md", "docs/guides/**", "docs/index.md"],

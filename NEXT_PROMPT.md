@@ -75,6 +75,11 @@ config error; hooks resolving the Microsoft Store python shim.
 `docs/stories/F-PREP-01..12`. Traceability verified both directions; template conformance
 verified; secret scan clean.
 
+**F-016, F-017 and F-018 were reviewed and APPROVED by C.J. Houle on 2026-08-17.** Do not
+re-litigate them. Recorded here because the gate log does not exist yet — F-PREP-12 AC-1
+creates it, and this line is a stopgap, **not** gate-log evidence. **The IE-1..IE-6 intent
+elements in EPIC-PREP are also RATIFIED**; the epic's cohesion criteria are **not**.
+
 **Models verified:** Gemma 4 (Apr 2026, E2B/E4B/26B-A4B MoE/31B dense, Apache-2.0, 256K)
 and Devstral Small 2 (Dec 2025, 24B, Apache-2.0, 256K, 68% SWE-bench) match ADR-0003. No
 change to `MODEL-PROFILES.md` math. **Still unanswered:** does Devstral's chat template

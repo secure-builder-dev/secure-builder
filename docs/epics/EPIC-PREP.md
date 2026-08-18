@@ -26,9 +26,16 @@ That is the evidence that specified ≠ working, and it generalizes to everythin
 
 ## Intent elements this epic is built toward
 
-Provisional traceability. Phase 0 has **not** been run on Secure Builder itself, so there
-is no ratified document matrix; these are drawn from the PRD, which is the engine's intent
-document. **This mapping is a draft until a human ratifies it** (§2.3, Guarantee #1).
+**RATIFIED — C.J. Houle, 2026-08-17.** All six intent elements below were reviewed and
+approved by the human owner. They are now binding on this epic: every story traces to at
+least one, and the cohesion gate (§3.5) checks the assembled epic against them.
+
+**Provenance, stated honestly and unchanged by ratification.** Phase 0 has **not** been run
+on Secure Builder itself, so there is no ratified document matrix behind these. Charter
+reverse-engineered them from the PRD, which is the engine's intent document. Ratification
+means the human owner confirms these express his intent — it does **not** mean they were
+derived by the Phase-0 workflow, and **ratified ≠ verified** (§2.3). When Phase 0 is
+eventually run on the engine, these are inputs to it, not a substitute for it.
 
 | ID | Intent element | Source |
 |---|---|---|

@@ -8,172 +8,148 @@
 
 ---
 
+## Read these two rules before you touch anything
+
+1. **You commit three things and nothing else:** the **red-phase** TDD commit
+   (`[X-XXX/tests]`, tests demonstrably failing), the **green-phase** implementation commit
+   (`[X-XXX/impl]`), and **`NEXT_PROMPT.md`** (this file — keep it current every time).
+2. **Everything else is a final commit and it is mine.** Stage it, then give me a review
+   packet with **two parts, every time**: (a) a **technical readout** — what changed, which
+   files, what verification actually ran, what it found; and (b) a **junior-developer
+   explanation that teaches** — what was done, what the code actually looks like, *why* it
+   was done that way, and the **rejected alternatives** with why each lost. Then stop.
+   **I review, I commit, I push.**
+3. **You NEVER push.** Ever — no phrasing, no urgency, no authorization. Also never merge,
+   tag, amend, or force-anything. "Finish the task" or "and commit it" is **not**
+   authorization for a final commit. Reading git history is always free.
+4. **Once the two-context workflow is flowing (F-PREP-12), no edits to settings config or
+   governance docs without my express per-edit permission.** Not armed yet, but write as
+   if it is close. Governance = `CLAUDE.md`, PRD, build plan, ADR log, gate docs,
+   `agents/manifest.json`, `docs/security/controls/**`, skill files, `.claude/settings*`,
+   git hooks. **Reading them is always fine.**
+5. **Do not propose building a commit-enforcement hook.** Three real apps shipped through
+   this framework without one. The control is my eyes on the diff plus the teaching
+   writeup — that is deliberate, not a gap.
+
+Also: **run read-only Bash without asking** (navigation, inspection, `git log`/`status`/
+`diff`, the gate scripts). Ask only to install, or to modify/add/delete files outside
+work I've already scoped. The allowlist is in `.claude/settings.local.json`.
+
 ## Where we are
 
 We're building the **clean-room rebuild** of my Secure Builder engine — an AI multi-agent
-code-gen engine that produces compliant, tested, control-mapped code for DoD secure
-pipelines, to cut the cATO remediation bottleneck. The design is already proven: I built a
-"frankenstein" version at work that generated a 76-story backend that compiled first try.
-This repo is the clean, ownable rebuild.
+code-gen engine producing compliant, tested, control-mapped code for DoD secure pipelines,
+to cut the cATO remediation bottleneck. The design is already proven: a "frankenstein"
+version at work generated a 76-story backend that compiled first try. This repo is the
+clean, ownable rebuild.
 
-**The spec is `SECURE_BUILDER_PRD.md`.** `CLAUDE.md` is its operational encoding and is kept
-in sync. We are **executing `SECURE_BUILDER_BUILD_PLAN.md`**, still at the **Week 1 → Week 2
-boundary** (governance backbone done; agents next).
+**Spec is `SECURE_BUILDER_PRD.md`; `CLAUDE.md` is its operational encoding.**
 
-**Hard rule:** clean-room. Build from the PRD and my descriptions only — never paste my work
-artifacts. OPSEC: only aggregate/releasable metrics touch this laptop.
+**Hard rule:** clean-room. Build from the PRD and my descriptions only — never paste my
+work artifacts. OPSEC: only aggregate/releasable metrics touch this laptop.
 
-### The end goal, stated plainly (PRD §14)
+### The end goal (PRD §14)
 
-**100% owned · 100% local · 100% runnable on my laptop (24 GB VRAM).**
+**100% owned · 100% local · 100% runnable on my laptop (24 GB VRAM).** Owned = no
+third-party framework in the *runtime* path (adopting an SDK for the model loop is fine —
+PRD §10.1 Tier 1). Local = no network at run time; real target is complete-airgap codebase
+modification forward-deployed at a unit in a DDIL environment. Laptop-runnable = build on
+**Devstral Small 2**, gate on **Gemma 4**, hot-swapped, never co-resident.
+**`egpu-70b`/Llama 3.3 70B stays documented but is NOT the plan** — don't propose removing
+it, and don't propose buying hardware to fix a design problem.
 
-- **Owned** = no third-party framework in the **runtime path**. Using BMAD to *build* this is
-  Track A working as designed — build-time scaffolding comes down; run-time dependency is what
-  must be gone. "Owned" ≠ hand-writing everything: adopt an SDK for the model loop and tools
-  (PRD §10.1 Tier 1), own Tiers 2–4.
-- **Local** = no network at run time. Models, corpus, and toolchain provisioned and
-  hash-verified at base. Real target: complete-airgap codebase modification, forward-deployed
-  at a unit in a DDIL environment.
-- **Laptop-runnable** = fits `laptop-resident` (24 GB): build on **Devstral Small 2**, gate on
-  **Gemma 4**, hot-swapped, never co-resident. **`egpu-70b` / Llama 3.3 70B stays documented
-  as an option but is NOT the plan** — it needs a budget increase we don't expect. Do not
-  propose removing it from the docs; do not propose buying hardware to fix a design problem.
+**Governing consequence:** on fixed 24 GB, model capability is a *constraint, not a
+variable*. **Rigor comes from workflow structure, not scale.**
 
-**The governing consequence:** on fixed 24 GB the model's capability is a *constraint, not a
-variable*. **Rigor comes from workflow structure, not from scale.**
+## What changed last session (2026-08-17)
 
-## What we did last session (2026-08-11 — commit `900720b`, `[F-013/arch]`)
+**F-016 `269b88c` — the gate scripts were executed for the first time and had six defects,
+three of which defeated the guarantee the script enforces.** Fixed and hooks are now live
+and verified: unicode crash on Windows; `secret_scan` scanning CLEAN on a line containing
+the word "example" (a real ARN + account id + password slipped through); `check_tdd`
+anchoring on the *last* impl commit so a later remediation commit cured a TDD violation;
+`fnmatch` giving different lane verdicts per OS; exit-code conflation of finding vs.
+config error; hooks resolving the Microsoft Store python shim.
 
-**1. ADR-0004 — own-coined callsign personas.** Nine of eleven personas carried BMAD's names.
-Renamed to callsigns, keeping the two we'd already coined:
+**F-017 `fc64d6c` — EPIC-PREP written.** `docs/epics/EPIC-PREP.md` + 12 stories in
+`docs/stories/F-PREP-01..12`. Traceability verified both directions; template conformance
+verified; secret scan clean.
 
-Charter (PM) · Scribe (Story Analyst) · Marshal (Scrum Master) · **Atlas** (Contextualization)
-· Keystone (Architect) · Prism (UX) · Forge (Dev) · Crucible (Test Architect) · Bastion
-(DevSecOps) · **Sentinel** (Security) · Codex (Tech Writer)
+**Models verified:** Gemma 4 (Apr 2026, E2B/E4B/26B-A4B MoE/31B dense, Apache-2.0, 256K)
+and Devstral Small 2 (Dec 2025, 24B, Apache-2.0, 256K, 68% SWE-bench) match ADR-0003. No
+change to `MODEL-PROFILES.md` math. **Still unanswered:** does Devstral's chat template
+relocate the system prompt to the last user turn? If so prefix caching buys nothing
+(tracked as F-PREP-09 AC-8).
 
-Title Case, ungendered (it/its), `agents/manifest.json` is the source of record. Done now
-because the gate log is append-only and still empty — Crucible is a literal column header in
-`GATE_LOG_SCHEMA.md`. **Personas are now engine IP; the substrate they run on is not.**
-
-**2. ADR-0005 — instruction artifacts are prompts, not documents.** Measured, and the numbers
-decided it: `CLAUDE.md` is **~11.8k tokens** and is declared "always in context" for the
-security gate; an assembled gate context burns **~20k tokens before seeing any diff**; the
-largest 800-53 family file is **~39.2k tokens**, so grounding one citation by opening it
-**exceeds the laptop gate model's practical context outright.** Nine authoring rules landed in
-**PRD §10.2** and **CLAUDE.md §5.1**. **Rules 1–6 bind now; rules 7–9 are harness behavior
-that does not exist yet** and are marked so in CLAUDE.md §0.
-
-**3. `MODEL-PROFILES.md`** gained context budgets, sizing rationale, model ceilings computed
-from architecture, and a **deliberately unfilled** supply-side table to be measured on real
-hardware. Key finding: **`egpu-70b` has *less* context headroom than `laptop-resident`**
-(~20k vs ~40k) — the 70B's weights eat the added VRAM and its KV cache costs 2× per token.
-More VRAM buys *judgment*, never *context*.
+**Decided: the laptop goes dual-boot Ubuntu LTS**, ~1 TB Linux / ~900 GB Windows.
+**Nothing installed yet — the disk is untouched.** Real hardware: **RTX 5090 Laptop GPU
+(24 GB)**, 64 GB RAM, 2 TB NVMe (~1.79 TB free), UEFI, Acer **PH18-73**.
 
 ## Decisions locked (don't relitigate)
 
-- **24 GB laptop ("Predator") is the target.** Llama 3.3 70B stays on the books, unfunded.
-- **Keep the models: Devstral Small 2 (build) + Gemma 4 (gate).** Different lineage is the
-  bias firewall — **never run Mistral on both sides**, that collapses it.
-- **Two-context split is independent review, NOT separation of duties.** Never call it SoD.
-- **Loop cap = 3 rounds**, then escalate to human.
-- **Promotion (not commit) is the gated event**; local TDD commits are audit evidence.
-- **Sentinel authors the gate log**; Marshal owns the `NEXT_PROMPT*` handoffs only.
-- **Phase 0 is a prerequisite**, and its output is a *draft* until a human ratifies it.
-- **The corpus is a read-on-demand git folder, not RAG** (ADR-0002).
-- **No adversarial-nation base weights, ever** (ADR-0003).
-- Operating mode: **team-owned, single-operator-per-session.**
+- 24 GB laptop is the target; Llama 3.3 70B stays on the books, unfunded.
+- **Devstral (build) + Gemma (gate) — different lineage is the bias firewall. Never run
+  Mistral on both sides.**
+- Two-context split is **independent review, NOT separation of duties.** Never call it SoD.
+- Loop cap = 3 rounds, then escalate to human.
+- **Promotion is the gated event**; and per rule 1 above, *no commit at all* without review.
+- Sentinel authors the gate log; Marshal owns the `NEXT_PROMPT*` handoffs only.
+- Phase 0 is a prerequisite; its output is a *draft* until a human ratifies it.
+- Corpus is a read-on-demand git folder, **not RAG** (ADR-0002).
+- No adversarial-nation base weights, ever (ADR-0003).
 
-## What's next (pick up here)
+## What's next — EXECUTE EPIC-PREP
 
-**0. Verify what actually shipped.** Confirm **Gemma 4** and **Devstral Small 2** exist as
-ADR-0003 describes them (Gemma 4 as "31B dense or 26B-A4B MoE"). If a spec differs, the VRAM
-and context math in `MODEL-PROFILES.md` changes. Also check whether **Devstral's chat template
-relocates the system prompt to the last user turn** — if it does, prefix caching silently
-buys nothing. (Gemma having no system role is a non-issue: ~5 lines in the per-model adapter.)
+**Read `docs/epics/EPIC-PREP.md` first.** It has the intent elements, epic-level
+SHALL NOTs, scope, the dependency-ordered story table, and the cohesion criteria.
 
-**1. Verify the F-006 gate scripts** — unblocked now (Python 3.12.13 via `uv`; ensure
-`C:\Users\cjhou\.local\bin` is on PATH). Smoke-test `check_lanes.py` / `check_tdd.py` /
-`secret_scan.py` against real ranges, fix what breaks, then `sh scripts/install-hooks.sh`
-**only after they pass** (`pre-commit` is fail-closed). Keep them stdlib-only. **This is the
-deterministic layer — every check a script owns is a check the small model never has to be
-trusted with.**
+**Start with F-PREP-01 (`docs/stories/F-PREP-01-dual-boot-ubuntu.md`) — dual-boot Ubuntu.**
+Bastion's lane. Every story after it produces evidence, and evidence produced on Windows
+has to be re-earned; F-016 proved the platform-determinism defect class is real, not
+hypothetical. **The partitioning is mine to execute — write the plan, don't run it.**
+Gotchas already scoped in the story: Windows will refuse to shrink `C:` near its
+free-space figure (unmovable files); Blackwell needs the **open** NVIDIA module variant;
+Secure Boot needs MOK enrollment or the module won't load; the PH18-73 has a **MUX switch**
+to decide before install; `PredatorSense` has no Linux equivalent (`Linuwu-Sense`).
 
-**2. HARDEN THE STRUCTURE BEFORE ANY EPICS — this is the priority.** Decision (2026-08-11):
-the engine's own structure gets nailed down and pressure-tested *before* a backlog is
-generated. This is not a detour — it is **Phase 0's own ordering** (stage 3 Gap-Analysis Gate,
-*then* stage 4 backlog). The engine follows the sequence it imposes on everything else.
+Then **F-PREP-02** (gate-script test suite — TDD, so *two* review stops) and **F-PREP-03**
+(lane ownership ADR). Critical path: 01 → 02 → 04 in parallel with 06 → 07 → 08 → 09.
+**F-PREP-12 closes the epic** and arms rule 2 above.
 
-*Structural decisions that do not yet exist, in dependency order:*
-- **The skill-file format** — the keystone. Eleven personas, zero skill files; PRD §10 requires
-  a defined format (persona, capabilities, owned artifacts, activation pattern) and it must now
-  satisfy §5.1: declared budget, sliceable, self-contained, no runtime-specific syntax.
-  Everything in Week 2 blocks on this.
-- **The CLAUDE.md slicing map** — which §-slices each agent receives. Determines whether a
-  skill file restates a rule or references it. Blocks skill authoring.
-- **The check registry** — a gate run is currently prose. Mechanically it is a data file: check
-  ID · the single question · input scope · **who answers (script / model / human)** · control ID
-  · output schema. This is where the competence taxonomy lives.
-- **The harness contract** — §5.1 rules 7–9 assume something assembles context, extracts control
-  anchors, and constrains output. Nothing specifies that component's responsibilities.
-- **Declared-but-absent docs** — CLAUDE.md §10 category (c) already lists them honestly.
+## Open items (carried)
 
-*Pressure-test methods, cheapest first:*
-- **Paper dry-run.** Walk one imaginary story end-to-end — dispatch → build → handoff → gate
-  context → both gates → manual review → approval → gate log → next handoff — and record every
-  point where you cannot actually proceed. Highest yield per hour.
-- **Completeness script** (stdlib-only): verify every file path referenced in the docs exists.
-  Catches §10 category-(c) drift automatically.
-- **Coherence sweep**: docs that contradict each other (F-012 did one; the rename forced another).
-- **Falsifiability check**: for each gate, can it actually FAIL? §3.4 has this table for the
-  original gates; the newer ones (cohesion, portability) have not been through it.
+- **The intent elements IE-1..IE-6 and the cohesion criteria in EPIC-PREP are DRAFTS
+  awaiting my ratification.** Phase 0 has never been run on Secure Builder itself, so there
+  is no ratified document matrix. An agent ratifying them is a protocol violation, same as
+  self-approval. **Ask me.**
+- **Cohesion criteria belong to Atlas, which doesn't exist.** Charter drafted them so the
+  epic is closeable; Atlas must own them once built.
+- **Lane gate fires on every multi-lane F-commit.** F-017 is a live instance (Charter owns
+  `docs/epics/**`, Scribe owns `docs/stories/**`; their union covers the commit exactly but
+  neither is in-lane alone). Accepted exception, recorded in the commit body. F-PREP-03 AC-6
+  fixes it — don't "fix" it by widening a glob.
+- **`CLAUDE.md` is ~13,035 tokens** — over budget for whole-file injection. F-PREP-07.
+- **Rule 10 not yet written**: static-prefix-first call ordering. F-PREP-09 AC-7. Adding it
+  to `CLAUDE.md` §5.1 needs my express permission.
+- `.claude/settings.local.json` has Windows-specific python paths needing Linux equivalents
+  after the migration.
+- `html-presentations/engine-workflow.html` carries the persona roster — re-sweep on any
+  rename.
 
-**3. Then Week 2 — agents — built as decomposed checks, not one big review prompt.** The
-design response to a fixed 24 GB substrate:
-- **One narrow question per model call**, fanned out — not "review this diff."
-- **Script everything decidable**; the model only sees genuine judgment calls.
-- **Minimum context per call**: one function + one control's text + one question.
-- **Ask adversarially** ("show me the call sequence that breaks this"), never "is this safe?"
-- **Ask 3×, require agreement**; disagreement is a flag for the human, not a verdict.
-- **A published competence taxonomy** — script-decidable / small-model-judgment / human-only.
-  Multi-step auth bypass is human-only *by design*. **The model must be able to say "not my
-  call" rather than emit a confident PASS.** This is the load-bearing guardrail.
-- **Order fan-out calls to share the longest prompt prefix** (static first, variable last) so
-  the KV cache is reused across the many small calls.
-
-## Open items (carried, none blocking)
-
-- **No epic/story backlog exists for building Secure Builder — deliberately deferred.** The
-  build plan + F-track commits stand in for one. **Do not generate epics until the structure is
-  hardened** (see "What's next" item 2) — operator decision 2026-08-11, and it matches Phase 0's
-  own ordering: gap-hardening (stage 3) precedes backlog generation (stage 4). When it is time,
-  the move is to run the engine's Phase 0 on itself and produce an intent-traceable backlog,
-  including Track B decomposed against PRD §10.1 tiers.
-- **CLAUDE.md is ~13,035 tokens — over budget for whole-file injection.** Slicing (rule 2) is
-  known work, not a contingency. None done yet.
-- **Rule 10 not yet written**: static-prefix-first + prefix-tree call ordering. Agreed useful;
-  add to CLAUDE.md §5.1 when Week 2 starts.
-- `html-presentations/engine-workflow.html` is now **tracked** — plain-English engine walkthrough
-  for onboarding the team. Like the sprint board it is **explanatory, not evidence.** It carries
-  the roster, so re-sweep it on any future rename (it was untracked during the F-013 sweep and
-  had to be caught by hand).
-
-**Watch for:** mark honestly enforced-today vs Phase-2; independent-review ≠ SoD; forced-read
-is stronger than ambient context but not proof of *application*; a `✓` corpus citation means
-the text is openable, **not** that the mapping is right; **portable ≠ equivalent** — the
-authoring rules ensure instructions *reach* a local model and say nothing about its judgment.
-Generic placeholders only; never invent real infra.
+**Watch for:** mark honestly enforced-today vs Phase-2; independent-review ≠ SoD;
+forced-read is stronger than ambient context but not proof of *application*; a `✓` corpus
+citation means the text is openable, **not** that the mapping is right; **portable ≠
+equivalent**. Generic placeholders only; never invent real infra.
 
 ## Key files
 
-- `CLAUDE.md` — **engine constitution (governing law, auto-loaded).** §2.3 Phase 0 · §3
-  two-context lifecycle · §3.2 Sentinel forced-read · §3.5 cohesion gate · **§5.1 portability**
-  · §7 promotion protocol · §8.2 model provenance.
-- `SECURE_BUILDER_PRD.md` — the spec. §4 lifecycle · **§10.2 portability** · §11.1 provenance ·
-  **§14 end state** · §15 Phase 0.
-- `docs/architecture/ADR-LOG.md` — ADR-0001 Phase 0 · 0002 corpus≠RAG · 0003 model provenance ·
-  **0004 personas** · **0005 instruction-artifact portability**.
-- `docs/architecture/MODEL-PROFILES.md` — `COMPUTE_PROFILE`, context budgets, sizing rationale.
-- `docs/security/corpus/` — vendored controlling text; `MANIFEST.md` = what's actually openable.
+- `CLAUDE.md` — **engine constitution.** §0 enforced-today vs Phase-2 · §2.3 Phase 0 · §3
+  two-context lifecycle · §3.2 Sentinel forced-read · §3.5 cohesion gate · §5.1 portability
+  · §7 promotion · §8.2 model provenance · §9 no-over-claiming.
+- `docs/epics/EPIC-PREP.md` + `docs/stories/F-PREP-*.md` — **the active backlog.**
+- `SECURE_BUILDER_PRD.md` — §4 lifecycle · §10.1 Track-B tiers · §10.2 portability · §14 end state · §15 Phase 0.
+- `docs/architecture/ADR-LOG.md` — 0001 Phase 0 · 0002 corpus≠RAG · 0003 models · 0004 personas · 0005 portability.
+- `docs/architecture/MODEL-PROFILES.md` — `COMPUTE_PROFILE`, context budgets (supply-side table still unfilled — measure on real hardware).
+- `scripts/gates/*.py` — the deterministic layer. Hooks installed and live.
 - `agents/manifest.json` — lanes / owned globs / mandatory reads as data.
-- `docs/QUALITY_GATE.md`, `DEFINITION_OF_DONE.md`, `GATE_LOG_SCHEMA.md` — gate docs.
-- `html-presentations/sprint-board.html` — checkbox tracker. **Convenience, not evidence.**
+- `docs/security/corpus/MANIFEST.md` — what's actually openable.

@@ -17,13 +17,24 @@ Usage:
     secret_scan.py --staged          # scan staged (index) content — pre-commit use
     secret_scan.py --files a b c     # scan specific files
 
-Exit codes: 0 = clean, 1 = finding(s), 2 = usage error.
+Exit codes: 0 = clean, 1 = finding(s), 2 = usage/config error. 1 and 2 are kept distinct
+on purpose: a hook must be able to tell a real FINDING from a broken invocation. Never
+collapse them.
 """
 import argparse
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Gate output is evidence and is read on Windows consoles (cp1252) as well as POSIX.
+# Without this, a non-ASCII character in a FINDING line raises UnicodeEncodeError and the
+# operator sees a traceback instead of the findings. Stdlib only.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # already-wrapped or non-reconfigurable stream
+        pass
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -44,7 +55,23 @@ VALUE_PATTERNS = [
     ("Generic secret assignment", re.compile(r"(?i)\b(secret|password|passwd|client_secret|api[_-]?key)\b\s*[:=]\s*['\"][^'\"]{8,}['\"]")),
 ]
 
-PLACEHOLDER = re.compile(r"<[A-Z_]+>|EXAMPLE|REDACTED|XXXX|\bplaceholder\b", re.I)
+# STRUCTURAL placeholders only, and tested against the MATCHED VALUE — never the whole
+# line. The previous version skipped an entire line if it contained the bare word
+# "EXAMPLE" (or "placeholder") anywhere, case-insensitively. That is a false-negative
+# hole big enough to drive a real secret through: a prose line opening with "For
+# example," and then carrying a genuine 12-digit account id, a full ARN, a security-group
+# id and a quoted password scanned CLEAN — one incidental word switched off every check
+# on that line, and docs say "for example" constantly. Prose must never be able to
+# disable the scanner. Word-shaped excuses are gone; only a value that is ITSELF a
+# placeholder is exempt. (Deliberately no literal sample here: this file is scanned too.)
+PLACEHOLDER = re.compile(
+    r"<[A-Z0-9_]+>"          # <ACCOUNT_ID>, <CERT_ARN>
+    r"|\$\{[A-Za-z0-9_]+\}"  # ${ACCOUNT_ID}
+    r"|\{\{[^}]+\}\}"        # {{ account_id }}
+    r"|REDACTED"
+    r"|X{4,}",
+    re.I,
+)
 
 
 def staged_files():
@@ -53,7 +80,8 @@ def staged_files():
         capture_output=True, text=True,
     )
     if out.returncode != 0:
-        sys.exit(f"error: git failed: {out.stderr.strip()}")
+        print(f"error: git failed: {out.stderr.strip()}", file=sys.stderr)
+        sys.exit(2)  # config error, NOT a secret finding
     return [l.replace("\\", "/") for l in out.stdout.splitlines() if l.strip()]
 
 
@@ -81,11 +109,14 @@ def main():
                 findings.append((path, 0, "FORBIDDEN FILE — must never be tracked (PRD §11)"))
         content = staged_content(path) if a.staged else _read(path)
         for i, line in enumerate(content.splitlines(), 1):
-            if PLACEHOLDER.search(line):
-                continue
             for label, rx in VALUE_PATTERNS:
-                if rx.search(line):
+                for m in rx.finditer(line):
+                    # Exempt only if the MATCHED VALUE is itself a placeholder. Anything
+                    # else on the line — including the word "example" — is irrelevant.
+                    if PLACEHOLDER.search(m.group(0)):
+                        continue
                     findings.append((path, i, f"probable {label}"))
+                    break  # one finding per pattern per line is enough to block
 
     if not findings:
         print(f"secret_scan: clean ({len(files)} file(s) scanned).")

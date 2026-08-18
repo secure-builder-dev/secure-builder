@@ -10,9 +10,33 @@
 # Install with scripts/install-hooks.sh (or use .pre-commit-config.yaml).
 
 set -e
-PY="$(command -v python3 || command -v python)"
+
+# Resolve a python that ACTUALLY RUNS, not merely one that resolves on PATH.
+# On Windows, `command -v python3` happily returns the Microsoft Store "app execution
+# alias" (…/WindowsApps/python3), which is not an interpreter: it prints a store advert
+# and exits nonzero. Trusting it made every commit fail with a bogus error. Probe each
+# candidate before accepting it.
+# Absolute paths are probed too, not just PATH names: a hook inherits the environment of
+# whatever launched git (IDE, agent shell, cron), and that PATH is often narrower than a
+# login shell's. ~/.local/bin is where uv and pipx install on both Windows and Linux.
+PY=""
+for _cand in python3 python py "$HOME/.local/bin/python3" "$HOME/.local/bin/python" \
+             /usr/local/bin/python3 /usr/bin/python3; do
+  case "$_cand" in
+    /*) _p="$_cand"; [ -x "$_p" ] || continue ;;
+    *)  _p="$(command -v "$_cand" 2>/dev/null)" || continue ;;
+  esac
+  [ -n "$_p" ] || continue
+  if "$_p" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+    PY="$_p"
+    break
+  fi
+done
 if [ -z "$PY" ]; then
-  echo "pre-commit: python not found on PATH — cannot run gate checks." >&2
+  echo "pre-commit: no working python found — cannot run gate checks." >&2
+  echo "  Probed PATH (python3, python, py) and ~/.local/bin, /usr/local/bin, /usr/bin." >&2
+  echo "  A Microsoft Store alias resolves on PATH but is not an interpreter; it fails" >&2
+  echo "  the probe on purpose." >&2
   echo "  (install python3, or commit with --no-verify and run checks manually)." >&2
   exit 1
 fi

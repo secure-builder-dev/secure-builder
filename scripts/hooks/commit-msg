@@ -7,10 +7,33 @@
 # time / pre-push, since it spans more than the single commit being made.
 
 set -e
-PY="$(command -v python3 || command -v python)"
+
+# Resolve a python that ACTUALLY RUNS — see the note in scripts/hooks/pre-commit. On
+# Windows the Microsoft Store alias resolves on PATH but is not an interpreter.
+# Kept duplicated rather than sourced from a shared file on purpose: install-hooks.sh
+# copies each hook standalone into .git/hooks, so a `.` include would break on install.
+PY=""
+for _cand in python3 python py "$HOME/.local/bin/python3" "$HOME/.local/bin/python" \
+             /usr/local/bin/python3 /usr/bin/python3; do
+  case "$_cand" in
+    /*) _p="$_cand"; [ -x "$_p" ] || continue ;;
+    *)  _p="$(command -v "$_cand" 2>/dev/null)" || continue ;;
+  esac
+  [ -n "$_p" ] || continue
+  if "$_p" -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+    PY="$_p"
+    break
+  fi
+done
 if [ -z "$PY" ]; then
-  echo "commit-msg: python not found — skipping prefix check." >&2
-  exit 0
+  # FAIL CLOSED. This previously exited 0 ("skipping prefix check"), which silently
+  # disabled a real gate whenever the interpreter was missing — and the pre-commit hook
+  # right next to it already fails closed for the same condition. A gate that turns
+  # itself off when the environment degrades is not a gate (CLAUDE.md §6).
+  echo "commit-msg: no working python found on PATH — cannot verify the message prefix." >&2
+  echo "  Tried: python3, python, py (a Microsoft Store alias does not count)." >&2
+  echo "  (install python3, or commit with --no-verify and record the skip)." >&2
+  exit 1
 fi
 ROOT="$(git rev-parse --show-toplevel)"
 MSG="$(cat "$1")"

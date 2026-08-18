@@ -18,13 +18,24 @@ Usage:
     check_tdd.py --story S-001 --range main..HEAD
     check_tdd.py --staged-msg "<msg>"          # pre-commit: validate the message prefix
 
-Exit codes: 0 = compliant, 1 = violation, 2 = usage error.
+Exit codes: 0 = compliant, 1 = violation, 2 = usage/config error. 1 and 2 are kept
+distinct on purpose: a hook must be able to tell a real TDD VIOLATION from a broken
+invocation. Never collapse them.
 """
 import argparse
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Gate output is evidence and is read on Windows consoles (cp1252) as well as POSIX.
+# Without this, a non-ASCII character in a FAIL line raises UnicodeEncodeError and the
+# operator sees a traceback instead of the verdict. Stdlib only.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # already-wrapped or non-reconfigurable stream
+        pass
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_RE = lambda s: re.compile(rf"^\[{re.escape(s)}/tests\]")
@@ -38,7 +49,8 @@ def git_log(extra):
         capture_output=True, text=True,
     )
     if out.returncode != 0:
-        sys.exit(f"error: git failed: {out.stderr.strip()}")
+        print(f"error: git failed: {out.stderr.strip()}", file=sys.stderr)
+        sys.exit(2)  # config error, NOT a TDD violation
     rows = []
     for line in out.stdout.splitlines():
         if "\t" in line:
@@ -55,8 +67,13 @@ def check_story(story, rng):
     for i, (h, s) in enumerate(rows):
         if tests_idx is None and t_re.match(s):
             tests_idx = i
-        if i_re.match(s):
-            impl_idx = i  # last impl commit for the story
+        if impl_idx is None and i_re.match(s):
+            # FIRST impl commit, not the last. Using the last one is a real bypass:
+            # CLAUDE.md §7 says post-gate remediation commits carry the SAME story
+            # prefix, so a story that shipped impl-then-tests would go green the moment
+            # any later `[S-XXX/impl]` remediation landed after the backdated tests.
+            # Guarantee #3 is about what came first, so anchor on the first impl commit.
+            impl_idx = i
     print(f"TDD check — story: {story}")
     if impl_idx is None:
         print("  no impl commit found for this story — nothing to verify yet (PASS/N-A).")
@@ -66,9 +83,12 @@ def check_story(story, rng):
         print("  → Guarantee #3 violation. Automatic TDD FAIL.")
         return 1
     if tests_idx < impl_idx:
-        print(f"  PASS: `[{story}/tests]` (#{tests_idx}) precedes `[{story}/impl]` (#{impl_idx}).")
+        print(f"  PASS: `[{story}/tests]` (#{tests_idx}) precedes first `[{story}/impl]` (#{impl_idx}).")
         return 0
-    print(f"  FAIL: `[{story}/tests]` does not precede `[{story}/impl]` in history.")
+    print(f"  FAIL: `[{story}/tests]` (#{tests_idx}) does not precede the FIRST "
+          f"`[{story}/impl]` (#{impl_idx}) in history.")
+    print("  -> Guarantee #3 violation. Tests written after implementation are not TDD;")
+    print("     a later remediation commit does not cure it. Automatic TDD FAIL.")
     return 1
 
 

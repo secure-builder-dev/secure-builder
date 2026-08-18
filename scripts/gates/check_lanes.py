@@ -16,7 +16,9 @@ Usage:
     check_lanes.py --agent Forge --staged          # check staged changes
     check_lanes.py --list-agents
 
-Exit codes: 0 = in-lane (or no touched files), 1 = out-of-lane finding(s), 2 = usage error.
+Exit codes: 0 = in-lane (or no touched files), 1 = out-of-lane finding(s), 2 = usage/config
+error. 1 and 2 are kept distinct on purpose: a hook must be able to tell a real lane
+FINDING from a broken invocation. Never collapse them.
 """
 import argparse
 import fnmatch
@@ -25,17 +27,32 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Gate output is evidence and is read on Windows consoles (cp1252) as well as POSIX.
+# Without this, a non-ASCII character in a FINDING line raises UnicodeEncodeError and
+# the operator sees a traceback instead of the finding. Stdlib only.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # already-wrapped or non-reconfigurable stream
+        pass
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = REPO_ROOT / "agents" / "manifest.json"
+
+
+def die(msg):
+    """Usage/config failure — exit 2, never 1 (1 means a genuine lane finding)."""
+    print(f"error: {msg}", file=sys.stderr)
+    sys.exit(2)
 
 
 def load_manifest():
     try:
         return json.loads(MANIFEST.read_text(encoding="utf-8"))["agents"]
     except FileNotFoundError:
-        sys.exit(f"error: manifest not found at {MANIFEST}")
+        die(f"manifest not found at {MANIFEST}")
     except (json.JSONDecodeError, KeyError) as e:
-        sys.exit(f"error: malformed manifest {MANIFEST}: {e}")
+        die(f"malformed manifest {MANIFEST}: {e}")
 
 
 def git_files(args):
@@ -45,14 +62,20 @@ def git_files(args):
         capture_output=True, text=True,
     )
     if out.returncode != 0:
-        sys.exit(f"error: git failed: {out.stderr.strip()}")
+        die(f"git failed: {out.stderr.strip()}")
     return [line.replace("\\", "/") for line in out.stdout.splitlines() if line.strip()]
 
 
 def matches_any(path, globs):
-    """gitignore-ish: a `dir/**` glob also matches the directory's descendants."""
+    """gitignore-ish: a `dir/**` glob also matches the directory's descendants.
+
+    fnmatchcase — NOT fnmatch — is deliberate. fnmatch applies os.path.normcase, which
+    is case-insensitive on Windows and case-sensitive on POSIX; the same commit would
+    then get different lane verdicts on the dev laptop and the air-gapped Linux target.
+    A gate that produces evidence must be platform-deterministic.
+    """
     for g in globs:
-        if fnmatch.fnmatch(path, g):
+        if fnmatch.fnmatchcase(path, g):
             return True
         if g.endswith("/**") and (path == g[:-3] or path.startswith(g[:-2])):
             return True
@@ -78,7 +101,7 @@ def main():
     if not a.agent:
         ap.error("--agent is required (or use --list-agents)")
     if a.agent not in agents:
-        sys.exit(f"error: unknown agent '{a.agent}'. Known: {', '.join(agents)}")
+        die(f"unknown agent '{a.agent}'. Known: {', '.join(agents)}")
 
     if a.staged:
         touched = git_files(["diff", "--cached", "--name-only"])

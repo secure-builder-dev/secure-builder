@@ -1,0 +1,16 @@
+REQ:        REQ-11.5.3
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   let a governance change be bundled with feature work
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.RangeCheck.test_governance_bundled_with_feature_work_blocks
+--- output with the property broken (must show failure) ---
+FAIL: test_governance_bundled_with_feature_work_blocks (selftest.test_governance.RangeCheck.test_governance_bundled_with_feature_work_blocks)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.660s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.665s
+OK
+exit 0

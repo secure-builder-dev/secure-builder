@@ -1,0 +1,15 @@
+REQ:        REQ-11.5.1
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   let a governance change proceed with no declared file and section
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.RangeCheck.test_governance_change_without_row_blocks_and_is_advisory
+--- output with the property broken (must show failure) ---
+ERROR: test_governance_change_without_row_blocks_and_is_advisory (selftest.test_governance.RangeCheck.test_governance_change_without_row_blocks_and_is_advisory)
+Ran 1 test in 0.711s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.647s
+OK
+exit 0

@@ -17,7 +17,7 @@ import json
 import pathlib
 import re
 
-from . import checklist, controlshape, gitutil, manifest, mutate, routes, version
+from . import checklist, controlshape, gitutil, governance, manifest, mutate, routes, version
 from .checks import coverage_range, findings_register
 from .outcome import Outcome, State
 from .records import findings as findings_mod
@@ -161,6 +161,12 @@ def security_mechanical(root, cfg, base, head, unit):
     outs.append(_frozen_surface(root, cfg, changed))                    # spec 03 REQ-4.6–4.7
     outs.append(_plans_during_construction(root, changed, unit))        # spec 03 REQ-3.5.1–3.5.2
     outs.append(_dependency_lead_time(root, cfg, diff))                 # spec 01 §6.2.1 item 10; spec 04 §10.6
+    gov_outs, is_gov = governance.check_range(root, cfg, base, head, unit)   # spec 01 §11
+    outs += gov_outs
+    ctx["governance"] = is_gov
+    if is_gov:
+        ctx["rules_at_base"] = governance.rules_at_base(root, base, governance.governed_set(root, cfg),
+                                                        root / ".engine" / "local" / f"rules-at-base-{unit}")
     ctx["checklist"] = checklist.compose(cfg)
     ctx["checklist_version"] = checklist.version()
     return outs, ctx
@@ -282,6 +288,7 @@ def prepare(root, cfg, unit, run, base, head):
              "quality": [o.line() for o in q], "security_mechanical": [o.line() for o in s],
              "mechanical_blocking": [o.check for o in s if o.state is State.FINDINGS and o.blocking],
              "control_shaped": ctx.get("control_shaped"), "families": ctx.get("families", []),
+             "governance": bool(ctx.get("governance")),
              "checklist_version": ctx["checklist_version"], "harness_version": version(), "prepared": now(cfg)}
     p = state_path(root, unit, run)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -296,6 +303,10 @@ def _write_checklist(root, unit, run, ctx):
          f"control-shaped: {'yes (' + ', '.join(ctx['families']) + ')' if ctx['control_shaped'] else 'no'}", ""]
     for group, i, text, detail, std in ctx["checklist"]:
         L.append(f"- [{group}] {i}. {text}" + (f" — {detail}" if detail else "") + (f" (cites: {std})" if std else ""))
+    if ctx.get("governance"):
+        L += ["", "GOVERNANCE CHANGE: this range alters the rule set. Evaluate against the rules as they existed at the",
+              f"base commit, materialised under .engine/local/rules-at-base-{unit}/ ({len(ctx.get('rules_at_base', []))} file(s)).",
+              "Your verdict is advisory; the accountable control is the human's line-by-line diff review."]
     if ctx["control_shaped"]:
         L += ["", "Completeness review (answer in prose per control touched; Q3 and Q4 produce a list):"]
         L += [f"- {q}: {t}" for q, t in checklist.COMPLETENESS]
@@ -357,10 +368,13 @@ def submit(root, cfg, unit, run, v, attested_by):
         return None, ["a named human must attest the unit of work"]
     ids = [str(x) for x in (v.get("finding_ids") or [])]
     count = int(v["open_findings"])
+    verdict = v["verdict"]
+    if state.get("governance"):
+        verdict = "advisory"       # spec 01 REQ-11.2.1: the automated gate is advisory on a governance change
     if count and len(ids) != count:
         return None, [f"open_findings is {count} but {len(ids)} finding identifiers were given"]
     line = gatelog.append(root, cfg, unit=unit, range=f"{state['base'][:12]}..{state['head'][:12]}", run=str(run),
-                          verdict=v["verdict"], findings="0" if not count else f"{count}: {', '.join(ids)}",
+                          verdict=verdict, findings="0" if not count else f"{count}: {', '.join(ids)}",
                           tickets=", ".join(str(x) for x in (v.get("tickets_opened_ids") or [])) or "-",
                           reviewer=str(v.get("reviewer", "security-gate")), reviewer_class=v["reviewer_class"],
                           model=str(v["model"]), attested_by=attested_by, harness_version=state["harness_version"],

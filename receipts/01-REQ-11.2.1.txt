@@ -1,0 +1,16 @@
+REQ:        REQ-11.2.1
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   let the automated gate pass a governance change as if its review were the control
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_governance.RangeCheck.test_gate_records_advisory_for_governance_range
+--- output with the property broken (must show failure) ---
+FAIL: test_gate_records_advisory_for_governance_range (selftest.test_governance.RangeCheck.test_gate_records_advisory_for_governance_range)
+AssertionError: 'pass' != 'advisory'
+Ran 1 test in 1.226s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.055s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-11.8.2
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   let governance files be committed with no row written first
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.Changelog.test_staged_governance_without_row_is_refused_by_hook_logic
+--- output with the property broken (must show failure) ---
+FAIL: test_staged_governance_without_row_is_refused_by_hook_logic (selftest.test_governance.Changelog.test_staged_governance_without_row_is_refused_by_hook_logic)
+AssertionError: 0 != 1
+Ran 1 test in 0.397s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.560s
+OK
+exit 0

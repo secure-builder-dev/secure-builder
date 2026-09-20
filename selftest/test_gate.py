@@ -352,6 +352,9 @@ class Submit(unittest.TestCase):
         files = {"src/app.py": APP, "src/auth.py": AUTH, "tests/test_items.py": TEST} if control_shaped else {"docs/x.md": "hi" + NL}
         head = feature(t, files=files)
         if control_shaped:
+            from engine import governance
+            governance.record(t, cfg(), change_id="G-1", file_section=manifest.FILE, grounding="spec 01 §7.4.1",
+                              shown_text="add control C-1 require_auth", approved_by="Casey Houle")
             write(t, manifest.FILE, json.dumps({"scope_statement": manifest.SCOPE_STATEMENT, "controls": [
                 {"id": "C-1", "description": "d", "location": {"file": "src/auth.py", "symbol": "require_auth"},
                  "test_pattern": "tests/*", "status": "system-specific"}]}))

@@ -30,6 +30,8 @@
   scan resolve id=<id> status=<fixed|carried|accepted> [note=...]   move an alarm finding; history appended
   currency [--offline]   report whether vendored catalogue pins are current — the only command that reaches the network
   catalogue ingest FILE [--acknowledge-markings] | bundle DIR | ingest-bundle DIR | list   adopt catalogues deliberately, with a diff
+  governance show | propose | record change_id= file_section= grounding= approved_by=   the governance protocol (spec 01 §11)
+  disposition checklist-line file=AGENTS.md section="## Project rules" text="..." source="[finding: F-1]"   append a grounded line
   status              orientation: position and exactly one next action (always exits 0)
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
@@ -588,6 +590,66 @@ def cmd_catalogue(root, argv):
     return 2
 
 
+def cmd_governance(root, argv):
+    from . import governance
+    sub, kv = (argv[0] if argv else ""), _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"governance: COULD NOT RUN — {e}")
+        return 2
+    if sub == "show":
+        print("governed set (human-authored only, except allowlisted zones):")
+        for g in governance.governed_set(root, cfg):
+            print(f"  {g}")
+        print("agent-editable zones (append grounded entries only):")
+        for z in governance.zones(root):
+            print(f"  {z['file']} {z['section']}")
+        probs = governance.staged_problems(root, cfg)
+        for p in probs:
+            print(f"staged: {p}")
+        return 0
+    if sub == "propose":
+        text = governance.staged_diff(root, governance.governed_set(root, cfg))
+        if not text.strip():
+            print("governance: no governed file is staged")
+            return 1
+        print("governance: the literal text being changed — shown in the request itself, never behind a detail:")
+        print(text)
+        print("governance: record approval with `governance record change_id= file_section= grounding= approved_by=`; the row records this text")
+        return 0
+    if sub == "record":
+        try:
+            shown = governance.staged_diff(root, governance.governed_set(root, cfg)) or kv.get("shown", "")
+            line = governance.record(root, cfg, change_id=kv["change_id"], file_section=kv["file_section"], grounding=kv["grounding"],
+                                     shown_text=shown, approved_by=kv["approved_by"])
+        except KeyError as e:
+            print(f"governance: REFUSED — missing {e}")
+            return 1
+        except Exception as e:
+            print(f"governance: REFUSED — {e}")
+            return 1
+        print(f"governance: row written before the commit: {line}")
+        return 0
+    print("governance show | propose | record change_id= file_section= grounding= approved_by=")
+    return 2
+
+
+def cmd_disposition(root, argv):
+    from . import governance
+    sub, kv = (argv[0] if argv else ""), _kv(argv[1:])
+    if sub != "checklist-line":
+        print("disposition checklist-line file= section= text= source=")
+        return 2
+    try:
+        entry = governance.append_grounded(root, kv.get("file", "AGENTS.md"), kv.get("section", "## Project rules"), kv["text"], kv["source"])
+    except (PermissionError, KeyError, OSError) as e:
+        print(f"disposition: REFUSED — {e}")
+        return 1
+    print(f"disposition: appended to {kv.get('file', 'AGENTS.md')} {kv.get('section', '## Project rules')}: {entry}")
+    return 0
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -656,7 +718,8 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
             "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
-            "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue}
+            "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
+            "governance": cmd_governance, "disposition": cmd_disposition}
 
 
 def main(argv=None):

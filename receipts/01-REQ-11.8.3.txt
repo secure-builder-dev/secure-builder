@@ -1,0 +1,16 @@
+REQ:        REQ-11.8.3
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   recorded that approval occurred without what the human was shown
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.Changelog.test_record_writes_row_before_commit_with_what_was_shown
+--- output with the property broken (must show failure) ---
+FAIL: test_record_writes_row_before_commit_with_what_was_shown (selftest.test_governance.Changelog.test_record_writes_row_before_commit_with_what_was_shown)
+AssertionError: 'approved after being shown the literal text:' not found in 'Casey Houle approved after being shown the diff'
+Ran 1 test in 0.660s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.570s
+OK
+exit 0

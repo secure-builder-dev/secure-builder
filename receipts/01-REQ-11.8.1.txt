@@ -1,0 +1,16 @@
+REQ:        REQ-11.8.1
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   wrote a changelog row without the file and section touched
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.Changelog.test_staged_governance_without_row_is_refused_by_hook_logic
+--- output with the property broken (must show failure) ---
+FAIL: test_staged_governance_without_row_is_refused_by_hook_logic (selftest.test_governance.Changelog.test_staged_governance_without_row_is_refused_by_hook_logic)
+AssertionError: Lists differ: ['AGENTS.md: staged but not named in a pending changelog row (-)'] != []
+Ran 1 test in 0.399s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.510s
+OK
+exit 0

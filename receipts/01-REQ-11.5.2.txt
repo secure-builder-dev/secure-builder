@@ -1,0 +1,16 @@
+REQ:        REQ-11.5.2
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   made a change outside the declared surface a note instead of a blocking finding
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.RangeCheck.test_declared_surface_isolation_and_advisory_verdict
+--- output with the property broken (must show failure) ---
+FAIL: test_declared_surface_isolation_and_advisory_verdict (selftest.test_governance.RangeCheck.test_declared_surface_isolation_and_advisory_verdict)
+AssertionError: False is not true : a change outside the declared surface is a blocking finding, not a note
+Ran 1 test in 0.920s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.037s
+OK
+exit 0

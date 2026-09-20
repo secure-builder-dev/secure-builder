@@ -33,6 +33,7 @@ ENGINE_OWNED = {
 SEED_IF_ABSENT = {
     "AGENTS.md": "engine/dist/templates/AGENTS.md",                    # project instruction file (import + project rules)
     f"{ENGINE_DIR}/control-manifest.json": "engine/dist/templates/control-manifest.json",
+    f"{ENGINE_DIR}/governance.json": "engine/dist/templates/governance.json",
     f"{ENGINE_DIR}/records/gate-log.md": "engine/dist/templates/records/gate-log.md",
     f"{ENGINE_DIR}/records/findings-register.md": "engine/dist/templates/records/findings-register.md",
     f"{ENGINE_DIR}/records/governance-changelog.md": "engine/dist/templates/records/governance-changelog.md",
@@ -52,6 +53,7 @@ SEED_IF_ABSENT = {
 ENGINE_REFERENCE = {
     "AGENTS.md": "engine/dist/templates/AGENTS.md",
     f"{ENGINE_DIR}/control-manifest.json": "engine/dist/templates/control-manifest.json",
+    f"{ENGINE_DIR}/governance.json": "engine/dist/templates/governance.json",
     f"{ENGINE_DIR}/records/gate-log.md": "engine/dist/templates/records/gate-log.md",
 }
 

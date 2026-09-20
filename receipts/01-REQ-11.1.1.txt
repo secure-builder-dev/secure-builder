@@ -1,0 +1,16 @@
+REQ:        REQ-11.1.1
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   left the reviewer definitions out of the governed set
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.Set.test_governed_set_includes_rulebook_definitions_manifest_config_and_itself
+--- output with the property broken (must show failure) ---
+FAIL: test_governed_set_includes_rulebook_definitions_manifest_config_and_itself (selftest.test_governance.Set.test_governed_set_includes_rulebook_definitions_manifest_config_and_itself)
+AssertionError: '.engine/agents/' not found in ['AGENTS.md', '.engine/rules/', '.engine/reference/', '.engine/control-manifest.json', '.engine/config.json', '.engine/governance.json']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

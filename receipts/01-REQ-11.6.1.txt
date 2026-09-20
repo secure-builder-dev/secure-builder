@@ -1,0 +1,16 @@
+REQ:        REQ-11.6.1
+SPEC:       01
+CHECK:      engine/governance.py
+MUTATION:   gave the reviewer the amended rules instead of the rules at the base commit
+FILE:       engine/governance.py
+TEST:       python -m unittest selftest.test_governance.RangeCheck.test_rules_at_base_materialised_for_review
+--- output with the property broken (must show failure) ---
+FAIL: test_rules_at_base_materialised_for_review (selftest.test_governance.RangeCheck.test_rules_at_base_materialised_for_review)
+AssertionError: 'weakened\n' != "# Project instructions\n\n© 2026 Casey H[583 chars].)\n"
+Ran 1 test in 0.596s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.827s
+OK
+exit 0

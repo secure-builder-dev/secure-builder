@@ -1,0 +1,16 @@
+REQ:        REQ-4.6.3
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   let a partial scanner set report green
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Coverage9.test_incomplete_scanner_set_fails_gate_independent_of_findings
+--- output with the property broken (must show failure) ---
+FAIL: test_incomplete_scanner_set_fails_gate_independent_of_findings (selftest.test_scan.Coverage9.test_incomplete_scanner_set_fails_gate_independent_of_findings)
+AssertionError: Tuples differ: ('green', False, []) != ('red', False, [])
+Ran 1 test in 0.288s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.190s
+OK
+exit 0

@@ -1,0 +1,15 @@
+REQ:        REQ-4.2.2
+SPEC:       04
+CHECK:      engine/scan/bundles.py
+MUTATION:   ingested a data bundle without recording its production date for the scanners to read
+FILE:       engine/scan/bundles.py
+TEST:       python -m unittest selftest.test_scan.Bundles.test_data_bundle_round_trip_with_ingest_record
+--- output with the property broken (must show failure) ---
+ERROR: test_data_bundle_round_trip_with_ingest_record (selftest.test_scan.Bundles.test_data_bundle_round_trip_with_ingest_record)
+Ran 1 test in 0.485s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.446s
+OK
+exit 0

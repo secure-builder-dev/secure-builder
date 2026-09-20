@@ -1,0 +1,16 @@
+REQ:        REQ-4.10.3
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   carried a finding without a review-by date
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_two_scanners_correlated_fixable_actionable_unfixable_carried
+--- output with the property broken (must show failure) ---
+FAIL: test_two_scanners_correlated_fixable_actionable_unfixable_carried (selftest.test_scan.Run.test_two_scanners_correlated_fixable_actionable_unfixable_carried)
+AssertionError: Regex didn't match: '^\\d{4}-\\d{2}-\\d{2}$' not found in 'unknown'
+Ran 1 test in 0.276s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.284s
+OK
+exit 0

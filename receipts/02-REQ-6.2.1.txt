@@ -1,0 +1,16 @@
+REQ:        REQ-6.2.1
+SPEC:       02
+CHECK:      engine/stamp.py
+MUTATION:   let a stamp omit the commit it describes
+FILE:       engine/stamp.py
+TEST:       python -m unittest selftest.test_scan.Coverage9.test_stamp_requires_commit_and_records_which_scanners_ran
+--- output with the property broken (must show failure) ---
+FAIL: test_stamp_requires_commit_and_records_which_scanners_ran (selftest.test_scan.Coverage9.test_stamp_requires_commit_and_records_which_scanners_ran)
+AssertionError: "stamp lacks 'commit'" not found in []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.226s
+OK
+exit 0

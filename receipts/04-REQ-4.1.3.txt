@@ -1,0 +1,16 @@
+REQ:        REQ-4.1.3
+SPEC:       04
+CHECK:      engine/scan/bundles.py
+MUTATION:   skipped a scanner whose image was missing
+FILE:       engine/scan/bundles.py
+TEST:       python -m unittest selftest.test_scan.Bundles.test_image_bundle_records_digests_and_disconnected_never_pulls
+--- output with the property broken (must show failure) ---
+FAIL: test_image_bundle_records_digests_and_disconnected_never_pulls (selftest.test_scan.Bundles.test_image_bundle_records_digests_and_disconnected_never_pulls)
+AssertionError: 0 != 6
+Ran 1 test in 0.275s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.193s
+OK
+exit 0

@@ -25,6 +25,9 @@
   handoff [--checkpoint] [--scan-impossible "reason"]   generate the review handoff; writes the started marker
   gate prepare|submit|no-model ...   run the gates' mechanical parts; record a verdict block; or record a no-model run
   review unit=<u> run=<n>   launch the reviewer as a fresh process whose only input is the handoff (spec 03 §2.2)
+  scan [--alarm] [--allow-unverified] [--skip-build]   run the five-concern scan, route findings, write the stamp
+  scan bundle-images DIR | ingest-images DIR | bundle-data DIR | ingest-data DIR [--filtered-understood "why"]
+  scan resolve id=<id> status=<fixed|carried|accepted> [note=...]   move an alarm finding; history appended
   status              orientation: position and exactly one next action (always exits 0)
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
@@ -475,6 +478,65 @@ def cmd_review(root, argv):
     return res.returncode
 
 
+def cmd_scan(root, argv):
+    from .scan import alarm, bundles, runner
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"scan: COULD NOT RUN — {e}")
+        return 2
+    sub = argv[0] if argv and not argv[0].startswith("--") else ""
+    kv = _kv(argv)
+    operator = kv.get("operator") or cfg.get("operator") or "unnamed operator"
+    try:
+        if sub in ("bundle-images", "bundle-data", "ingest-images", "ingest-data"):
+            d = argv[1]
+            if sub == "bundle-images":
+                data = bundles.bundle_images(root, d, cfg, operator)
+            elif sub == "bundle-data":
+                data = bundles.bundle_data(root, d, cfg, operator)
+            else:
+                reason = ""
+                if "--filtered-understood" in argv:
+                    reason = argv[argv.index("--filtered-understood") + 1]
+                data = bundles.ingest(root, d, cfg, operator, filtered_understood=reason)
+            print(f"scan: {sub}: {data['bundle_id']} produced {data['produced']} by {data.get('operator')} on side {data.get('source_side')}")
+            return 0
+        if sub == "resolve":
+            v = alarm.resolve(root, cfg, kv["id"], kv["status"], kv.get("note", ""))
+            print(f"scan: {kv['id']} -> {v['status']}; history: {v['status_history']}")
+            return 0
+        if cfg.mode == "disconnected":
+            missing = bundles.images_present()
+            if missing:
+                print("scan: COULD NOT RUN — disconnected mode uses only images already present:")
+                for m_ in missing:
+                    print("  - " + m_)
+                return 2
+        sc = runner.Scan(root, cfg)
+        result = sc.run(allow_unverified="--allow-unverified" in argv, skip_build="--skip-build" in argv)
+    except (runner.ScanError, RuntimeError, ValueError, KeyError, IndexError) as e:
+        print(f"scan: COULD NOT RUN — {e}")
+        return 2
+    print(f"scan: engine={sc.engine}; mode={cfg.mode}; scanners ran: {', '.join(result['ran']) or 'none'}"
+          + (f"; detection data {result['data_age']} day(s) old" if result["data_age"] is not None else ""))
+    for p_ in result["problems"]:
+        print(f"  - {p_}")
+    for f in result["actionable"]:
+        print(f"  actionable: {f.line()}")
+    for f in result["carried"]:
+        print(f"  carried: {f.line()}")
+    for a in result["aged"]:
+        print(f"  aged: {a}")
+    if "--alarm" in argv:
+        raised = alarm.raise_alarms(root, cfg, result["findings"] + result["informational"])
+        print(f"scan: standing alarm {result['alarm'].upper()}; {len(raised)} new finding(s) recorded with owner, triage window and work item")
+        for ident, first, resolved, days in alarm.intervals(root):
+            print(f"  {ident}: detected {first}, {'resolved ' + resolved if resolved else 'open'}, {days} day(s)")
+    print(f"scan: gate verdict {result['verdict'].upper()} for {result['head'][:12]}; stamp written")
+    return {"green": 0, "unverified": 3}.get(result["verdict"], 1)
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -543,7 +605,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
             "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
-            "review": cmd_review}
+            "review": cmd_review, "scan": cmd_scan}
 
 
 def main(argv=None):

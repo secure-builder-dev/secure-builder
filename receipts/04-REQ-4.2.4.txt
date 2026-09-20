@@ -1,0 +1,16 @@
+REQ:        REQ-4.2.4
+SPEC:       04
+CHECK:      engine/scan/runner.py
+MUTATION:   relaxed the freshness threshold for disconnected operation
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_disconnected_mode_uses_bundle_date_and_keeps_threshold
+--- output with the property broken (must show failure) ---
+FAIL: test_disconnected_mode_uses_bundle_date_and_keeps_threshold (selftest.test_scan.Run.test_disconnected_mode_uses_bundle_date_and_keeps_threshold)
+AssertionError: 'green' != 'red'
+Ran 1 test in 0.278s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.301s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-4.5.3
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   graded a stale image when the build was skipped
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_skipped_build_refuses_stale_image
+--- output with the property broken (must show failure) ---
+FAIL: test_skipped_build_refuses_stale_image (selftest.test_scan.Run.test_skipped_build_refuses_stale_image)
+AssertionError: 'green' != 'red'
+Ran 1 test in 0.181s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.233s
+OK
+exit 0

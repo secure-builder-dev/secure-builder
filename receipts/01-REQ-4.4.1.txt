@@ -1,0 +1,16 @@
+REQ:        REQ-4.4.1
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   allowed a clean report without comparing detection-data age to the threshold
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_disconnected_mode_uses_bundle_date_and_keeps_threshold
+--- output with the property broken (must show failure) ---
+FAIL: test_disconnected_mode_uses_bundle_date_and_keeps_threshold (selftest.test_scan.Run.test_disconnected_mode_uses_bundle_date_and_keeps_threshold)
+AssertionError: 'green' != 'red'
+Ran 1 test in 0.251s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.323s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-4.10.2
+SPEC:       01
+CHECK:      engine/scan/alarm.py
+MUTATION:   overwrote the status history so the detection-to-remediation interval is lost
+FILE:       engine/scan/alarm.py
+TEST:       python -m unittest selftest.test_scan.Alarm.test_resolution_appends_history_and_interval_is_measurable
+--- output with the property broken (must show failure) ---
+FAIL: test_resolution_appends_history_and_interval_is_measurable (selftest.test_scan.Alarm.test_resolution_appends_history_and_interval_is_measurable)
+AssertionError: False is not true : the detection entry must be retained
+Ran 1 test in 0.167s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.267s
+OK
+exit 0

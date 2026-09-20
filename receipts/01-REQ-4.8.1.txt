@@ -1,0 +1,16 @@
+REQ:        REQ-4.8.1
+SPEC:       01
+CHECK:      engine/stamp.py
+MUTATION:   wrote a stamp without the timestamp
+FILE:       engine/stamp.py
+TEST:       python -m unittest selftest.test_scan.Stamp.test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier
+--- output with the property broken (must show failure) ---
+FAIL: test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier (selftest.test_scan.Stamp.test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier)
+AssertionError: Lists differ: ["stamp lacks 'timestamp'"] != []
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

@@ -27,6 +27,8 @@ REGISTRY = [
     "run_attestation",
     "findings_register",
     "control_manifest",
+    "scanner_pins",
+    "artifact_binding",
 ]
 
 

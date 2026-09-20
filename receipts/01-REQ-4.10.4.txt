@@ -1,0 +1,16 @@
+REQ:        REQ-4.10.4
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   let a carried finding past its review-by date stay carried
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Aging.test_carried_past_review_by_blocks_and_fix_now_available_blocks
+--- output with the property broken (must show failure) ---
+FAIL: test_carried_past_review_by_blocks_and_fix_now_available_blocks (selftest.test_scan.Aging.test_carried_past_review_by_blocks_and_fix_now_available_blocks)
+AssertionError: Lists differ: ['CVE-2/liby: an upstream fix is now available (2.1) — [24 chars]ing'] != ['CVE-2/liby: carried finding past its review-by date 2[119 chars]ing']
+Ran 1 test in 0.187s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.262s
+OK
+exit 0

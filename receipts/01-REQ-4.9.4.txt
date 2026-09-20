@@ -1,0 +1,16 @@
+REQ:        REQ-4.9.4
+SPEC:       01
+CHECK:      engine/checks/artifact_binding.py
+MUTATION:   stopped comparing the blessed digest to the shipped one
+FILE:       engine/checks/artifact_binding.py
+TEST:       python -m unittest selftest.test_scan.Binding.test_digest_mismatch_reported_as_artifact_not_shipped
+--- output with the property broken (must show failure) ---
+FAIL: test_digest_mismatch_reported_as_artifact_not_shipped (selftest.test_scan.Binding.test_digest_mismatch_reported_as_artifact_not_shipped)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

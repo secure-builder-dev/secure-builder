@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.1
+SPEC:       01
+CHECK:      engine/scan/images.py
+MUTATION:   accepted an unpinned scanner reference
+FILE:       engine/scan/images.py
+TEST:       python -m unittest selftest.test_scan.Pins.test_unpinned_reference_rejected
+--- output with the property broken (must show failure) ---
+FAIL: test_unpinned_reference_rejected (selftest.test_scan.Pins.test_unpinned_reference_rejected)
+AssertionError: Lists differ: [] != ['vulnerabilities-a (trivy): docker.io/aqu[42 chars]est']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.025s
+OK
+exit 0

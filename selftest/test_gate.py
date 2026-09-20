@@ -116,9 +116,9 @@ class Handoff(unittest.TestCase):
             self.assertEqual(doc["unit"], "epic-7")
             self.assertEqual(doc["shape"]["track"], "web")
             self.assertIn("Do not read the conversation", doc["instruction"])
-            text = handoff.render(doc)
-            self.assertIn("carries no free-text field", text)
-            self.assertNotIn("notes", text.lower())
+            lines = handoff.render(doc).splitlines()
+            self.assertEqual(len([l for l in lines if l.startswith("This handoff carries no free-text field")]), 1)
+            self.assertFalse(any("notes" in l.lower() for l in lines))
             self.assertTrue((t / doc["started_marker"]).is_file(), "the started marker is written before any verdict exists")
             self.assertTrue((t / ".engine/local/handoff-epic-7-1.md").is_file() or handoff.write(t, doc))
 
@@ -193,15 +193,16 @@ class Checklist(unittest.TestCase):
         self.assertIn("ELEVATED:informational", groups)
 
     def test_definition_is_self_contained_and_rendered_from_data(self):
-        text = (ROOT / "engine/dist/agents/security-gate.md").read_text(encoding="utf-8")
-        self.assertEqual(text, checklist.render_definition(), "regenerate the reviewer definition from engine.checklist")
-        for line in text.splitlines():
+        rendered = (ROOT / "engine/dist/agents/security-gate.md").read_text(encoding="utf-8")
+        self.assertEqual(rendered, checklist.render_definition(), "regenerate the reviewer definition from engine.checklist")
+        lines = rendered.splitlines()
+        for line in lines:
             self.assertFalse(line.startswith(("Read and follow:", "@", "import ")), line)
-        self.assertIn(f"Checklist version: {checklist.version()}", text)
+        self.assertIn(f"Checklist version: {checklist.version()}", lines)
         for i, t_, d in checklist.BASE:
-            self.assertIn(t_, text)
+            self.assertEqual(len([l for l in lines if l.startswith(f"{i}. **{t_}**")]), 1, t_)
         for q, t_ in checklist.COMPLETENESS:
-            self.assertIn(t_, text)
+            self.assertEqual(len([l for l in lines if l.startswith(f"- **{q}** {t_}")]), 1, q)
 
     def test_verdict_block_defined_once_and_copied(self):
         ref = (ROOT / "engine/dist/reference/VERDICT.md").read_text(encoding="utf-8")

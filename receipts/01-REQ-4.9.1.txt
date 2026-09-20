@@ -1,0 +1,16 @@
+REQ:        REQ-4.9.1
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   stopped generating the composition inventory per scanned image
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document
+--- output with the property broken (must show failure) ---
+FAIL: test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document (selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document)
+AssertionError: False is not true
+Ran 1 test in 0.311s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.267s
+OK
+exit 0

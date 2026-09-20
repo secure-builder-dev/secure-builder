@@ -1,0 +1,16 @@
+REQ:        REQ-4.4.3
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   ran the refresh without the shared storage the scan reads
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_stale_detection_data_refreshed_via_tools_own_mechanism_on_shared_storage
+--- output with the property broken (must show failure) ---
+FAIL: test_stale_detection_data_refreshed_via_tools_own_mechanism_on_shared_storage (selftest.test_scan.Run.test_stale_detection_data_refreshed_via_tools_own_mechanism_on_shared_storage)
+AssertionError: ('C:\\Users\\cjhou\\AppData\\Local\\Temp\\engine-t-1_aafjy9\\.engine\\local\\clamav-db', '/var/lib/clamav') not found in () : refresh and scan share the database volume
+Ran 1 test in 0.222s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.194s
+OK
+exit 0

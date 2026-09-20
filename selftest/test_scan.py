@@ -1,0 +1,484 @@
+# © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
+"""The scan subsystem (spec 01 §4; spec 02 §6; spec 04 §4, §10.5). Every tool is
+played by a recording fake; nothing here starts a container."""
+import datetime
+import json
+import unittest
+
+from engine import stamp
+from engine.checks import artifact_binding, scanner_pins
+from engine.config import Config
+from engine.outcome import State
+from engine.records import table, templates
+from engine.records import schema as sch
+from engine.scan import alarm, bundles, images, runner
+from engine.tools import Result
+from .helpers import cli, commit, git_repo, tree, write, write_config
+
+NL = chr(10)
+TODAY = datetime.date.today()
+FRESH = (TODAY - datetime.timedelta(days=1)).strftime("%a %b %d %H:%M:%S %Y")
+STALE = (TODAY - datetime.timedelta(days=40)).strftime("%a %b %d %H:%M:%S %Y")
+
+
+def cfg(**over):
+    d = {"schema": 1, "track": "web", "tier": "IL4", "provider": "aws", "app_type": "n/a", "mode": "local", "side": "low",
+         "timezone": "UTC", "ship_images": {"app": "Dockerfile"}, "scan_owner": "casey"}
+    d.update(over)
+    return Config(d)
+
+
+class Fake:
+    """A scriptable tool player. Each key is a substring of the tool+args; the value is
+    (exit code, stdout). Every call is recorded."""
+    def __init__(self, script):
+        self.script = script
+        self.calls = []
+
+    def __call__(self, tool, image, args, mounts=()):
+        self.calls.append((tool, list(args), tuple(mounts)))
+        key = tool + " " + " ".join(args)
+        for k, (code, out) in self.script.items():
+            if k in key:
+                return Result(tool, list(args), code, out, "", "fake")
+        return Result(tool, list(args), 0, "", "", "fake")
+
+
+TRIVY = json.dumps({"Results": [{"Target": "app", "Vulnerabilities": [
+    {"VulnerabilityID": "CVE-1", "Severity": "HIGH", "PkgName": "libx", "InstalledVersion": "1.0", "FixedVersion": "1.1"},
+    {"VulnerabilityID": "CVE-2", "Severity": "LOW", "PkgName": "liby", "InstalledVersion": "2.0"}]}]})
+GRYPE = json.dumps({"matches": [
+    {"vulnerability": {"id": "CVE-1", "severity": "High", "fix": {"versions": ["1.1"]}}, "artifact": {"name": "libx", "version": "1.0"}},
+    {"vulnerability": {"id": "CVE-2", "severity": "Low", "fix": {"versions": []}}, "artifact": {"name": "liby", "version": "2.0"}},
+    {"vulnerability": {"id": "CVE-9", "severity": "Medium", "fix": {"versions": []}}, "artifact": {"name": "libz", "version": "3.0"}}]})
+CREATED = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)).isoformat()
+
+
+def baseline(fresh=True, vulns=True):
+    return {
+        "clamscan --version": (0, f"ClamAV 1.4.1/27500/{FRESH if fresh else STALE}" + NL),
+        "clamscan -r": (0, "" + NL),
+        "hadolint": (0, "[]"),
+        "config --format json": (0, json.dumps({"Results": []})),
+        "docker build": (0, ""),
+        "docker inspect": (0, f"sha256:abc123 {CREATED}"),
+        "image --format json": (0, TRIVY if vulns else json.dumps({"Results": []})),
+        "app -o json": (0, GRYPE if vulns else json.dumps({"matches": []})),
+        "app -o cyclonedx-json": (0, json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "libx"}]})),
+    }
+
+
+def project(t, **over):
+    conf = {"side": "low", "timezone": "UTC", "ship_images": {"app": "Dockerfile"}, "scan_owner": "casey"}
+    conf.update(over)
+    write_config(t, **conf)
+    templates.render_all(t / ".engine/records")
+    git_repo(t)
+    write(t, "Dockerfile", "FROM scratch" + NL)
+    write(t, "src/a.py", "x = 1" + NL)
+    head = commit(t, "c")
+    return head
+
+
+class Pins(unittest.TestCase):
+    def test_every_reference_pinned_and_embedded_data_on_moving_tag(self):
+        self.assertEqual(images.pin_problems(), [])
+        self.assertTrue(images.SCANNERS["malware"][2])
+        self.assertIs(scanner_pins.run(None, None).state, State.CLEAN)
+
+    def test_digest_pin_on_embedded_data_rejected(self):
+        bad = dict(images.SCANNERS); bad["malware"] = ("clamav", "docker.io/clamav/clamav@sha256:" + "0" * 64, True)
+        self.assertEqual(images.pin_problems(bad), ["malware (clamav): embedded detection data pinned to a digest — signatures frozen at build time"])
+
+    def test_patch_tag_on_embedded_data_rejected(self):
+        bad = dict(images.SCANNERS); bad["malware"] = ("clamav", "docker.io/clamav/clamav:1.4.2", True)
+        self.assertEqual(images.pin_problems(bad), ["malware (clamav): embedded detection data pinned to immutable patch tag 1.4.2 — a digest wearing a tag's clothes"])
+
+    def test_unpinned_reference_rejected(self):
+        bad = dict(images.SCANNERS); bad["vulnerabilities-a"] = ("trivy", "docker.io/aquasec/trivy", False)
+        self.assertEqual(images.pin_problems(bad), ["vulnerabilities-a (trivy): docker.io/aquasec/trivy carries neither a tag nor a digest"])
+        import unittest.mock as mock
+        with mock.patch.object(images, "SCANNERS", bad):
+            o = scanner_pins.run(None, None)
+        self.assertIs(o.state, State.FINDINGS)
+        self.assertTrue(o.blocking)
+
+    def test_five_required_concerns_by_separate_tools(self):
+        tools_ = [images.SCANNERS[c][0] for c in images.REQUIRED_CONCERNS]
+        self.assertEqual(len(images.REQUIRED_CONCERNS), 5)
+        self.assertEqual(len(set(tools_)), 5)
+
+
+class Engine(unittest.TestCase):
+    def test_three_engine_modes(self):
+        self.assertEqual(runner.ENGINES, ("containers", "host", "auto"))
+        import unittest.mock as mock
+        with mock.patch.object(runner, "runtime_usable", return_value=None):
+            self.assertEqual(runner.select_engine(cfg(scan_engine="auto")), ("host", None))
+            with self.assertRaises(runner.ScanError):
+                runner.select_engine(cfg(scan_engine="containers"))
+        with mock.patch.object(runner, "runtime_usable", return_value="docker"):
+            self.assertEqual(runner.select_engine(cfg(scan_engine="auto")), ("containers", "docker"))
+        self.assertEqual(runner.select_engine(cfg(scan_engine="host")), ("host", None))
+
+
+class Run(unittest.TestCase):
+    def scan(self, t, script, c=None, **kw):
+        fake = Fake(script)
+        sc = runner.Scan(t, c or cfg(), invoke=fake, engine=("containers", "docker"))
+        return sc, sc.run(**kw), fake
+
+    def test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document(self):
+        with tree() as t:
+            head = project(t)
+            sc, r, fake = self.scan(t, baseline(vulns=False))
+            self.assertEqual(r["verdict"], "green", r["problems"])
+            self.assertEqual(sorted(r["ran"]), sorted(images.REQUIRED_CONCERNS))
+            st = stamp.read(t)
+            self.assertEqual((st["commit"], st["verdict"], st["digests"], st["mode"]), (head, "green", {"app": "sha256:abc123"}, "local"))
+            self.assertEqual(stamp.problems(st), [])
+            self.assertTrue((t / runner.SBOM_DIR / "app.cdx.json").is_file())
+            self.assertFalse((t / runner.ACTIONABLE).exists(), "no actionable findings: the document must not exist")
+            self.assertTrue((t / runner.CARRIED_DOC).is_file())
+            self.assertTrue((t / runner.RAW_DIR / "clamav.out").is_file())
+
+    def test_rebuild_from_current_tree_without_cache_before_scanning(self):
+        with tree() as t:
+            project(t)
+            sc, r, fake = self.scan(t, baseline(vulns=False))
+            build = next(c for c in fake.calls if c[0] == "docker" and c[1][:1] == ["build"])
+            self.assertEqual(build[1][:5], ["build", "--pull", "--no-cache", "-t", "app"])
+            order = [c[1][0] if c[0] == "docker" else c[0] for c in fake.calls]
+            self.assertLess(order.index("build"), order.index("trivy"))
+
+    def test_skipped_build_refuses_stale_image(self):
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False)
+            script["docker inspect"] = (0, "sha256:old 2020-01-01T00:00:00Z")
+            sc, r, fake = self.scan(t, script, skip_build=True)
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("refusing to grade a stale artifact" in p for p in r["problems"]), r["problems"])
+            self.assertEqual(r["digests"], {})
+
+    def test_two_scanners_correlated_fixable_actionable_unfixable_carried(self):
+        with tree() as t:
+            project(t)
+            sc, r, fake = self.scan(t, baseline())
+            self.assertEqual(r["verdict"], "red")
+            self.assertEqual([f.id for f in r["actionable"]], ["CVE-1"])
+            self.assertEqual([f.id for f in r["carried"]], ["CVE-2"])
+            self.assertEqual([f.id for f in r["informational"]], ["CVE-9"], "a one-scanner finding is read, not blocking")
+            self.assertTrue((t / runner.ACTIONABLE).is_file())
+            self.assertIn("CVE-1 [HIGH] libx@1.0 (vulnerabilities; fix: 1.1; reported by grype, trivy)", (t / runner.ACTIONABLE).read_text())
+            rows, _, _ = table.read(t, runner.CARRIED_RECORD, "carried-findings")
+            self.assertEqual([(r_["id"], r_["owner"], r_["status"]) for r_ in rows], [("CVE-2/liby", "casey", "carried")])
+            self.assertRegex(rows[0]["review_by"], r"^\d{4}-\d{2}-\d{2}$")
+            self.assertTrue(rows[0]["status_history"].endswith(":carried"))
+
+    def test_gate_and_alarm_verdicts_differ(self):
+        with tree() as t:
+            project(t)
+            script = baseline()
+            script["image --format json"] = (0, json.dumps({"Results": [{"Target": "app", "Vulnerabilities": [
+                {"VulnerabilityID": "CVE-7", "Severity": "CRITICAL", "PkgName": "p", "InstalledVersion": "1"}]}]}))
+            script["app -o json"] = (0, json.dumps({"matches": [{"vulnerability": {"id": "CVE-7", "severity": "Critical", "fix": {"versions": []}},
+                                                                 "artifact": {"name": "p", "version": "1"}}]}))
+            sc, r, fake = self.scan(t, script)
+            self.assertEqual((r["verdict"], r["alarm"]), ("green", "red"), "unfixable critical: carried, not blocking; the alarm fires")
+
+    def test_scanner_that_cannot_run_fails_the_scan(self):
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False)
+            script["hadolint"] = (125, "")
+            script["docker build"] = (0, "")
+            write(t, "Dockerfile", "FROM scratch" + NL)
+            sc, r, fake = self.scan(t, script)
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("container-hygiene (hadolint): fell over (exit 125" in p and "not skipped" in p for p in r["problems"]), r["problems"])
+            self.assertNotIn("container-hygiene", r["ran"])
+
+    def test_malware_exit_codes_are_exact(self):
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False); script["clamscan -r"] = (1, "/src/evil.bin: Eicar-Test-Signature FOUND" + NL)
+            sc, r, fake = self.scan(t, script)
+            self.assertEqual([f.id for f in r["actionable"]], ["Eicar-Test-Signature"])
+            script = baseline(vulns=False); script["clamscan -r"] = (2, "")
+            sc, r, fake = self.scan(t, script)
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("malware (clamav): fell over (exit 2)" in p for p in r["problems"]))
+            self.assertNotIn("malware", r["ran"])
+
+    def test_stale_detection_data_refreshed_via_tools_own_mechanism_on_shared_storage(self):
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False)
+            versions = iter([(0, f"ClamAV 1.4.1/27000/{STALE}" + NL), (0, f"ClamAV 1.4.1/27500/{FRESH}" + NL)])
+            class Seq(Fake):
+                def __call__(self, tool, image, args, mounts=()):
+                    if args[:2] == ["clamscan", "--version"]:
+                        self.calls.append((tool, list(args), tuple(mounts)))
+                        code, out = next(versions)
+                        return Result(tool, list(args), code, out, "", "fake")
+                    return super().__call__(tool, image, args, mounts)
+            fake = Seq(script)
+            sc = runner.Scan(t, cfg(), invoke=fake, engine=("containers", "docker"))
+            r = sc.run()
+            self.assertEqual(r["verdict"], "green", r["problems"])
+            fresh = next(c for c in fake.calls if c[1] == ["freshclam"])
+            self.assertIn((str(t / runner.DB_VOLUME), "/var/lib/clamav"), fresh[2], "refresh and scan share the database volume")
+            scan_call = next(c for c in fake.calls if c[1][:2] == ["clamscan", "-r"])
+            self.assertIn((str(t / runner.DB_VOLUME), "/var/lib/clamav"), scan_call[2])
+            self.assertEqual(r["data_age"], 1)
+
+    def test_undeterminable_data_age_refuses_clean_unless_override_marks_unverified(self):
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False); script["clamscan --version"] = (0, "garbage")
+            sc, r, fake = self.scan(t, script)
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("refusing to report clean" in p for p in r["problems"]))
+            sc, r, fake = self.scan(t, script, allow_unverified=True)
+            self.assertEqual(r["verdict"], "unverified")
+            self.assertEqual(stamp.read(t)["verdict"], "unverified")
+
+    def test_disconnected_mode_uses_bundle_date_and_keeps_threshold(self):
+        with tree() as t:
+            project(t, mode="disconnected")
+            write(t, runner.DATA_DATE, (TODAY - datetime.timedelta(days=30)).isoformat() + NL)
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(mode="disconnected"))
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("disconnected mode cannot refresh" in p and "threshold is not relaxed" in p for p in r["problems"]))
+            self.assertFalse(any(c[1] == ["freshclam"] for c in fake.calls), "no refresh attempt in disconnected mode")
+            write(t, runner.DATA_DATE, (TODAY - datetime.timedelta(days=2)).isoformat() + NL)
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(mode="disconnected"))
+            self.assertEqual(r["verdict"], "green")
+            self.assertEqual(r["data_age"], 2)
+            self.assertEqual(stamp.read(t)["detection_data_date"], (TODAY - datetime.timedelta(days=2)).isoformat())
+
+    def test_no_shipped_images_is_stated(self):
+        with tree() as t:
+            project(t, ship_images={})
+            (t / "Dockerfile").unlink()
+            git_repo(t); commit(t, "no dockerfile")
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(ship_images={}))
+            self.assertEqual(r["verdict"], "green")
+            self.assertIn("no shipped images declared or detected", sc.raw["vulnerabilities"])
+
+    def test_ship_images_from_pipeline_definition(self):
+        with tree() as t:
+            project(t)
+            write(t, ".github/workflows/deploy.yml", "run: docker build -t registry/svc-hardened -f deploy/Dockerfile.hardened ." + NL)
+            sc = runner.Scan(t, cfg(ship_images=None), invoke=Fake({}), engine=("host", None))
+            self.assertEqual(sc.ship_images(), {"registry/svc-hardened": "deploy/Dockerfile.hardened"})
+
+
+class Aging(unittest.TestCase):
+    def test_carried_past_review_by_blocks_and_fix_now_available_blocks(self):
+        with tree() as t:
+            project(t)
+            table.append(t, runner.CARRIED_RECORD, sch.CARRIED, {
+                "id": "CVE-2/liby", "component": "liby", "version": "2.0", "severity": "LOW", "reason_no_fix": "none", "owner": "casey",
+                "milestone": "m", "milestone_date": "2020-01-01", "review_by": "2020-01-01", "status": "carried",
+                "status_history": "2019-01-01:carried", "side": "low"})
+            script = baseline()
+            script["image --format json"] = (0, json.dumps({"Results": [{"Target": "app", "Vulnerabilities": [
+                {"VulnerabilityID": "CVE-2", "Severity": "LOW", "PkgName": "liby", "InstalledVersion": "2.0", "FixedVersion": "2.1"}]}]}))
+            script["app -o json"] = (0, json.dumps({"matches": [{"vulnerability": {"id": "CVE-2", "severity": "Low", "fix": {"versions": ["2.1"]}},
+                                                                 "artifact": {"name": "liby", "version": "2.0"}}]}))
+            sc = runner.Scan(t, cfg(), invoke=Fake(script), engine=("containers", "docker"))
+            r = sc.run()
+            self.assertEqual(r["verdict"], "red")
+            self.assertEqual(r["aged"], ["CVE-2/liby: carried finding past its review-by date 2020-01-01 — blocking until re-reviewed",
+                                         "CVE-2/liby: an upstream fix is now available (2.1) — no longer carried, blocking"])
+
+
+class Alarm(unittest.TestCase):
+    def test_alarm_finding_gets_owner_window_record_and_work_item(self):
+        with tree() as t:
+            project(t)
+            f = runner.Finding("vulnerabilities", "CVE-7", "CRITICAL", "p", "1", None, source="trivy")
+            raised = alarm.raise_alarms(t, cfg(alarm_triage_days=5), [f])
+            self.assertEqual(raised, ["CVE-7/p"])
+            rows = alarm.latest_rows(t)
+            self.assertEqual((rows["CVE-7/p"]["status"], rows["CVE-7/p"]["owner"]), ("detected", "casey"))
+            self.assertEqual(rows["CVE-7/p"]["review_by"], (TODAY + datetime.timedelta(days=5)).isoformat())
+            self.assertTrue((t / "tickets/ALARM-CVE-7-p.md").is_file())
+            self.assertEqual(alarm.raise_alarms(t, cfg(), [f]), [], "an already-tracked finding is not raised twice")
+
+    def test_resolution_appends_history_and_interval_is_measurable(self):
+        with tree() as t:
+            project(t)
+            f = runner.Finding("vulnerabilities", "CVE-7", "HIGH", "p", "1", None, source="trivy")
+            alarm.raise_alarms(t, cfg(), [f])
+            v = alarm.resolve(t, cfg(), "CVE-7/p", "fixed", "upgraded p to 2")
+            self.assertTrue(v["status_history"].endswith(":fixed (upgraded p to 2)"))
+            self.assertTrue(v["status_history"].startswith(f"{TODAY.isoformat()}:detected; "), "the detection entry must be retained")
+            rows, _, _ = table.read(t, runner.CARRIED_RECORD, "carried-findings")
+            self.assertEqual(len(rows), 2, "a status change is a new row; the old row remains")
+            ident, first, resolved, days = alarm.intervals(t)[0]
+            self.assertEqual((ident, resolved, days), ("CVE-7/p", TODAY.isoformat(), 0))
+            with self.assertRaises(ValueError):
+                alarm.resolve(t, cfg(), "CVE-7/p", "ignored")
+
+
+class Binding(unittest.TestCase):
+    def test_digest_mismatch_reported_as_artifact_not_shipped(self):
+        with tree() as t:
+            write_config(t)
+            stamp.write(t, commit="a" * 40, verdict="green", timestamp="x", scanners=["a"], digests={"app": "sha256:aaa"})
+            write(t, "deploy/images.lock.json", json.dumps({"app": "sha256:bbb"}))
+            o = artifact_binding.run(t, Config({"protected_branch": "main"}))
+            self.assertIs(o.state, State.FINDINGS)
+            self.assertTrue(o.blocking)
+            self.assertEqual(o.detail, "the artifact under review is not the artifact being shipped")
+            self.assertTrue(o.findings[0].startswith("app: the artifact under review (sha256:aaa"))
+
+    def test_matching_digest_is_clean_and_missing_lock_could_not_run(self):
+        with tree() as t:
+            stamp.write(t, commit="a" * 40, verdict="green", timestamp="x", scanners=["a"], digests={"app": "sha256:aaa"})
+            self.assertIs(artifact_binding.run(t, None).state, State.COULD_NOT_RUN)
+            write(t, "deploy/images.lock.json", json.dumps({"app": "sha256:aaa"}))
+            self.assertIs(artifact_binding.run(t, None).state, State.CLEAN)
+
+    def test_no_stamp_nothing_yet(self):
+        with tree() as t:
+            self.assertIs(artifact_binding.run(t, None).state, State.NOTHING_YET)
+
+
+class Stamp(unittest.TestCase):
+    def test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier(self):
+        with tree() as t:
+            data = stamp.write(t, commit="b" * 40, verdict="green", timestamp="2026-09-20T00:00:00+00:00", scanners=["a", "b"], digests={"app": "sha256:1"})
+            self.assertEqual(stamp.problems(data), [])
+            self.assertEqual(stamp.problems({"commit": "x", "verdict": "green", "timestamp": "t", "scanners": [], "host": "box1"}),
+                             ["stamp carries an environment identifier ('host'); it must not"])
+            self.assertIsNone(stamp.for_commit(t, "c" * 40), "a stamp naming a different commit is no stamp")
+            self.assertIsNotNone(stamp.for_commit(t, "b" * 40))
+            with self.assertRaises(ValueError):
+                stamp.write(t, commit="b" * 40, verdict="ok", timestamp="t", scanners=[])
+
+
+class Bundles(unittest.TestCase):
+    def test_data_bundle_round_trip_with_ingest_record(self):
+        with tree() as src, tree() as dst:
+            project(src); project(dst, mode="disconnected")
+            write(src, runner.DB_VOLUME + "/main.cvd", "signatures")
+            data = bundles.bundle_data(src, src / "out", cfg(), "alice")
+            self.assertEqual(data["kind"], "detection-data")
+            self.assertEqual(data["operator"], "alice")
+            got = bundles.ingest(dst, src / "out", cfg(mode="disconnected", side="high"), "bob")
+            self.assertEqual((dst / runner.DATA_DATE).read_text().strip(), data["produced"])
+            self.assertTrue((dst / runner.DB_VOLUME / "main.cvd").is_file())
+            rows, _, _ = table.read(dst, bundles.INGEST_RECORD, "ingest-records")
+            self.assertEqual((rows[0]["hash_result"], rows[0]["modified_in_transit"], rows[0]["operator"], rows[0]["side"]), ("verified", "no", "bob", "high"))
+
+    def test_hash_mismatch_refused_and_the_two_cases_distinguished(self):
+        with tree() as src, tree() as dst:
+            project(src); project(dst)
+            write(src, runner.DB_VOLUME + "/main.cvd", "signatures")
+            bundles.bundle_data(src, src / "out", cfg(), "alice")
+            write(src, "out/detection-data.tar", "tampered or filtered")
+            with self.assertRaises(RuntimeError) as cm:
+                bundles.ingest(dst, src / "out", cfg(), "bob")
+            self.assertIn("the boundary filtered the content", str(cm.exception))
+            self.assertIn("integrity incident", str(cm.exception))
+            rows, _, _ = table.read(dst, bundles.INGEST_RECORD, "ingest-records")
+            self.assertTrue(rows[0]["hash_result"].startswith("MISMATCH"))
+            self.assertEqual(rows[0]["modified_in_transit"], "unknown — refused")
+            self.assertFalse((dst / runner.DATA_DATE).exists(), "a filtered bundle is never ingested on the assumption it was benign")
+
+    def test_image_bundle_records_digests_and_disconnected_never_pulls(self):
+        with tree() as t:
+            project(t)
+            calls = []
+            def fake(args):
+                calls.append(args)
+                if args[0] == "save":
+                    write(t, "out/" + args[2].split("/")[-1].split(chr(92))[-1], "tar")
+                return Result("docker", args, 0, "sha256:" + "d" * 64 if args[0] == "image" else "", "", "fake")
+            data = bundles.bundle_images(t, t / "out", cfg(), "alice", invoke=fake)
+            self.assertEqual(len(data["files"]), len(images.SCANNERS))
+            self.assertTrue(all(v["digest"].startswith("sha256:") for v in data["files"].values()))
+            with self.assertRaises(RuntimeError):
+                bundles.bundle_images(t, t / "out2", cfg(mode="disconnected"), "alice", invoke=fake)
+            missing = bundles.images_present(invoke=lambda args: Result("docker", args, 1, "", "", "fake"))
+            self.assertEqual(len(missing), len(images.SCANNERS))
+            self.assertIn("a missing image is a failure, never a skip", missing[0])
+
+
+class Coverage9(unittest.TestCase):
+    """Fixtures the receipts showed were missing (spec 05 REQ-3.4: fix the test, not the code)."""
+
+    def test_containers_engine_invokes_docker_run_with_pinned_image(self):
+        import os
+        from .stubs import invocations, stub_path, stub_tool
+        with tree() as t:
+            stub_tool(t / "bin", "docker", exit_code=0, stdout="ok")
+            old = os.environ.get("PATH", "")
+            os.environ["PATH"] = stub_path(t / "bin")
+            try:
+                res = runner.real_invoke(t, "containers", "docker", "hadolint", "img:1", ["hadolint", "-f", "json"], ((str(t), "/src"),))
+            finally:
+                os.environ["PATH"] = old
+            self.assertEqual(res.exit_code, 0)
+            self.assertEqual(invocations(t / "bin"), [f"docker run --rm -v {t}:/src img:1 hadolint -f json"])
+
+    def test_incomplete_scanner_set_fails_gate_independent_of_findings(self):
+        with tree() as t:
+            project(t)
+            sc = runner.Scan(t, cfg(), invoke=Fake({}), engine=("host", None))
+            sc.ran = ["malware"]
+            gate, alarm_, actionable, carried, complete = sc.verdicts([])
+            self.assertEqual((gate, complete, actionable), ("red", False, []))
+            sc.ran = list(images.REQUIRED_CONCERNS)
+            self.assertEqual(sc.verdicts([])[0], "green")
+
+    def test_actionable_document_routes_by_owning_surface(self):
+        with tree() as t:
+            project(t)
+            script = baseline()
+            script["hadolint"] = (1, json.dumps([{"code": "DL3007", "level": "warning", "file": "Dockerfile", "line": 1}]))
+            sc = runner.Scan(t, cfg(), invoke=Fake(script), engine=("containers", "docker"))
+            sc.run()
+            lines = (t / runner.ACTIONABLE).read_text(encoding="utf-8").splitlines()
+            self.assertIn("## Owner: application dependencies", lines)
+            self.assertIn("## Owner: infrastructure definitions", lines)
+            self.assertLess(lines.index("## Owner: application dependencies"), lines.index("- CVE-1 [HIGH] libx@1.0 (vulnerabilities; fix: 1.1; reported by grype, trivy)"))
+
+    def test_stamp_requires_commit_and_records_which_scanners_ran(self):
+        self.assertIn("stamp lacks 'commit'", stamp.problems({"verdict": "green", "timestamp": "t", "scanners": []}))
+        with tree() as t:
+            project(t)
+            script = baseline(vulns=False); script["hadolint"] = (125, "")
+            sc = runner.Scan(t, cfg(), invoke=Fake(script), engine=("containers", "docker"))
+            r = sc.run()
+            self.assertEqual(stamp.read(t)["scanners"], r["ran"])
+            self.assertNotIn("container-hygiene", stamp.read(t)["scanners"], "a partial scan is visible as partial")
+
+    def test_carried_row_is_a_plan_of_action_record(self):
+        with tree() as t:
+            project(t)
+            sc = runner.Scan(t, cfg(carried_review_days=30), invoke=Fake(baseline()), engine=("containers", "docker"))
+            sc.run()
+            rows, _, _ = table.read(t, runner.CARRIED_RECORD, "carried-findings")
+            r = rows[0]
+            self.assertEqual(r["milestone"], "adopt upstream fix when released")
+            self.assertEqual(r["milestone_date"], (TODAY + datetime.timedelta(days=30)).isoformat())
+            self.assertEqual(r["reason_no_fix"], "no upstream fix available at detection")
+            self.assertEqual((r["component"], r["version"], r["severity"]), ("liby", "2.0", "LOW"))
+
+    def test_aged_carried_finding_alone_makes_the_gate_red(self):
+        with tree() as t:
+            project(t)
+            table.append(t, runner.CARRIED_RECORD, sch.CARRIED, {
+                "id": "CVE-8/libq", "component": "libq", "version": "1", "severity": "LOW", "reason_no_fix": "none", "owner": "casey",
+                "milestone": "m", "milestone_date": "2020-01-01", "review_by": "2020-01-01", "status": "carried",
+                "status_history": "2019-01-01:carried", "side": "low"})
+            sc = runner.Scan(t, cfg(), invoke=Fake(baseline(vulns=False)), engine=("containers", "docker"))
+            r = sc.run()
+            self.assertEqual(r["problems"], [])
+            self.assertEqual(r["verdict"], "red", "an aged carried finding blocks even when the scan itself is clean")

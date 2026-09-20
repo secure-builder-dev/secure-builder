@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.2
+SPEC:       01
+CHECK:      engine/scan/images.py
+MUTATION:   pinned the embedded-data scanner to an immutable patch tag
+FILE:       engine/scan/images.py
+TEST:       python -m unittest selftest.test_scan.Pins.test_every_reference_pinned_and_embedded_data_on_moving_tag
+--- output with the property broken (must show failure) ---
+FAIL: test_every_reference_pinned_and_embedded_data_on_moving_tag (selftest.test_scan.Pins.test_every_reference_pinned_and_embedded_data_on_moving_tag)
+AssertionError: Lists differ: ["malware (clamav): embedded detection dat[69 chars]hes"] != []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,15 @@
+REQ:        REQ-4.1.2
+SPEC:       04
+CHECK:      engine/scan/bundles.py
+MUTATION:   attempted image pulls in disconnected mode
+FILE:       engine/scan/bundles.py
+TEST:       python -m unittest selftest.test_scan.Bundles.test_image_bundle_records_digests_and_disconnected_never_pulls
+--- output with the property broken (must show failure) ---
+ERROR: test_image_bundle_records_digests_and_disconnected_never_pulls (selftest.test_scan.Bundles.test_image_bundle_records_digests_and_disconnected_never_pulls)
+Ran 1 test in 0.168s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.155s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-4.5.1
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   ignored the deployment pipeline's Dockerfile and scanned the development image
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_ship_images_from_pipeline_definition
+--- output with the property broken (must show failure) ---
+FAIL: test_ship_images_from_pipeline_definition (selftest.test_scan.Run.test_ship_images_from_pipeline_definition)
+AssertionError: {'registry/svc-hardened': 'Dockerfile'} != {'registry/svc-hardened': 'deploy/Dockerfile.hardened'}
+Ran 1 test in 0.264s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.169s
+OK
+exit 0

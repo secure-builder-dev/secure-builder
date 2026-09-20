@@ -1,0 +1,16 @@
+REQ:        REQ-4.7.2
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   made the actionable document exist even when nothing is actionable
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document
+--- output with the property broken (must show failure) ---
+FAIL: test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document (selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document)
+AssertionError: True is not false : no actionable findings: the document must not exist
+Ran 1 test in 0.218s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.280s
+OK
+exit 0

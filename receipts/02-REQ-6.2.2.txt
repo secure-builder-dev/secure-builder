@@ -1,0 +1,16 @@
+REQ:        REQ-6.2.2
+SPEC:       02
+CHECK:      engine/stamp.py
+MUTATION:   accepted a stamp naming a commit other than the current head
+FILE:       engine/stamp.py
+TEST:       python -m unittest selftest.test_scan.Stamp.test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier
+--- output with the property broken (must show failure) ---
+FAIL: test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier (selftest.test_scan.Stamp.test_stamp_records_commit_verdict_time_scanners_digests_and_no_environment_identifier)
+AssertionError: {'commit': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'digests': {'app': 'sha256:1'}, 'scanners': ['a', 'b'], 'timestamp': '2026-09-20T00:00:00+00:00', 'verdict': 'green'} is not None : a stamp naming a different commit is no stamp
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-4.9.5
+SPEC:       01
+CHECK:      engine/checks/artifact_binding.py
+MUTATION:   reported a digest mismatch as a non-blocking scan failure
+FILE:       engine/checks/artifact_binding.py
+TEST:       python -m unittest selftest.test_scan.Binding.test_digest_mismatch_reported_as_artifact_not_shipped
+--- output with the property broken (must show failure) ---
+FAIL: test_digest_mismatch_reported_as_artifact_not_shipped (selftest.test_scan.Binding.test_digest_mismatch_reported_as_artifact_not_shipped)
+AssertionError: False is not true
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

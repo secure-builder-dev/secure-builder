@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.3
+SPEC:       01
+CHECK:      engine/scan/images.py
+MUTATION:   stopped rejecting a patch-version pin on the embedded-data scanner
+FILE:       engine/scan/images.py
+TEST:       python -m unittest selftest.test_scan.Pins.test_patch_tag_on_embedded_data_rejected
+--- output with the property broken (must show failure) ---
+FAIL: test_patch_tag_on_embedded_data_rejected (selftest.test_scan.Pins.test_patch_tag_on_embedded_data_rejected)
+AssertionError: Lists differ: [] != ["malware (clamav): embedded detection dat[69 chars]hes"]
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

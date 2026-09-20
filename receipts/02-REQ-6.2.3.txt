@@ -1,0 +1,16 @@
+REQ:        REQ-6.2.3
+SPEC:       02
+CHECK:      engine/scan/runner.py
+MUTATION:   recorded every scanner as having run regardless of which did
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Coverage9.test_stamp_requires_commit_and_records_which_scanners_ran
+--- output with the property broken (must show failure) ---
+FAIL: test_stamp_requires_commit_and_records_which_scanners_ran (selftest.test_scan.Coverage9.test_stamp_requires_commit_and_records_which_scanners_ran)
+AssertionError: Lists differ: ['container-hygiene', 'iac-misconfiguration[50 chars]s-b'] != ['iac-misconfiguration', 'malware', 'vulner[29 chars]s-b']
+Ran 1 test in 0.267s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.208s
+OK
+exit 0

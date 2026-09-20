@@ -1,0 +1,16 @@
+REQ:        REQ-10.5.2
+SPEC:       04
+CHECK:      engine/scan/bundles.py
+MUTATION:   reported a hash mismatch without distinguishing a filtered bundle from a wrong one
+FILE:       engine/scan/bundles.py
+TEST:       python -m unittest selftest.test_scan.Bundles.test_hash_mismatch_refused_and_the_two_cases_distinguished
+--- output with the property broken (must show failure) ---
+FAIL: test_hash_mismatch_refused_and_the_two_cases_distinguished (selftest.test_scan.Bundles.test_hash_mismatch_refused_and_the_two_cases_distinguished)
+AssertionError: 'the boundary filtered the content' not found in 'hash mismatch — bundle refused. detection-data.tar: content hash differs from the manifest'
+Ran 1 test in 0.410s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.417s
+OK
+exit 0

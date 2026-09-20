@@ -1,0 +1,16 @@
+REQ:        REQ-6.3.1
+SPEC:       02
+CHECK:      engine/scan/runner.py
+MUTATION:   recorded a carried finding without a scheduled remediation milestone and date
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Coverage9.test_carried_row_is_a_plan_of_action_record
+--- output with the property broken (must show failure) ---
+FAIL: test_carried_row_is_a_plan_of_action_record (selftest.test_scan.Coverage9.test_carried_row_is_a_plan_of_action_record)
+AssertionError: '-' != 'adopt upstream fix when released'
+Ran 1 test in 0.394s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.291s
+OK
+exit 0

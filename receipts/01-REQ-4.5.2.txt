@@ -1,0 +1,16 @@
+REQ:        REQ-4.5.2
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   built with layer cache and without refreshing the base image
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_rebuild_from_current_tree_without_cache_before_scanning
+--- output with the property broken (must show failure) ---
+FAIL: test_rebuild_from_current_tree_without_cache_before_scanning (selftest.test_scan.Run.test_rebuild_from_current_tree_without_cache_before_scanning)
+AssertionError: Lists differ: ['build', '-t', 'app', '-f', 'Dockerfile'] != ['build', '--pull', '--no-cache', '-t', 'app']
+Ran 1 test in 0.188s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.187s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-4.9.3
+SPEC:       01
+CHECK:      engine/scan/runner.py
+MUTATION:   wrote the stamp without the digest of each image built from the commit
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document
+--- output with the property broken (must show failure) ---
+FAIL: test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document (selftest.test_scan.Run.test_green_scan_writes_stamp_with_digests_sbom_and_no_actionable_document)
+AssertionError: Tuples differ: ('d08[20 chars]c7f4372ea23dca14e', 'green', {}, 'local') != ('d08[20 chars]c7f4372ea23dca14e', 'green', {'app': 'sha256:abc123'}, 'local')
+Ran 1 test in 0.322s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.228s
+OK
+exit 0

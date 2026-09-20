@@ -183,13 +183,13 @@ class Shapes(unittest.TestCase):
         self.assertEqual(mutate.infer_shape("rotate_keys", "def rotate_keys():"), "other")
 
     def test_mutations_by_shape_python(self):
-        text, desc = mutate.mutate_source(AUTH_PY, "require_auth")
-        self.assertIn("    return next(request)  # engine:mutation" + NL, text)
+        mutated, desc = mutate.mutate_source(AUTH_PY, "require_auth")
+        self.assertEqual(mutated.splitlines()[2], "    return next(request)  # engine:mutation")
         self.assertTrue(desc.startswith("middleware:"))
-        text, _ = mutate.mutate_source(AUTH_PY, "can_delete")
-        self.assertIn("def can_delete(user, record):" + NL + "    return True  # engine:mutation", text)
-        text, _ = mutate.mutate_source(AUTH_PY, "scope_to_owner")
-        self.assertIn("def scope_to_owner(query, user):" + NL + "    return query  # engine:mutation", text)
+        mutated, _ = mutate.mutate_source(AUTH_PY, "can_delete")
+        self.assertEqual(mutated.splitlines()[6:8], ["def can_delete(user, record):", "    return True  # engine:mutation"])
+        mutated, _ = mutate.mutate_source(AUTH_PY, "scope_to_owner")
+        self.assertEqual(mutated.splitlines()[9:11], ["def scope_to_owner(query, user):", "    return query  # engine:mutation"])
 
     def test_mutation_javascript(self):
         src = "export function canEdit(user, doc) {" + NL + "  return user.id === doc.owner;" + NL + "}" + NL

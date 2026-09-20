@@ -1,0 +1,16 @@
+REQ:        REQ-4.10.1
+SPEC:       01
+CHECK:      engine/scan/alarm.py
+MUTATION:   raised an alarm with no entry point into the lifecycle
+FILE:       engine/scan/alarm.py
+TEST:       python -m unittest selftest.test_scan.Alarm.test_alarm_finding_gets_owner_window_record_and_work_item
+--- output with the property broken (must show failure) ---
+FAIL: test_alarm_finding_gets_owner_window_record_and_work_item (selftest.test_scan.Alarm.test_alarm_finding_gets_owner_window_record_and_work_item)
+AssertionError: False is not true
+Ran 1 test in 0.168s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.150s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-6.3.2
+SPEC:       02
+CHECK:      engine/scan/runner.py
+MUTATION:   carried a finding with no owner
+FILE:       engine/scan/runner.py
+TEST:       python -m unittest selftest.test_scan.Run.test_two_scanners_correlated_fixable_actionable_unfixable_carried
+--- output with the property broken (must show failure) ---
+FAIL: test_two_scanners_correlated_fixable_actionable_unfixable_carried (selftest.test_scan.Run.test_two_scanners_correlated_fixable_actionable_unfixable_carried)
+AssertionError: Lists differ: [('CVE-2/liby', 'unknown', 'carried')] != [('CVE-2/liby', 'casey', 'carried')]
+Ran 1 test in 0.242s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.205s
+OK
+exit 0

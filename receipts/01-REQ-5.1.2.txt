@@ -1,0 +1,16 @@
+REQ:        REQ-5.1.2
+SPEC:       01
+CHECK:      engine/coverage.py
+MUTATION:   flattened every layer to the default threshold
+FILE:       engine/coverage.py
+TEST:       python -m unittest selftest.test_coverage.Evaluate.test_layer_threshold_higher_where_controls_live
+--- output with the property broken (must show failure) ---
+FAIL: test_layer_threshold_higher_where_controls_live (selftest.test_coverage.Evaluate.test_layer_threshold_higher_where_controls_live)
+AssertionError: 80.0 != 90.0
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

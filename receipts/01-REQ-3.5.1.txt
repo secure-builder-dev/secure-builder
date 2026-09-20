@@ -1,0 +1,16 @@
+REQ:        REQ-3.5.1
+SPEC:       01
+CHECK:      engine/guard.py
+MUTATION:   let a merge proceed while on the protected branch
+FILE:       engine/guard.py
+TEST:       python -m unittest selftest.test_guard.Blocks.test_merge_while_on_protected_branch
+--- output with the property broken (must show failure) ---
+FAIL: test_merge_while_on_protected_branch (selftest.test_guard.Blocks.test_merge_while_on_protected_branch)
+AssertionError: None != "merge while on protected branch 'main'"
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

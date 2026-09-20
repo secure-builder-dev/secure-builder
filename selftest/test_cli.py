@@ -6,7 +6,7 @@ import pathlib
 import unittest
 
 from engine import checks, distribute
-from .helpers import cli, cli_sub, find_line, tree, write, write_config
+from .helpers import cli, cli_sub, commit, find_line, git_repo, tree, write, write_config
 
 
 FAILING_SUITE = """import unittest
@@ -93,6 +93,7 @@ class SelfTestWiring(unittest.TestCase):
             write(t, "selftest/__init__.py", "")
             write(t, "selftest/test_fx.py", FAILING_SUITE)
             distribute.update(t)
+            git_repo(t); commit(t)
             code, lines = cli_sub(t, "check")
             find_line(lines, "[selftest] 0 passed, 1 failed, 0 skipped")
             find_line(lines, "[selftest] FAIL: selftest.test_fx.T.test_bad")
@@ -104,6 +105,7 @@ class SelfTestWiring(unittest.TestCase):
             write(t, "selftest/__init__.py", "")
             write(t, "selftest/test_fx.py", SKIPPING_SUITE)
             distribute.update(t)
+            git_repo(t); commit(t)
             code, lines = cli_sub(t, "check")
             find_line(lines, "[selftest] 1 passed, 0 failed, 1 skipped (skipped: test_dev)")
             self.assertEqual(code, 0)
@@ -116,6 +118,7 @@ class OrderIndependence(unittest.TestCase):
             write(t, "selftest/__init__.py", "")
             write(t, "selftest/test_fx.py", ORDER_SUITE)
             distribute.update(t)
+            git_repo(t); commit(t)
             cli_sub(t, "check")
             self.assertEqual((t / "order.log").read_text().split(), ["a", "b"])
             (t / "order.log").unlink()

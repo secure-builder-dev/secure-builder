@@ -1,0 +1,16 @@
+REQ:        REQ-8.4
+SPEC:       06
+CHECK:      engine/licenses.py
+MUTATION:   made the tooling write an empty component record
+FILE:       engine/licenses.py
+TEST:       python -m unittest selftest.test_checks_docs.LicensePolicy.test_record_generated_by_tooling
+--- output with the property broken (must show failure) ---
+FAIL: test_record_generated_by_tooling (selftest.test_checks_docs.LicensePolicy.test_record_generated_by_tooling)
+AssertionError: Lists differ: [] != [('gpl-thing', '2.0.0', 'GPL-3.0', 'packag[110 chars]on')]
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

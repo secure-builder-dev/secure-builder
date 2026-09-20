@@ -1,0 +1,16 @@
+REQ:        REQ-10.5
+SPEC:       01
+CHECK:      engine/licenses.py
+MUTATION:   made the license evaluation ignore the policy's denied list
+FILE:       engine/licenses.py
+TEST:       python -m unittest selftest.test_checks_docs.LicensePolicy.test_outside_policy_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_outside_policy_is_blocking (selftest.test_checks_docs.LicensePolicy.test_outside_policy_is_blocking)
+AssertionError: Lists differ: ['gpl[28 chars]0 is outside the allowed set (package-lock.jso[93 chars]icy'] != ['gpl[28 chars]0 is denied by policy (package-lock.json)', 'm[86 chars]icy']
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

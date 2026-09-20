@@ -24,7 +24,7 @@ This repository is developed independently:
   Ambiguities are resolved by amendment to the specification
   (spec 07 §5.3), recorded in `AMENDMENTS.md`, never by reference to any
   prior implementation.
-- **Remote:** `secure-builder-dev/secure-builder`, branch `engine`, started
+- **Remote:** secure-builder-dev/secure-builder, branch engine, started
   as a history-free branch. Nothing from that remote's other branches was
   fetched onto this machine.
 

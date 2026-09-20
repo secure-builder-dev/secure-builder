@@ -1,0 +1,16 @@
+REQ:        REQ-1.4.2
+SPEC:       03
+CHECK:      engine/checks/doc_consistency.py
+MUTATION:   let a declared format that was found nowhere pass vacuously
+FILE:       engine/checks/doc_consistency.py
+TEST:       python -m unittest selftest.test_checks_docs.DocConsistency.test_declared_block_found_nowhere_fails_rather_than_passing
+--- output with the property broken (must show failure) ---
+FAIL: test_declared_block_found_nowhere_fails_rather_than_passing (selftest.test_checks_docs.DocConsistency.test_declared_block_found_nowhere_fails_rather_than_passing)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

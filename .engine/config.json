@@ -8,8 +8,27 @@
   "topology": "single",
   "side": "local",
   "operators": 1,
-  "protected_branch": "main",
+  "protected_branch": "engine",
   "timezone": "UTC",
   "clock": "workstation clock (Windows 11, NTP-synced)",
-  "not_applicable_threshold": 0.5
+  "not_applicable_threshold": 0.5,
+  "governed_documents": [
+    "v1.0.md",
+    "GOVERNANCE-SET.md",
+    "PROVENANCE.md",
+    "AMENDMENTS.md",
+    "hooks/README.md",
+    "LIFECYCLE-EXERCISE.md",
+    "RELEASE-RECORD.md"
+  ],
+  "lint_command": [
+    "python",
+    "-m",
+    "compileall",
+    "-q",
+    "engine",
+    "selftest",
+    "tools",
+    "hooks"
+  ]
 }

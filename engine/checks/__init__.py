@@ -13,6 +13,15 @@ REGISTRY = [
     "no_network",
     "divergence",
     "negative_fixtures",
+    "credential_scan",
+    "injection_scan",
+    "reference_integrity",
+    "doc_consistency",
+    "attack_surface",
+    "license_policy",
+    "harness_self_scan",
+    "lint",
+    "coverage_range",
 ]
 
 

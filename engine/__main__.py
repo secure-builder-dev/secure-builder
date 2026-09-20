@@ -15,6 +15,9 @@
   audit               the standing self-test audit (spec 05 §10); reports, never blocks
   integration         run the integration tier with the real external tools (spec 05 §6.1)
   check --reverse-tests   run the self-test suite in reverse order (order independence)
+  coverage            measure the harness's own self-test coverage (standard library only)
+  credential-scan --staged   the credential check against the staged index, for a pre-commit hook
+  accept-directive KEY "reason" "by"   accept a risky configuration directive into the baseline
 """
 import io
 import json
@@ -23,7 +26,7 @@ import sys
 import unittest
 
 from . import config as cfgmod
-from . import audit, degradation, distribute, integration, ownership, version
+from . import audit, coverage, degradation, distribute, integration, ownership, version
 from .checks import run_all
 from .outcome import Summary
 
@@ -200,6 +203,40 @@ def cmd_integration(root, argv):
     return code
 
 
+def cmd_coverage(root, argv):
+    def suite():
+        run_selftests(root)
+    rep = coverage.collect(root, suite)
+    tot = sum(v["total"] for v in rep["files"].values())
+    cov = sum(v["covered"] for v in rep["files"].values())
+    print(f"coverage: {cov}/{tot} executable lines ({(100.0 * cov / tot) if tot else 0:.1f}%) across {len(rep['files'])} harness modules -> .engine/local/coverage.json")
+    return 0 if tot else 2
+
+
+def cmd_credential_scan(root, argv):
+    from .checks import credential_scan
+    if "--staged" in argv:
+        scanned, findings = credential_scan.scan_staged(root)
+        for f in findings:
+            print(f"    - {f}")
+        print(f"[credential-scan] staged: {scanned} file(s), {len(findings)} finding(s)")
+        return 1 if findings else 0
+    o = credential_scan.run(root, None)
+    for line in o.lines():
+        print(line)
+    return o.exit_code
+
+
+def cmd_accept_directive(root, argv):
+    from .checks import attack_surface
+    if len(argv) < 3:
+        print("accept-directive KEY \"reason\" \"by\" — KEY is path:kind as the check reports it")
+        return 2
+    attack_surface.accept(root, argv[0], argv[1], argv[2])
+    print(f"accept-directive: {argv[0]} accepted by {argv[2]} — {argv[1]}")
+    return 0
+
+
 def cmd_ownership(root, argv):
     for name, table in ownership.classes():
         print(f"## {name}")
@@ -211,7 +248,8 @@ def cmd_ownership(root, argv):
 COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "degradation": cmd_degradation, "version": lambda r, a: (print(version()), 0)[1],
             "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership,
-            "audit": cmd_audit, "integration": cmd_integration}
+            "audit": cmd_audit, "integration": cmd_integration, "coverage": cmd_coverage,
+            "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive}
 
 
 def main(argv=None):

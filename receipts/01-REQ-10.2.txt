@@ -1,0 +1,16 @@
+REQ:        REQ-10.2
+SPEC:       01
+CHECK:      engine/checks/credential_scan.py
+MUTATION:   changed the inline allow annotation so an annotated line is still reported
+FILE:       engine/checks/credential_scan.py
+TEST:       python -m unittest selftest.test_checks_scan.CredentialScan.test_inline_allow_annotation
+--- output with the property broken (must show failure) ---
+FAIL: test_inline_allow_annotation (selftest.test_checks_scan.CredentialScan.test_inline_allow_annotation)
+AssertionError: Lists differ: ['a.py:1: AWS access key id'] != []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

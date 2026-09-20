@@ -1,0 +1,16 @@
+REQ:        REQ-10.4
+SPEC:       01
+CHECK:      engine/checks/injection_scan.py
+MUTATION:   made the not-applicable line stop saying what covers the ground instead
+FILE:       engine/checks/injection_scan.py
+TEST:       python -m unittest selftest.test_checks_scan.InjectionScan.test_android_track_is_not_applicable_and_names_the_gap
+--- output with the property broken (must show failure) ---
+FAIL: test_android_track_is_not_applicable_and_names_the_gap (selftest.test_checks_scan.InjectionScan.test_android_track_is_not_applicable_and_names_the_gap)
+AssertionError: "[inj[156 chars]by: n/a" != "[inj[156 chars]by: nothing — persistence code in this track's[37 chars]scan"
+Ran 1 test in 0.002s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.1.1
+SPEC:       01
+CHECK:      engine/coverage.py
+MUTATION:   evaluated the project's best-covered file instead of the changed file
+FILE:       engine/coverage.py
+TEST:       python -m unittest selftest.test_coverage.Evaluate.test_threshold_is_on_changed_files_not_project_average
+--- output with the property broken (must show failure) ---
+FAIL: test_threshold_is_on_changed_files_not_project_average (selftest.test_coverage.Evaluate.test_threshold_is_on_changed_files_not_project_average)
+AssertionError: Lists differ: [] != ['src/new.py: 20.0% covered, threshold 80% for its layer']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

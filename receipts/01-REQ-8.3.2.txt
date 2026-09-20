@@ -1,0 +1,16 @@
+REQ:        REQ-8.3.2
+SPEC:       01
+CHECK:      engine/checks/reference_integrity.py
+MUTATION:   inferred the governed set from every markdown file instead of the declared list
+FILE:       engine/checks/reference_integrity.py
+TEST:       python -m unittest selftest.test_checks_docs.ReferenceIntegrity.test_governed_set_is_explicit_not_inferred
+--- output with the property broken (must show failure) ---
+FAIL: test_governed_set_is_explicit_not_inferred (selftest.test_checks_docs.ReferenceIntegrity.test_governed_set_is_explicit_not_inferred)
+AssertionError: Lists differ: ['AGENTS.md: `nope/x.md` does not resolve',[48 chars]lve'] != ['docs/other.md: `also/missing.md` does not resolve']
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

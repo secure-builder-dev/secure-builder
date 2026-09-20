@@ -1,0 +1,16 @@
+REQ:        REQ-10.6
+SPEC:       01
+CHECK:      engine/checks/harness_self_scan.py
+MUTATION:   exempted a third-party module from the harness's own dependency scan
+FILE:       engine/checks/harness_self_scan.py
+TEST:       python -m unittest selftest.test_checks_scan.HarnessSelfScan.test_third_party_import_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_third_party_import_is_blocking (selftest.test_checks_scan.HarnessSelfScan.test_third_party_import_is_blocking)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

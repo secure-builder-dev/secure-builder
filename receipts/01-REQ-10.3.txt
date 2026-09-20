@@ -1,0 +1,16 @@
+REQ:        REQ-10.3
+SPEC:       01
+CHECK:      engine/checks/credential_scan.py
+MUTATION:   made the staged-index scan use no definition at all instead of the shared one
+FILE:       engine/checks/credential_scan.py
+TEST:       python -m unittest selftest.test_checks_scan.CredentialScan.test_same_definition_against_staged_index
+--- output with the property broken (must show failure) ---
+FAIL: test_same_definition_against_staged_index (selftest.test_checks_scan.CredentialScan.test_same_definition_against_staged_index)
+AssertionError: Tuples differ: (1, []) != (1, ['src/cfg.py:1: AWS access key id'])
+Ran 1 test in 0.106s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.185s
+OK
+exit 0

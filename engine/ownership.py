@@ -23,6 +23,7 @@ ENGINE_OWNED = {
     f"{ENGINE_DIR}/rules/RULES.md": "engine/dist/rules/RULES.md",   # the rulebook (imported)
     f"{ENGINE_DIR}/agents/": "engine/dist/agents/",          # reviewer definitions, whole, tracked
     f"{ENGINE_DIR}/hooks/": "engine/dist/hooks/",            # pre-execution hooks
+    f"{ENGINE_DIR}/reviewers/": "reviewers/",                # reviewer drivers for local models (loopback only)
     f"{ENGINE_DIR}/reference/": "engine/dist/reference/",    # reference documents (verdict block copy)
     f"{ENGINE_DIR}/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
     f"{ENGINE_DIR}/DATA.md": "engine/data/README.md",         # every vendored data set, its source and terms (spec 06 REQ-8.5)

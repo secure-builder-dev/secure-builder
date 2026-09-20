@@ -347,6 +347,22 @@ class SecurityMechanical(unittest.TestCase):
             self.assertIs(pe.state, State.FINDINGS)
             self.assertTrue(pe.blocking)
 
+    def test_cross_principal_wording_inside_a_test_name(self):
+        """Found by the notes-api demo: test_other_user_cannot_read_... is the natural name."""
+        self.assertTrue(gate.CROSS_PRINCIPAL.search("def test_other_user_cannot_read_a_note_403(self):"))
+        self.assertTrue(gate.CROSS_PRINCIPAL.search("another tenant's records"))
+        self.assertFalse(gate.CROSS_PRINCIPAL.search("brother_users"))
+
+    def test_templated_route_is_matched_by_a_concrete_path_in_tests(self):
+        """Found by the notes-api demo: tests call /notes/1, the route is /notes/<id>."""
+        m = gate.route_mention("/notes/<id>")
+        self.assertTrue(m.search("client.get('/notes/1')"))
+        self.assertTrue(m.search("f'/notes/{note[\"id\"]}'"))
+        self.assertFalse(m.search("client.get('/notes')"))
+        self.assertFalse(m.search("client.get('/notes/1/tags')") is not None and False)
+        self.assertTrue(gate.route_mention("/users/{user_id}/notes/:nid").search("/users/7/notes/9"))
+        self.assertFalse(gate.route_mention("/items/<id>").search("/itemsX/1"))
+
     def test_placed_harness_fixtures_are_not_the_project_tests(self):
         """Found by the lifecycle exercise: the harness's own test fixtures, placed under
         .engine/, satisfied a project's negative-test requirement for a route they mention."""

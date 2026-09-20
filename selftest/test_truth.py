@@ -3,7 +3,7 @@
 """Generated system truth (spec 02 §9; spec 03 REQ-3.5.3)."""
 import unittest
 
-from engine import gate, truth
+from engine import gate, routes, truth
 from engine.checks import generated_truth
 from engine.outcome import State
 from .helpers import commit, git, git_repo, tree, write
@@ -74,3 +74,19 @@ class LoadBearing(unittest.TestCase):
     def test_negative_test_enumeration_uses_the_generated_inventory(self):
         import inspect
         self.assertIn("routes.inventory(", inspect.getsource(gate.negative_test_set))
+
+
+class RouteInventory(unittest.TestCase):
+    def test_verb_first_router_does_not_take_the_verb_as_the_path(self):
+        """Found by the notes-api demo: `self.route("GET", "/notes")` inventoried a route at path
+        'GET', and every test file contains the word GET, so the negative-test check passed vacuously."""
+        with tree() as t:
+            write(t, "src/app.py", '@self.route("GET", "/notes")' + NL + 'def a(): pass' + NL +
+                                   '@app.route("/items/<id>", methods=["DELETE"])' + NL + 'def b(): pass' + NL +
+                                   '@app.get("/x")' + NL + 'def c(): pass' + NL +
+                                   '@app.route("GET")' + NL + 'def d(): pass' + NL)
+            inv = routes.inventory(t)
+            self.assertEqual([(r["method"], r["path"]) for r in inv], [("GET", "/notes"), ("DELETE", "/items/<id>"), ("GET", "/x")])
+            self.assertTrue(inv[1]["record_scoped"])
+            self.assertFalse(any(r["path"] == "GET" for r in inv))
+

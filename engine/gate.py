@@ -26,7 +26,7 @@ from .records import schema as sch
 
 ATTRIBUTION = re.compile("co-authored" + "-by|" + r"\bclaude\b|\banthropic\b|\bopenai\b|\bcopilot\b|generated with \[", re.I)
 NEG_ASSERT = re.compile(r"(?i)\b(401|403|unauthori[sz]ed|forbidden|reject|denied|permission)\b")
-CROSS_PRINCIPAL = re.compile(r"(?i)\b(other|another|second|different)[_ ]?(user|principal|tenant|account|owner)\b")
+CROSS_PRINCIPAL = re.compile(r"(?i)(?<![a-z])(other|another|second|different)[_ ]?(user|principal|tenant|account|owner)(?![a-z])")   # test_other_user_cannot_... counts
 LAST_ADMIN = re.compile(r"(?i)\b(last|only|sole)[_ ]?(admin|owner|privileged)\b")
 BARE = re.compile(r"(?i)^\s*(pass|ok|yes|no|n/a|none|done|fine|✓|✔|x|-|checked)\s*[.!]?\s*$")
 
@@ -55,11 +55,12 @@ def negative_test_set(root, cfg, base, head):
     tests = _test_texts(root)
     findings = []
     for r in touched:
-        hits = [t for t, text in tests.items() if r["path"] in text and NEG_ASSERT.search(text)]
+        mentions = route_mention(r["path"])
+        hits = [t for t, text in tests.items() if mentions.search(text) and NEG_ASSERT.search(text)]
         if not hits:
             findings.append(f"{r['method']} {r['path']} ({r['file']}:{r['line']}): no test asserts rejection without credentials")
         if r["record_scoped"]:
-            cross = [t for t, text in tests.items() if r["path"] in text and CROSS_PRINCIPAL.search(text)]
+            cross = [t for t, text in tests.items() if mentions.search(text) and CROSS_PRINCIPAL.search(text)]
             if not cross:
                 findings.append(f"{r['method']} {r['path']}: record-scoped, and no test asserts one principal cannot reach another's records")
     for o in ops:
@@ -69,6 +70,14 @@ def negative_test_set(root, cfg, base, head):
         return Outcome.found(name, f"{len(findings)} negative-test gap(s) on {len(touched)} route(s) and {len(ops)} privileged operation(s)",
                              findings, blocking=True)
     return Outcome.clean(name, f"{len(touched)} route(s) and {len(ops)} privileged operation(s) in the range each have their rejection tests")
+
+
+def route_mention(path):
+    """A test names a templated route by a concrete instance: /notes/<id> is exercised by
+    /notes/1, /notes/{note_id} by an f-string. Each parameter matches one path segment."""
+    parts = re.split(r"(<[^>]+>|\{[^}]+\}|:\w+)", path)
+    pattern = "".join(r"[^/\s'\"]+" if re.fullmatch(r"<[^>]+>|\{[^}]+\}|:\w+", x) else re.escape(x) for x in parts if x)
+    return re.compile(pattern)
 
 
 def _test_texts(root):

@@ -1,0 +1,16 @@
+REQ:        REQ-13.1.1
+SPEC:       01
+CHECK:      engine/outcome.py
+MUTATION:   made could-not-run exit zero, so a check that performed no work reads as a pass
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.OutcomeStates.test_exit_codes
+--- output with the property broken (must show failure) ---
+FAIL: test_exit_codes (selftest.test_outcome.OutcomeStates.test_exit_codes)
+AssertionError: 0 != 2
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

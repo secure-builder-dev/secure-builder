@@ -1,0 +1,16 @@
+REQ:        REQ-13.2.4
+SPEC:       01
+CHECK:      engine/outcome.py
+MUTATION:   made the not-applicable proportion threshold unreachable so the disposition finding never fires
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.SummaryCounts.test_na_over_threshold_is_a_nonblocking_finding
+--- output with the property broken (must show failure) ---
+FAIL: test_na_over_threshold_is_a_nonblocking_finding (selftest.test_outcome.SummaryCounts.test_na_over_threshold_is_a_nonblocking_finding)
+AssertionError: False is not true
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.2
+SPEC:       06
+CHECK:      engine/__init__.py
+MUTATION:   made the version a hand-maintained release string with no content digest
+FILE:       engine/__init__.py
+TEST:       python -m unittest selftest.test_version.Version.test_content_derived
+--- output with the property broken (must show failure) ---
+FAIL: test_content_derived (selftest.test_version.Version.test_content_derived)
+AssertionError: Regex didn't match: '^\\d+\\.\\d+\\.\\d+\\S*\\+[0-9a-f]{12}$' not found in '0.1.0-dev'
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

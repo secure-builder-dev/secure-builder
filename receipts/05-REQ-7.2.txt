@@ -1,0 +1,16 @@
+REQ:        REQ-7.2
+SPEC:       05
+CHECK:      engine/__main__.py
+MUTATION:   let a self-test run that discovered zero cases leave the check green
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_cli.Check.test_selftest_absent_in_foreign_tree_reports_zero_not_pass
+--- output with the property broken (must show failure) ---
+FAIL: test_selftest_absent_in_foreign_tree_reports_zero_not_pass (selftest.test_cli.Check.test_selftest_absent_in_foreign_tree_reports_zero_not_pass)
+AssertionError: 0 == 0
+Ran 1 test in 0.010s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.009s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-9.3
+SPEC:       05
+CHECK:      selftest/helpers.py
+MUTATION:   made the assertion helper report only the expectation and not the observed lines
+FILE:       selftest/helpers.py
+TEST:       python -m unittest selftest.test_cli.FailureOutput.test_find_line_reports_observed_lines
+--- output with the property broken (must show failure) ---
+FAIL: test_find_line_reports_observed_lines (selftest.test_cli.FailureOutput.test_find_line_reports_observed_lines)
+AssertionError: 'alpha' not found in "expected exactly one line starting '[gamma]', found 0" : failure output must include the observed value
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

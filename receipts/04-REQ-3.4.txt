@@ -1,0 +1,16 @@
+REQ:        REQ-3.4
+SPEC:       04
+CHECK:      engine/net.py
+MUTATION:   let a fetch proceed in disconnected mode instead of raising
+FILE:       engine/net.py
+TEST:       python -m unittest selftest.test_net.Door.test_disconnected_is_an_error_not_a_fallback
+--- output with the property broken (must show failure) ---
+FAIL: test_disconnected_is_an_error_not_a_fallback (selftest.test_net.Door.test_disconnected_is_an_error_not_a_fallback)
+AssertionError: "mode 'disconnected' is not a known mode; refus[21 chars]vity" != "mode is disconnected: 'currency' must not atte[35 chars]ath)"
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

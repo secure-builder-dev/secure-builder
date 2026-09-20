@@ -1,0 +1,16 @@
+REQ:        REQ-2.2
+SPEC:       04
+CHECK:      engine/net.py
+MUTATION:   permitted a fourth component (the gate) to reach the network
+FILE:       engine/net.py
+TEST:       python -m unittest selftest.test_net.Door.test_only_three_callers
+--- output with the property broken (must show failure) ---
+FAIL: test_only_three_callers (selftest.test_net.Door.test_only_three_callers)
+AssertionError: frozenset({'currency', 'gate', 'detection-data', 'scanner-images'}) != {'currency', 'detection-data', 'scanner-images'}
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

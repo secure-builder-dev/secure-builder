@@ -1,0 +1,16 @@
+REQ:        REQ-5.1
+SPEC:       04
+CHECK:      engine/degradation.py
+MUTATION:   claimed the platform merge control as unaffected when no platform is present
+FILE:       engine/degradation.py
+TEST:       python -m unittest selftest.test_degradation.Statement.test_local_mode_declares_platform_controls_unmet
+--- output with the property broken (must show failure) ---
+FAIL: test_local_mode_declares_platform_controls_unmet (selftest.test_degradation.Statement.test_local_mode_declares_platform_controls_unmet)
+AssertionError: '- protected-branch merge control: no hosting platform' not found in '\n- change requires review: no platform pull request; requires a server-side hook or documented procedure\n- separation of duties: single-operator environment: one person cannot independently review their own work\n'
+Ran 1 test in 0.002s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

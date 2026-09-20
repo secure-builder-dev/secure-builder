@@ -1,0 +1,15 @@
+# © 2026 Casey Houle. All rights reserved.
+# CI invokes the same single command a developer runs locally (spec 01 REQ-3.1.1;
+# spec 05 REQ-6.3). No credentials, no network access needed by the command.
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m engine check
+      - run: python tools/progress_test.py

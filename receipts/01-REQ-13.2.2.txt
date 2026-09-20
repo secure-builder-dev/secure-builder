@@ -1,0 +1,16 @@
+REQ:        REQ-13.2.2
+SPEC:       01
+CHECK:      engine/outcome.py
+MUTATION:   gave nothing-to-check-yet the same wording as not-applicable
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.OutcomeStates.test_nothing_yet_is_distinct_from_not_applicable
+--- output with the property broken (must show failure) ---
+FAIL: test_nothing_yet_is_distinct_from_not_applicable (selftest.test_outcome.OutcomeStates.test_nothing_yet_is_distinct_from_not_applicable)
+AssertionError: False is not true : [neg] NOT APPLICABLE: project has no routes yet � no HTTP surface has been added
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

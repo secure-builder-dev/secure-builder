@@ -1,0 +1,16 @@
+REQ:        REQ-7.1
+SPEC:       04
+CHECK:      engine/degradation.py
+MUTATION:   produced the statement without the mode it describes
+FILE:       engine/degradation.py
+TEST:       python -m unittest selftest.test_degradation.Statement.test_three_categories_present_and_mode_stated
+--- output with the property broken (must show failure) ---
+FAIL: test_three_categories_present_and_mode_stated (selftest.test_degradation.Statement.test_three_categories_present_and_mode_stated)
+AssertionError: 'mode: disconnected; topology: single; side: local' not found in ''
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

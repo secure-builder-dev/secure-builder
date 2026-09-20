@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "track": "web",
+  "tier": "IL4",
+  "provider": "aws",
+  "app_type": "n/a",
+  "mode": "local",
+  "topology": "single",
+  "side": "local",
+  "operators": 1,
+  "protected_branch": "main",
+  "timezone": "UTC",
+  "clock": "workstation clock (Windows 11, NTP-synced)",
+  "not_applicable_threshold": 0.5
+}

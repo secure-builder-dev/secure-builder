@@ -1,0 +1,20 @@
+REQ:        REQ-5.6
+SPEC:       05
+CHECK:      engine/__main__.py
+MUTATION:   counted skipped self-tests as passed
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_cli.SelfTestWiring.test_skipped_selftest_is_named_and_counted_separately
+--- output with the property broken (must show failure) ---
+FAIL: test_skipped_selftest_is_named_and_counted_separately (selftest.test_cli.SelfTestWiring.test_skipped_selftest_is_named_and_counted_separately)
+    find_line(lines, "[selftest] 1 passed, 0 failed, 1 skipped (skipped: test_dev)")
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting '[selftest] 1 passed, 0 failed, 1 skipped (skipped: test_dev)', found 0:
+[summary] 2 checks: 2 applicable, 0 not applicable, 0 nothing-yet, 0 deferred, 0 failed
+[selftest] 2 passed, 0 failed, 1 skipped (skipped: test_dev)
+Ran 1 test in 0.067s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.064s
+OK
+exit 0

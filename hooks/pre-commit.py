@@ -29,7 +29,8 @@ GOVERNANCE = ("v1.0.md", "tools/progress.py", "tools/progress_test.py", "hooks/"
               "prompts/iteration.md", "specs/", "GOVERNANCE-SET.md", "AMENDMENTS.md")
 HEADER = "© 2026 Casey Houle. All rights reserved."
 HEADER_EXT = (".py", ".md", ".sh", ".txt", ".toml", ".json", ".yaml", ".yml", ".cfg")
-HEADER_EXEMPT = ("specs/", "receipts/", ".journal/", "ledger.tsv", ".gitattributes", "LICENSE", "budget.txt")
+HEADER_EXEMPT = ("specs/", "receipts/", ".journal/", ".engine/", "ledger.tsv", ".gitattributes",
+                 ".gitignore", "LICENSE", "budget.txt")
 FORBIDDEN = re.compile(r"co-authored-by|\bclaude\b|\banthropic\b|\bopenai\b|\bcopilot\b|generated with \[", re.I)
 
 

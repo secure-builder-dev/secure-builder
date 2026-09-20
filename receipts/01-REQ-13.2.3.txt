@@ -1,0 +1,18 @@
+REQ:        REQ-13.2.3
+SPEC:       01
+CHECK:      engine/outcome.py
+MUTATION:   dropped the deferred count from the summary aggregate
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.SummaryCounts.test_counts_reported_separately
+--- output with the property broken (must show failure) ---
+FAIL: test_counts_reported_separately (selftest.test_outcome.SummaryCounts.test_counts_reported_separately)
+AssertionError: '[sum[21 chars]licable, 1 not applicable, 1 nothing-yet, 3 failed' != '[sum[21 chars]licable, 1 not applicable, 1 nothing-yet, 1 deferred, 3 failed'
+- [summary] 6 checks: 4 applicable, 1 not applicable, 1 nothing-yet, 3 failed
++ [summary] 6 checks: 4 applicable, 1 not applicable, 1 nothing-yet, 1 deferred, 3 failed
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

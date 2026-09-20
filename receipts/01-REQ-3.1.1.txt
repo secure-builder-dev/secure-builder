@@ -1,0 +1,16 @@
+REQ:        REQ-3.1.1
+SPEC:       01
+CHECK:      engine/checks/__init__.py
+MUTATION:   unwired the no_network check from the registry the single command runs
+FILE:       engine/checks/__init__.py
+TEST:       python -m unittest selftest.test_cli.Registry.test_every_check_module_is_registered
+--- output with the property broken (must show failure) ---
+FAIL: test_every_check_module_is_registered (selftest.test_cli.Registry.test_every_check_module_is_registered)
+AssertionError: Items in the first set but not the second:
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

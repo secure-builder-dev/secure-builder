@@ -1,1 +1,7 @@
 # Questions raised by the loop (spec 07 §5.3). Read each morning. Answer -> spec clarification.
+
+2026-09-20 · spec 01 §2.1 · The track axis admits only `web` and `android`. The
+harness's own repository (a Python command-line tool) is neither. For dogfooding
+it is initialized as track=web tier=IL4 provider=aws, which is the least wrong
+fit, not a true one. Question: should a `tool`/`library` track exist, with its
+own not-applicable statements for the HTTP-shaped checks?

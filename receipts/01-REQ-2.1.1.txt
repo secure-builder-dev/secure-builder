@@ -1,0 +1,16 @@
+REQ:        REQ-2.1.1
+SPEC:       01
+CHECK:      engine/config.py
+MUTATION:   changed the well-known configuration path so the initializer writes somewhere other than the fixed path
+FILE:       engine/config.py
+TEST:       python -m unittest selftest.test_config.Axes.test_stored_at_fixed_path
+--- output with the property broken (must show failure) ---
+FAIL: test_stored_at_fixed_path (selftest.test_config.Axes.test_stored_at_fixed_path)
+AssertionError: '.engine/project.json' != '.engine/config.json'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

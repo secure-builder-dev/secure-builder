@@ -1,0 +1,16 @@
+REQ:        REQ-3.1.2
+SPEC:       01
+CHECK:      engine/checks/no_network.py
+MUTATION:   narrowed the self-scan so a direct socket import in a harness module is not detected
+FILE:       engine/checks/no_network.py
+TEST:       python -m unittest selftest.test_net.SelfScan.test_forbidden_pattern_catches_direct_imports
+--- output with the property broken (must show failure) ---
+FAIL: test_forbidden_pattern_catches_direct_imports (selftest.test_net.SelfScan.test_forbidden_pattern_catches_direct_imports)
+AssertionError: None is not true : import socket
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

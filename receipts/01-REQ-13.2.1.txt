@@ -1,0 +1,16 @@
+REQ:        REQ-13.2.1
+SPEC:       01
+CHECK:      engine/outcome.py
+MUTATION:   allowed a not-applicable outcome that does not state what covers the ground instead
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.OutcomeStates.test_not_applicable_must_name_shape_and_coverage
+--- output with the property broken (must show failure) ---
+FAIL: test_not_applicable_must_name_shape_and_coverage (selftest.test_outcome.OutcomeStates.test_not_applicable_must_name_shape_and_coverage)
+AssertionError: ValueError not raised
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-7.3
+SPEC:       04
+CHECK:      engine/degradation.py
+MUTATION:   omitted the not-achieved category from the statement
+FILE:       engine/degradation.py
+TEST:       python -m unittest selftest.test_degradation.Statement.test_three_categories_present_and_mode_stated
+--- output with the property broken (must show failure) ---
+FAIL: test_three_categories_present_and_mode_stated (selftest.test_degradation.Statement.test_three_categories_present_and_mode_stated)
+AssertionError: '## not achieved' not found in "# Degradation statement\nmode: disconnected; topology: single; side: local\ngenerated: 2026-09-20T09:00:58-07:00\nshape: track=web tier=IL4 provider=aws app_type=n/a\n\n## unaffected\n- mechanical checks: computed from the tree and vendored data only; identical in every mode\n- control wiring verification: computed from the tree; identical in every mode\n- mutation testing: runs the project's own suite; identical in every mode\n- citation resolution: resolved against vendored catalogues; identical in every mode\n- record-keeping: plain text under version control; identical in every mode\n\n## reduced, quantified\n- catalogue currency: currency not checked in this mode; last verified never (no verification recorded)\n- scanner detection data: refreshed only by transferred bundle; data is of unknown age (no bundle ingested)\n"
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

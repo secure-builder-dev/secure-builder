@@ -1,0 +1,16 @@
+REQ:        REQ-6.1
+SPEC:       05
+CHECK:      engine/__main__.py
+MUTATION:   changed the discovery pattern so the check command runs an empty suite
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_cli.SelfTestWiring.test_check_command_discovers_this_suite
+--- output with the property broken (must show failure) ---
+FAIL: test_check_command_discovers_this_suite (selftest.test_cli.SelfTestWiring.test_check_command_discovers_this_suite)
+AssertionError: 0 not greater than 40 : the check command would run an empty suite
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.027s
+OK
+exit 0

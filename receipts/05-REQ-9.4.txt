@@ -1,0 +1,16 @@
+REQ:        REQ-9.4
+SPEC:       05
+CHECK:      engine/__main__.py
+MUTATION:   let a failing self-test leave the check command's exit code at zero
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_cli.SelfTestWiring.test_failing_selftest_is_counted_and_reddens_check
+--- output with the property broken (must show failure) ---
+FAIL: test_failing_selftest_is_counted_and_reddens_check (selftest.test_cli.SelfTestWiring.test_failing_selftest_is_counted_and_reddens_check)
+AssertionError: 0 != 1
+Ran 1 test in 0.128s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.070s
+OK
+exit 0

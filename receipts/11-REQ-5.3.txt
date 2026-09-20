@@ -1,0 +1,16 @@
+REQ:        REQ-5.3
+SPEC:       11
+CHECK:      engine/outcome.py
+MUTATION:   gave deferred the same wording as not-applicable
+FILE:       engine/outcome.py
+TEST:       python -m unittest selftest.test_outcome.OutcomeStates.test_deferred_is_not_skipped_and_carries_reason
+--- output with the property broken (must show failure) ---
+FAIL: test_deferred_is_not_skipped_and_carries_reason (selftest.test_outcome.OutcomeStates.test_deferred_is_not_skipped_and_carries_reason)
+AssertionError: '[mutation] NOT APPLICABLE (reason: budget) � owed; 3 controls unmutated' != '[mutation] DEFERRED (reason: budget) � owed; 3 controls unmutated'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

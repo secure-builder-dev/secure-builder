@@ -1,0 +1,16 @@
+REQ:        REQ-7.6
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   let field mode be re-entered past the ceiling with no recorded acceptance
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_ceiling_requires_recorded_acceptance
+--- output with the property broken (must show failure) ---
+FAIL: test_ceiling_requires_recorded_acceptance (selftest.test_field.Reconciliation.test_ceiling_requires_recorded_acceptance)
+AssertionError: FieldError not raised
+Ran 1 test in 0.622s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.443s
+OK
+exit 0

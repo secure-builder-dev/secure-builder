@@ -1,0 +1,16 @@
+REQ:        REQ-7.3
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   verified reconciliation against the first deferred item only
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed
+--- output with the property broken (must show failure) ---
+FAIL: test_reconcile_requires_every_deferred_item_confirmed (selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed)
+AssertionError: FieldError not raised
+Ran 1 test in 0.418s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.560s
+OK
+exit 0

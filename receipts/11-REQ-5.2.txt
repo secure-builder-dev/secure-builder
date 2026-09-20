@@ -1,0 +1,16 @@
+REQ:        REQ-5.2
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   silently dropped a check the budget did not reach
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Budget.test_budget_orders_and_defers_by_name_with_reason
+--- output with the property broken (must show failure) ---
+FAIL: test_budget_orders_and_defers_by_name_with_reason (selftest.test_field.Budget.test_budget_orders_and_defers_by_name_with_reason)
+AssertionError: 'attack-surface' not found in []
+Ran 1 test in 0.567s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.535s
+OK
+exit 0

@@ -18,7 +18,7 @@ import pathlib
 import re
 
 from . import checklist, controlshape, gitutil, governance, manifest, mutate, probes, routes, version
-from .checks import coverage_range, findings_register
+from .checks import reconciliation, coverage_range, findings_register
 from .outcome import Outcome, State
 from .records import findings as findings_mod
 from .records import gatelog, now
@@ -162,6 +162,7 @@ def security_mechanical(root, cfg, base, head, unit):
     outs.append(_plans_during_construction(root, changed, unit))        # spec 03 REQ-3.5.1–3.5.2
     outs.append(_dependency_lead_time(root, cfg, diff))                 # spec 01 §6.2.1 item 10; spec 04 §10.6
     outs.append(probes.run_probe(root, cfg, head))                       # spec 01 §9.1–9.2: the standing-state probe, per gate
+    outs.append(reconciliation.run(root, cfg))                            # spec 11 REQ-7.2, 7.5, 7.7: open field debt, at every gate
     gov_outs, is_gov = governance.check_range(root, cfg, base, head, unit)   # spec 01 §11
     outs += gov_outs
     ctx["governance"] = is_gov

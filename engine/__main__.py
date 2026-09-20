@@ -22,6 +22,7 @@
   records             summarize the record set
   manifest            verify the control manifest and print recomputed call sites
   mutate              break every declared control, run the project's suite, restore (spec 01 §5.3)
+  field <declare|run|reconcile|clear|status|table|models> ...   field mode (spec 11): a bounded gate that incurs recorded debt
   handoff [--checkpoint] [--scan-impossible "reason"]   generate the review handoff; writes the started marker
   gate prepare|submit|no-model ...   run the gates' mechanical parts; record a verdict block; or record a no-model run
   review unit=<u> run=<n>   launch the reviewer as a fresh process whose only input is the handoff (spec 03 §2.2)
@@ -77,6 +78,9 @@ def cmd_check(root, argv):
     code = summary.exit_code
     if st["fail"] or (st["pass"] + st["fail"] + st["skip"] == 0):
         code = max(code, 1)
+    if (root / ".engine").is_dir():
+        from . import field
+        field.record_last_check(root, outcomes)     # spec 11 REQ-2.3: field mode cannot be entered over a failing check
     if cfg:
         print(cfg.mode_line())
     print(f"harness version: {version()}")
@@ -699,6 +703,82 @@ def cmd_truth(root, argv):
     return o.exit_code
 
 
+def cmd_field(root, argv):
+    """Field mode (spec 11): declare | run | reconcile | clear | status | table."""
+    from . import field, gitutil
+    if not argv:
+        print("field declare by=<name> reason=<why> impossible=<what makes the full process impossible> budget=<seconds> [accept_over_ceiling=<why>]")
+        print("field run unit=<u> run=<n> base=<sha> [head=<sha>] attested_by=<name> [model=none|<pinned id>] [answers=<json file>]")
+        print("field reconcile obligation=<OB-id> run=<n> attested_by=<name> confirmed=<check,check,...>")
+        print("field clear | field status | field table | field models")
+        return 2
+    sub, kv = argv[0], _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"field: COULD NOT RUN — {e}")
+        return 2
+    try:
+        if sub == "declare":
+            d = field.declare(root, cfg, by=kv.get("by", ""), reason=kv.get("reason", ""), impossible=kv.get("impossible", ""),
+                              budget_seconds=int(kv.get("budget", "0") or 0), accept_over_ceiling=kv.get("accept_over_ceiling", ""))
+            print(f"field: DECLARED by {d['declared_by']} at {d['declared_at']}; budget {d['budget_seconds']}s; "
+                  f"{d['open_obligations_at_entry']} obligation(s) already open. Exit is reconciliation, not `field clear`.")
+            return 0
+        if sub == "run":
+            base, head = gitutil.rev(root, kv["base"]), gitutil.rev(root, kv.get("head", "HEAD"))
+            if not base or not head:
+                print("field: COULD NOT RUN — base/head do not resolve to commits")
+                return 2
+            answers = None
+            if kv.get("answers"):
+                answers = json.loads(pathlib.Path(kv["answers"]).read_text(encoding="utf-8"))
+            doc, line, outs = field.run(root, cfg, kv["unit"], kv["run"], base, head, kv.get("attested_by", ""),
+                                        model=kv.get("model", field.NO_MODEL), checklist_answers=answers)
+            print(doc["boundary"])
+            for o in outs:
+                for l in o.lines():
+                    print("  " + l)
+            print(f"field: elapsed {doc['elapsed_seconds']}s of {doc['budget_seconds']}s budget; deferred: {', '.join(doc['checks_deferred']) or 'none'}; "
+                  f"could not run: {', '.join(doc['could_not_run']) or 'none'}")
+            print(f"field: {doc['verdict'].upper()} — row: {line}")
+            return 1 if doc["verdict"] == "field-fail" else (3 if doc["checks_deferred"] else 0)
+        if sub == "reconcile":
+            confirmed = {x.strip(): True for x in kv.get("confirmed", "").split(",") if x.strip()}
+            line = field.reconcile(root, cfg, kv["obligation"], kv["run"], kv.get("attested_by", ""), confirmed)
+            print(f"field: obligation {kv['obligation']} DISCHARGED — row: {line}")
+            return 0
+        if sub == "clear":
+            n = field.clear(root)
+            print(f"field: declaration removed; {n} reconciliation obligation(s) remain open — clearing discharges nothing")
+            return 0
+        if sub == "status":
+            lines, n, aged = field.report(root, cfg)
+            d = field.declaration(root)
+            print(f"field mode: {'DECLARED by ' + d['declared_by'] + ' (' + d['reason'] + ')' if d else 'not declared'}")
+            for l in lines:
+                print(l)
+            for r in field.open_obligations(root):
+                print(f"  {r['id']} opened {r['opened']} unit {r['unit']} range {r['range']}: owed {r['deferred_checks']}")
+            return 1 if aged else 0
+        if sub == "table":
+            for a, b in field.DEGRADATION_TABLE:
+                print(f"{a}: {b}")
+            return 0
+        if sub == "models":
+            pins = field.models(root)
+            for m in pins.values():
+                print(f"{m['id']} {m['version']} ({m['parameters']}) sha256:{m['sha256'][:12]} {'present' if m['_present'] else 'weights not on disk'} — {m['source']}")
+            if not pins:
+                print("no pinned models; the harness runs with no model at all (REQ-8.1)")
+            return 0
+    except (field.FieldError, KeyError, ValueError, OSError) as e:
+        print(f"field: REFUSED — {e}")
+        return 2
+    print("field: unknown subcommand")
+    return 2
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -769,7 +849,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
             "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
-            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth}
+            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field}
 
 
 def main(argv=None):

@@ -1,0 +1,16 @@
+REQ:        REQ-4.3
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   claimed separation of duties was achieved by one operator
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Verdict.test_field_row_in_ordinary_gate_log_with_distinct_class
+--- output with the property broken (must show failure) ---
+FAIL: test_field_row_in_ordinary_gate_log_with_distinct_class (selftest.test_field.Verdict.test_field_row_in_ordinary_gate_log_with_distinct_class)
+AssertionError: 'achieved' != 'not achieved'
+Ran 1 test in 0.444s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.375s
+OK
+exit 0

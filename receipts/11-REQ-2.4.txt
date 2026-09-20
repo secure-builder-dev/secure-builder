@@ -1,0 +1,16 @@
+REQ:        REQ-2.4
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   collapsed could-not-run into did-not-run-in-time
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Floor.test_could_not_run_is_distinct_from_deferred_and_fails
+--- output with the property broken (must show failure) ---
+FAIL: test_could_not_run_is_distinct_from_deferred_and_fails (selftest.test_field.Floor.test_could_not_run_is_distinct_from_deferred_and_fails)
+AssertionError: 'findings-register' not found in []
+Ran 1 test in 0.682s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.620s
+OK
+exit 0

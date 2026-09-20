@@ -38,5 +38,7 @@
   ],
   "citation_platforms_unindexed": [
     "MASVS"
-  ]
+  ],
+  "obligation_ceiling": 5,
+  "obligation_max_age_days": 30
 }

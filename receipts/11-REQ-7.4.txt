@@ -1,0 +1,16 @@
+REQ:        REQ-7.4
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   wrote a reconciliation row that references no field row
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed
+--- output with the property broken (must show failure) ---
+FAIL: test_reconcile_requires_every_deferred_item_confirmed (selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed)
+AssertionError: 'discharges OB-U1-1 (field run U1#1)' not found in '-'
+Ran 1 test in 0.453s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.508s
+OK
+exit 0

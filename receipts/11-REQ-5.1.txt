@@ -1,0 +1,16 @@
+REQ:        REQ-5.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   ignored the stated time budget
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Budget.test_budget_orders_and_defers_by_name_with_reason
+--- output with the property broken (must show failure) ---
+FAIL: test_budget_orders_and_defers_by_name_with_reason (selftest.test_field.Budget.test_budget_orders_and_defers_by_name_with_reason)
+AssertionError: 'attack-surface' not found in ['standing-state', 'control-mutation', 'scan']
+Ran 1 test in 0.589s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.586s
+OK
+exit 0

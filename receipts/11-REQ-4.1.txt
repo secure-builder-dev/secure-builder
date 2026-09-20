@@ -1,0 +1,16 @@
+REQ:        REQ-4.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   changed the explicit degradation table to claim the failure semantics bend
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Verdict.test_degradation_table_is_explicit_and_complete
+--- output with the property broken (must show failure) ---
+FAIL: test_degradation_table_is_explicit_and_complete (selftest.test_field.Verdict.test_degradation_table_is_explicit_and_complete)
+AssertionError: 'unchanged' not found in 'relaxed in the field'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.229s
+OK
+exit 0

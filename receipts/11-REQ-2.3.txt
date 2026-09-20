@@ -1,0 +1,16 @@
+REQ:        REQ-2.3
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   allowed entry into field mode over a currently failing deferrable check
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Entry.test_cannot_enter_to_escape_a_failing_check
+--- output with the property broken (must show failure) ---
+FAIL: test_cannot_enter_to_escape_a_failing_check (selftest.test_field.Entry.test_cannot_enter_to_escape_a_failing_check)
+AssertionError: FieldError not raised
+Ran 1 test in 0.194s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.310s
+OK
+exit 0

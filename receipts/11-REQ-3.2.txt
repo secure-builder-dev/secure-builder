@@ -1,0 +1,16 @@
+REQ:        REQ-3.2
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   let a check that ran and could not complete its function pass in field mode
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Floor.test_could_not_run_is_distinct_from_deferred_and_fails
+--- output with the property broken (must show failure) ---
+FAIL: test_could_not_run_is_distinct_from_deferred_and_fails (selftest.test_field.Floor.test_could_not_run_is_distinct_from_deferred_and_fails)
+AssertionError: 'field-pass' != 'field-fail'
+Ran 1 test in 0.572s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.592s
+OK
+exit 0

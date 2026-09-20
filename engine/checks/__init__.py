@@ -33,6 +33,7 @@ REGISTRY = [
     "manifest_completeness",
     "assessed_boundary",
     "generated_truth",
+    "reconciliation",
 ]
 
 

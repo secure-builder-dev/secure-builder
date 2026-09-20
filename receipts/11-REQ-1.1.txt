@@ -1,0 +1,16 @@
+REQ:        REQ-1.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   let a field run defer checks without incurring any recorded debt
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_obligation_records_what_was_deferred_and_is_counted
+--- output with the property broken (must show failure) ---
+FAIL: test_obligation_records_what_was_deferred_and_is_counted (selftest.test_field.Reconciliation.test_obligation_records_what_was_deferred_and_is_counted)
+AssertionError: 0 != 1
+Ran 1 test in 0.396s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.423s
+OK
+exit 0

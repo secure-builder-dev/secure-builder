@@ -6,7 +6,7 @@ it is not a clean bill of health. *Assessed elsewhere, evidence not available* i
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 103 (100%)
+- never assessed: 106 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -27,6 +27,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/checks/divergence.py | never assessed |  |
 | engine/checks/doc_consistency.py | never assessed |  |
 | engine/checks/findings_register.py | never assessed |  |
+| engine/checks/generated_truth.py | never assessed |  |
 | engine/checks/harness_self_scan.py | never assessed |  |
 | engine/checks/injection_scan.py | never assessed |  |
 | engine/checks/license_policy.py | never assessed |  |
@@ -77,6 +78,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/sequence.py | never assessed |  |
 | engine/stamp.py | never assessed |  |
 | engine/tools.py | never assessed |  |
+| engine/truth.py | never assessed |  |
 | hooks/commit-msg.py | never assessed |  |
 | hooks/install.py | never assessed |  |
 | hooks/pre-commit.py | never assessed |  |
@@ -106,6 +108,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | selftest/test_scan.py | never assessed |  |
 | selftest/test_sequence.py | never assessed |  |
 | selftest/test_tools.py | never assessed |  |
+| selftest/test_truth.py | never assessed |  |
 | selftest/test_version.py | never assessed |  |
 | tools/gen_ledger.py | never assessed |  |
 | tools/hooks_test.py | never assessed |  |

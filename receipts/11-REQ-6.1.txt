@@ -1,0 +1,16 @@
+REQ:        REQ-6.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   wrote a field row that does not say what was deferred
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Verdict.test_field_row_in_ordinary_gate_log_with_distinct_class
+--- output with the property broken (must show failure) ---
+FAIL: test_field_row_in_ordinary_gate_log_with_distinct_class (selftest.test_field.Verdict.test_field_row_in_ordinary_gate_log_with_distinct_class)
+AssertionError: 'scan' not found in '-'
+Ran 1 test in 0.462s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.556s
+OK
+exit 0

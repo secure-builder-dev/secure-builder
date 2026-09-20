@@ -1,0 +1,16 @@
+REQ:        REQ-7.2
+SPEC:       11
+CHECK:      engine/gate.py
+MUTATION:   stopped reporting open obligations at the gate
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_open_count_reported_at_every_gate
+--- output with the property broken (must show failure) ---
+FAIL: test_open_count_reported_at_every_gate (selftest.test_field.Reconciliation.test_open_count_reported_at_every_gate)
+AssertionError: 0 != 1
+Ran 1 test in 0.539s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.671s
+OK
+exit 0

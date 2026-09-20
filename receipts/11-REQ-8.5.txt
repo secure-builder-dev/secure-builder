@@ -1,0 +1,16 @@
+REQ:        REQ-8.5
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   accepted model weights that do not match their pinned hash
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Model.test_unpinned_model_refused_pinned_model_recorded_with_scale
+--- output with the property broken (must show failure) ---
+FAIL: test_unpinned_model_refused_pinned_model_recorded_with_scale (selftest.test_field.Model.test_unpinned_model_refused_pinned_model_recorded_with_scale)
+AssertionError: FieldError not raised
+Ran 1 test in 0.702s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.747s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-2.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   inferred field mode from the absence of a declaration
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Entry.test_never_inferred_run_without_declaration_refused
+--- output with the property broken (must show failure) ---
+FAIL: test_never_inferred_run_without_declaration_refused (selftest.test_field.Entry.test_never_inferred_run_without_declaration_refused)
+AssertionError: FieldError not raised
+Ran 1 test in 0.651s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.463s
+OK
+exit 0

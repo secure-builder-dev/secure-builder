@@ -1,0 +1,16 @@
+REQ:        REQ-2.2
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   accepted a declaration with no who, why or impossibility
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Entry.test_declaration_records_who_when_why_and_impossibility
+--- output with the property broken (must show failure) ---
+FAIL: test_declaration_records_who_when_why_and_impossibility (selftest.test_field.Entry.test_declaration_records_who_when_why_and_impossibility)
+AssertionError: FieldError not raised
+Ran 1 test in 0.303s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.318s
+OK
+exit 0

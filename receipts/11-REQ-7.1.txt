@@ -1,0 +1,16 @@
+REQ:        REQ-7.1
+SPEC:       11
+CHECK:      engine/field.py
+MUTATION:   discharged an obligation on a re-gate that did not confirm the deferred items
+FILE:       engine/field.py
+TEST:       python -m unittest selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed
+--- output with the property broken (must show failure) ---
+FAIL: test_reconcile_requires_every_deferred_item_confirmed (selftest.test_field.Reconciliation.test_reconcile_requires_every_deferred_item_confirmed)
+AssertionError: FieldError not raised
+Ran 1 test in 0.495s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.457s
+OK
+exit 0

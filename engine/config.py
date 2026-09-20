@@ -172,6 +172,7 @@ def init(root, *, track, mode, tier=UNSET, provider=UNSET, app_type=UNSET,
         "operators": int(operators), "protected_branch": protected_branch,
         "timezone": timezone, "clock": clock, "not_applicable_threshold": 0.5,
         "consistency_blocks": ["verdict-block"],
+        "obligation_ceiling": 5, "obligation_max_age_days": 30,        # spec 11 REQ-7.6, 7.7
     }
     cfg = Config(data)
     probs = cfg.problems()

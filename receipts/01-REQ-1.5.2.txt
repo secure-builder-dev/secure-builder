@@ -1,0 +1,16 @@
+REQ:        REQ-1.5.2
+SPEC:       01
+CHECK:      engine/export.py
+MUTATION:   stopped naming which properties are mechanized in the disclosure
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes
+--- output with the property broken (must show failure) ---
+FAIL: test_generated_from_records_and_distinguishes_artifact_classes (selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes)
+AssertionError: 'mechanical check registry: config,' not found in '## Deterministic artifacts (reproducible from the inputs; implemented as mechanical checks, never left to a reviewing agent)\n\n- mechanical checks (the registry below)\n- control wiring verification (manifest)\n- mutation results\n- composition inventories\n- scan correlation\n- generated system truth\n- coverage inventory\n- standing-state snapshots and deltas\n- this traceability index and this disclosure\n\n'
+Ran 1 test in 0.542s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.458s
+OK
+exit 0

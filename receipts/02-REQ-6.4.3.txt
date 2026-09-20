@@ -1,0 +1,16 @@
+REQ:        REQ-6.4.3
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   redacted the vulnerability identifiers along with the environment
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Redaction.test_environment_identifiers_out_vulnerability_content_stays
+--- output with the property broken (must show failure) ---
+FAIL: test_environment_identifiers_out_vulnerability_content_stays (selftest.test_export.Redaction.test_environment_identifiers_out_vulnerability_content_stays)
+AssertionError: 'CVE-2024-3094' not found in '{"matches":[{"vulnerability":{"id":"<redacted cve>","severity":"Critical"},"artifact":{"name":"xz-utils","version":"5.6.0"}}],"source":{"target":{"userInput":"<redacted aws-account>.<redacted registry-path>:1.4","imageID":"<redacted digest>","host":"<redacted hostname>"}},"descriptor":{"configuration":{"file":"<redacted home-path>/.grype.yaml"}}}'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

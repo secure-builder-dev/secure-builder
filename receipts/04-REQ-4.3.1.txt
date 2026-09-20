@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.1
+SPEC:       04
+CHECK:      engine/checks/credential_scan.py
+MUTATION:   let a registry auth entry pass the credential scan
+FILE:       engine/checks/credential_scan.py
+TEST:       python -m unittest selftest.test_leftovers.Registry.test_registry_credentials_in_tracked_files_are_findings
+--- output with the property broken (must show failure) ---
+FAIL: test_registry_credentials_in_tracked_files_are_findings (selftest.test_leftovers.Registry.test_registry_credentials_in_tracked_files_are_findings)
+AssertionError: [] is not true : docker-config.json
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-10.2.1b
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   left the manifest scope statement out of the index
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Traceability.test_joins_every_source_per_control_in_srtm_shape
+--- output with the property broken (must show failure) ---
+FAIL: test_joins_every_source_per_control_in_srtm_shape (selftest.test_export.Traceability.test_joins_every_source_per_control_in_srtm_shape)
+AssertionError: "This manifest covers system-specific controls and the system-specific portion of hybrid controls. Fully inherited controls are implemented by the hosting platform, are tracked in the platform's system security plan, and are outside this harness's verification scope." not found in '# Control-to-evidence traceability index (SRTM)\n\ncommit: abc123\ngenerated: 2026-09-20T11:57:00-07:00\nmanifest verification: resolved\n\n## Scope\n\n\n## Matrix\n\n| Control ID | Implementation Status | Responsible Party | Implementation | Test Evidence | Developer Testing | Assessment Records | Open Findings |\n|---|---|---|---|---|---|---|---|\n| AC-3.1 | hybrid | shared: system + platform IAM (inherited) | src/auth.py:require_auth (line 1; 1 call site(s)) | tests/test_items.py | detected (2026-09-01; baseline pass; decision inverted) | U1#1 pass (2026-09-20) | CF-9 |\n'
+Ran 1 test in 0.552s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.635s
+OK
+exit 0

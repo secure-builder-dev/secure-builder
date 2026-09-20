@@ -34,6 +34,7 @@ REGISTRY = [
     "assessed_boundary",
     "generated_truth",
     "reconciliation",
+    "enforcement",
 ]
 
 

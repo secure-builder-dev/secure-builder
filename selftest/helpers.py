@@ -88,3 +88,12 @@ def find_line(lines, prefix):
     if len(hits) != 1:
         raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
     return hits[0]
+
+
+def line_with(text, needle):
+    """The one line of a rendered document that contains needle; the assertion targets
+    that line, not the whole output (spec 05 REQ-3.2)."""
+    hits = [l for l in text.splitlines() if needle in l]
+    if len(hits) != 1:
+        raise AssertionError(f"expected exactly one line containing {needle!r}, found {len(hits)}:" + chr(10) + text)
+    return hits[0]

@@ -1,0 +1,16 @@
+REQ:        REQ-10.4.1
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   computed retention from the authorization period alone
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Retention.test_period_is_authorization_plus_audit_and_outlives_the_harness
+--- output with the property broken (must show failure) ---
+FAIL: test_period_is_authorization_plus_audit_and_outlives_the_harness (selftest.test_export.Retention.test_period_is_authorization_plus_audit_and_outlives_the_harness)
+AssertionError: '2029-09-20' != '2032-09-20'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

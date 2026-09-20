@@ -22,6 +22,7 @@
   records             summarize the record set
   manifest            verify the control manifest and print recomputed call sites
   mutate              break every declared control, run the project's suite, restore (spec 01 §5.3)
+  export <package|scan|verify|traceability|disclosure> ...   evidence package bound to the commit, hashed at export
   field <declare|run|reconcile|clear|status|table|models> ...   field mode (spec 11): a bounded gate that incurs recorded debt
   handoff [--checkpoint] [--scan-impossible "reason"]   generate the review handoff; writes the started marker
   gate prepare|submit|no-model ...   run the gates' mechanical parts; record a verdict block; or record a no-model run
@@ -779,6 +780,50 @@ def cmd_field(root, argv):
     return 2
 
 
+def cmd_export(root, argv):
+    """Evidence export (spec 02 §10): package | scan | verify | traceability | disclosure."""
+    from . import export, gitutil
+    if not argv:
+        print("export package [out=<dir>] [marking=<text>] | export scan out=<dir> [--raw] | export verify <dir> | export traceability | export disclosure")
+        return 2
+    sub, kv = argv[0], _kv(argv[1:])
+    if sub == "verify":
+        ok, probs = export.verify(argv[1] if len(argv) > 1 else ".")
+        for pr in probs:
+            print(f"  {pr}")
+        print("export: VERIFIED — every hash recomputed and matching" if ok else f"export: INTEGRITY FAILURE — {len(probs)} problem(s)")
+        return 0 if ok else 1
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"export: COULD NOT RUN — {e}")
+        return 2
+    try:
+        if sub == "package":
+            out, m = export.package(root, cfg, kv.get("out", str(root / ".engine" / "local" / "export")), marking=kv.get("marking"))
+            print(f"export: {out}")
+            print(f"export: commit {m['commit']}; {len(m['files'])} artifact(s) hashed at export; marking: {m['marking'] or 'none'}")
+            for pr in m["incomplete"]:
+                print(f"  INCOMPLETE: {pr}")
+            return 1 if m["incomplete"] else 0
+        if sub == "scan":
+            meta = export.scan_bundle(root, kv["out"], cfg, redacted="--raw" not in argv)
+            print(f"export: scan bundle of {len(meta['files'])} file(s), {'redacted' if meta['redacted'] else 'RAW — not for crossing a boundary'}")
+            return 0
+        if sub == "traceability":
+            idx = export.traceability(root, cfg)
+            print(export.render_traceability(idx, gitutil.head(root) or "unknown"), end="")
+            return 0
+        if sub == "disclosure":
+            print(export.disclosure(root, cfg, gitutil.head(root) or "unknown"), end="")
+            return 0
+    except (export.ExportError, KeyError, OSError) as e:
+        print(f"export: REFUSED — {e}")
+        return 2
+    print("export: unknown subcommand")
+    return 2
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -849,7 +894,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
             "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
-            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field}
+            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field, "export": cmd_export}
 
 
 def main(argv=None):

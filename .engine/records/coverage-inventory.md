@@ -6,7 +6,7 @@ it is not a clean bill of health. *Assessed elsewhere, evidence not available* i
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 106 (100%)
+- never assessed: 109 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -35,6 +35,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/checks/manifest_completeness.py | never assessed |  |
 | engine/checks/negative_fixtures.py | never assessed |  |
 | engine/checks/no_network.py | never assessed |  |
+| engine/checks/reconciliation.py | never assessed |  |
 | engine/checks/record_integrity.py | never assessed |  |
 | engine/checks/record_schema.py | never assessed |  |
 | engine/checks/reference_integrity.py | never assessed |  |
@@ -48,6 +49,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/dist/hooks/pre-commit.py | never assessed |  |
 | engine/dist/run.py | never assessed |  |
 | engine/distribute.py | never assessed |  |
+| engine/field.py | never assessed |  |
 | engine/gate.py | never assessed |  |
 | engine/gitutil.py | never assessed |  |
 | engine/governance.py | never assessed |  |
@@ -96,6 +98,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | selftest/test_coverage.py | never assessed |  |
 | selftest/test_degradation.py | never assessed |  |
 | selftest/test_distribute.py | never assessed |  |
+| selftest/test_field.py | never assessed |  |
 | selftest/test_gate.py | never assessed |  |
 | selftest/test_governance.py | never assessed |  |
 | selftest/test_guard.py | never assessed |  |

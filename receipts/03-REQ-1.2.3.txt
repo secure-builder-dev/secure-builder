@@ -1,0 +1,16 @@
+REQ:        REQ-1.2.3
+SPEC:       03
+CHECK:      engine/enforcement.py
+MUTATION:   let a non-negotiable stand on prose alone
+FILE:       engine/enforcement.py
+TEST:       python -m unittest selftest.test_leftovers.Enforcement.test_rule_added_as_prose_only_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_rule_added_as_prose_only_is_blocking (selftest.test_leftovers.Enforcement.test_rule_added_as_prose_only_is_blocking)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.049s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.049s
+OK
+exit 0

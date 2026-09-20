@@ -1,0 +1,16 @@
+REQ:        REQ-10.2.6
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   produced a narrative that no longer names the implementation
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Traceability.test_narrative_is_prose_from_manifest_and_code
+--- output with the property broken (must show failure) ---
+FAIL: test_narrative_is_prose_from_manifest_and_code (selftest.test_export.Traceability.test_narrative_is_prose_from_manifest_and_code)
+AssertionError: 'implemented by `require_auth` in `src/auth.py`' not found in '# Implementation narrative\n\nGenerated from the control manifest and the code; regenerate rather than edit.\n\n## AC-3.1\n\nAC-3.1 is a hybrid control (shared: system + platform IAM (inherited)). It is implemented somewhere. It is exercised by tests/test_items.py. Developer security testing: detected (2026-09-01; baseline pass; decision inverted). Assessment records: U1#1 pass (2026-09-20). Open findings: CF-9.\n\nDeclared purpose: Every item route requires a bearer token.\n\n'
+Ran 1 test in 0.566s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.685s
+OK
+exit 0

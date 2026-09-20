@@ -10,7 +10,7 @@ from engine.checks import assessed_boundary, manifest_completeness
 from engine.config import Config
 from engine.outcome import State
 from engine.records import findings, gatelog, table, templates
-from .helpers import commit, git, git_repo, tree, write, write_config
+from .helpers import commit, git, git_repo, tree, write, write_config, line_with
 
 NL = chr(10)
 
@@ -171,8 +171,8 @@ class Inventory(unittest.TestCase):
             self.assertEqual(states["src/app.py"], "assessed elsewhere, evidence not available")
             self.assertEqual(counts, {"assessed": 1, "never": 0, "elsewhere": 1})
             text = (t / probes.INVENTORY).read_text(encoding="utf-8")
-            self.assertIn("it is not a clean bill of health", text)
-            self.assertIn("assessed elsewhere, evidence not available: 1 (50%)", text)
+            line_with(text, "it is not a clean bill of health")
+            line_with(text, "assessed elsewhere, evidence not available: 1 (50%)")
 
     def test_never_assessed_without_gate_rows(self):
         with tree() as t:

@@ -1,0 +1,16 @@
+REQ:        REQ-2.4
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   let a production capture pass as a constructed fixture
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_leftovers.Fixtures.test_borrowed_fixtures_reported_constructed_ones_not
+--- output with the property broken (must show failure) ---
+FAIL: test_borrowed_fixtures_reported_constructed_ones_not (selftest.test_leftovers.Fixtures.test_borrowed_fixtures_reported_constructed_ones_not)
+AssertionError: 2 != 3 : ['tests/fixtures/big.bin: 64 KB data file beside the tests — a capture, not a constructed fixture', "tests/test_a.py:2: reads a fixture from outside the test tree: data = open('../prod/export.json').read()"]
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

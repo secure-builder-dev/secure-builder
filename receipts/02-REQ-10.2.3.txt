@@ -1,0 +1,16 @@
+REQ:        REQ-10.2.3
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   wrote a manifest whose hashes are not the content's
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete
+--- output with the property broken (must show failure) ---
+FAIL: test_bundle_is_dated_bound_to_commit_hashed_and_complete (selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete)
+AssertionError: False is not true : ['00-DISCLOSURE.md: content differs from the manifest hash', '01-traceability-index.md: content differs from the manifest hash', '02-implementation-narrative.md: content differs from the manifest hash', '03-degradation-statement.md: content differs from the manifest hash', 'gate-log/gate-log.md: content differs from the manifest hash', 'records/findings-register.md: content differs from the manifest hash', 'records/governance-changelog.md: content differs from the manifest hash', 'records/standing-state-deltas.md: content differs from the manifest hash', 'records/coverage-inventory.md: content differs from the manifest hash', 'records/plan-of-action.md: content differs from the manifest hash', 'records/reconciliation-obligations.md: content differs from the manifest hash', 'records/mutation-results.md: content differs from the manifest hash', 'records/generated-truth.md: content differs from the manifest hash', 'sbom/app.cdx.json: content differs from the manifest hash', 'RETENTION.md: content differs from the manifest hash']
+Ran 1 test in 0.885s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.962s
+OK
+exit 0

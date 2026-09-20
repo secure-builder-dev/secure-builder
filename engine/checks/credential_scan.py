@@ -28,6 +28,10 @@ PATTERNS = [
         r"(?i)\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key)"
         r"\s*[:=]\s*['\"]([^'\"\s]{8,})['\"]")),
     ("connection string with password", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^:/\s]+:[^@/\s]{4,}@")),
+    # spec 04 REQ-4.3.1: no registry credentials in any tracked file
+    ("registry auth entry", re.compile(r"(?i)\"auth\"\s*:\s*\"[A-Za-z0-9+/=]{16,}\"")),
+    ("registry login with password", re.compile(r"(?i)\b(docker|podman|nerdctl|crane|oras|helm\s+registry)\s+login\b.*(\s-p\s|--password[\s=](?!-stdin))")),
+    ("registry token variable", re.compile(r"(?i)\b(docker|registry|ecr|acr|gcr|artifactory|nexus|harbor)[_-]?(token|password|passwd|auth)\s*[:=]\s*['\"]?[A-Za-z0-9+/=_-]{12,}")),
 ]
 PLACEHOLDER = re.compile(r"(?i)^(<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|x{4,}|\*{4,}|changeme|change[-_]me|replace[-_]me|"
                          r"your[-_][a-z0-9_-]+|example|placeholder|dummy|todo|redacted|none|null|secret|password|"

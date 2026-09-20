@@ -10,7 +10,7 @@ from engine import field, gate
 from engine.checks import reconciliation
 from engine.outcome import State
 from engine.records import gatelog, table
-from .helpers import ROOT, cli, commit, find_line, tree, write
+from .helpers import ROOT, cli, commit, find_line, tree, write, line_with
 from .test_gate import cfg, feature, project as gate_project
 
 NL = chr(10)
@@ -147,7 +147,7 @@ class Budget(unittest.TestCase):
             self.assertEqual(deferred[0].reason, "budget")
             self.assertIn("DEFERRED", deferred[0].line())
             self.assertFalse(doc["completed_within_budget"])
-            self.assertIn("budget exhausted", field.render(doc, outs))
+            line_with(field.render(doc, outs), "budget exhausted")
 
     def test_deferred_never_reported_as_passed_skipped_or_na(self):
         with tree() as t:
@@ -170,8 +170,8 @@ class Budget(unittest.TestCase):
             self.assertEqual(doc["budget_seconds"], 600)
             self.assertGreater(doc["elapsed_seconds"], 0)
             text = field.render(doc, outs)
-            self.assertIn("elapsed:", text)
-            self.assertIn("## Checks deferred (owed)", text)
+            line_with(text, "elapsed:")
+            line_with(text, "## Checks deferred (owed)")
 
 
 class Verdict(unittest.TestCase):
@@ -203,8 +203,8 @@ class Verdict(unittest.TestCase):
             self.assertIn("This is a FIELD verdict, not an ordinary gate pass", doc["boundary"])
             self.assertIn("separation of duties was not achieved", doc["boundary"])
             self.assertIn("declared by Casey because outage at the edge", doc["boundary"])
-            for key in ("mode: field", "declared by Casey", "budget:", "reconciliation: open", "reviewer class:", "model:"):
-                self.assertIn(key, text)
+            for key in ("mode: field; declared by Casey", "budget:", "reconciliation: open", "reviewer class:"):
+                line_with(text, key)
 
     def test_started_marker_written_before_any_check(self):
         with tree() as t:

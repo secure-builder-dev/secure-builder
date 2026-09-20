@@ -1,0 +1,16 @@
+REQ:        REQ-10.2
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   treated every audit finding as dispositioned without a register row
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_leftovers.Dispositions.test_audit_findings_carry_ids_and_are_dispositioned_through_the_register
+--- output with the property broken (must show failure) ---
+FAIL: test_audit_findings_carry_ids_and_are_dispositioned_through_the_register (selftest.test_leftovers.Dispositions.test_audit_findings_carry_ids_and_are_dispositioned_through_the_register)
+AssertionError: [] is not true : ['[audit] standing self-test audit (spec 05 §10)', '[audit] 1 dormant test files: 1 finding(s)', '    - AUD-5b2abe930f [dispositioned] tests/test_a.py: no CI workflow, script or hook invokes it', '[audit] 2 checks without a negative fixture: 0 finding(s)', '[audit] 3 loops over discovered sets with no empty case: 0 finding(s)', '[audit] 4 assertions on a class of values: 0 finding(s)', '[audit] 5 assertions searching whole output: 0 finding(s)', '[audit] 6 tests that skip on environment: 0 finding(s)', '[audit] 7 command sequences continuing past failure: 0 finding(s)', '[audit] 8 external tools exercised only against stubs: 0 finding(s)', '[audit] 9 fixtures borrowed rather than constructed: 0 finding(s)', '[audit] 1 finding(s); 0 require disposition: each becomes a check or a checklist line, recorded in the findings register under its AUD- identifier']
+Ran 1 test in 0.010s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.012s
+OK
+exit 0

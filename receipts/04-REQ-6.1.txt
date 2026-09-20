@@ -1,0 +1,16 @@
+REQ:        REQ-6.1
+SPEC:       04
+CHECK:      engine/export.py
+MUTATION:   let a generated page depend on the network to render
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Offline.test_offline_guard_names_each_violation
+--- output with the property broken (must show failure) ---
+FAIL: test_offline_guard_names_each_violation (selftest.test_export.Offline.test_offline_guard_names_each_violation)
+AssertionError: False is not true
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

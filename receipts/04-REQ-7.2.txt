@@ -1,0 +1,16 @@
+REQ:        REQ-7.2
+SPEC:       04
+CHECK:      engine/export.py
+MUTATION:   left the degradation statement out of the exported package
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete
+--- output with the property broken (must show failure) ---
+FAIL: test_bundle_is_dated_bound_to_commit_hashed_and_complete (selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete)
+AssertionError: '03-degradation-statement.md' not found in {'records/findings-register.md', '00-DISCLOSURE.md', 'sbom/app.cdx.json', 'records/standing-state-deltas.md', '01-traceability-index.md', 'records/plan-of-action.md', 'scan/raw/grype-app.json', 'records/coverage-inventory.md', 'records/mutation-results.md', 'records/governance-changelog.md', 'gate-log/gate-log.md', 'scan/actionable.md', 'index.html', 'scan/BUNDLE.json', 'scan/sbom/app.cdx.json', 'records/reconciliation-obligations.md', '02-implementation-narrative.md', 'RETENTION.md', 'records/generated-truth.md'} : 03-degradation-statement.md
+Ran 1 test in 0.876s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.796s
+OK
+exit 0

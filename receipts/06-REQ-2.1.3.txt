@@ -1,0 +1,16 @@
+REQ:        REQ-2.1.3
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   honoured a per-file exemption marker on an engine-owned file
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_leftovers.NoExemption.test_no_supported_way_to_exempt_an_engine_owned_file
+--- output with the property broken (must show failure) ---
+FAIL: test_no_supported_way_to_exempt_an_engine_owned_file (selftest.test_leftovers.NoExemption.test_no_supported_way_to_exempt_an_engine_owned_file)
+AssertionError: b'# my local edit  engine:keep  engine:exempt  ENGINE-KEEP\n' != b'# Engine rules\n\n\xc2\xa9 2026 Casey Houle[3221 chars]e.\n'
+Ran 1 test in 0.108s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.134s
+OK
+exit 0

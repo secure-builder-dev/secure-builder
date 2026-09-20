@@ -1,0 +1,16 @@
+REQ:        REQ-10.5.1
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   dropped who attested from the disclosure
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes
+--- output with the property broken (must show failure) ---
+FAIL: test_generated_from_records_and_distinguishes_artifact_classes (selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes)
+AssertionError: 'attested by: Casey' not found in "# Disclosure statement\n\ncommit: abc123\ngenerated: 2026-09-20T11:57:18-07:00 from the record set by harness 0.1.0-dev+db1ee8b323af\n\n## How this evidence was produced\n\nThe gates are automated reviewers applying a versioned checklist; every verdict row names its checklist version, its reviewer class, the model where one performed the review, and the human who attested the unit of work. Gate rows in this package: 1 live (0 superseded, retained). Field-mode rows: 0. reconciliation obligations open: 0.\n\n- checklist versions applied: cl-abc\n- harness versions: 0.1.0; this export: 0.1.0-dev+db1ee8b323af\n- reviewer classes seen: automated-with-human-review\n- models named: reviewer-x 70B\n\n## Deterministic artifacts (reproducible from the inputs; implemented as mechanical checks, never left to a reviewing agent)\n\n- mechanical checks (the registry below)\n- control wiring verification (manifest)\n- mutation results\n- composition inventories\n- scan correlation\n- generated system truth\n- coverage inventory\n- standing-state snapshots and deltas\n- this traceability index and this disclosure\n\nmechanical check registry: config, no_network, divergence, negative_fixtures, credential_scan, injection_scan, reference_integrity, doc_consistency, attack_surface, license_policy, harness_self_scan, lint, coverage_range, record_schema, record_integrity, run_attestation, findings_register, control_manifest, scanner_pins, artifact_binding, citations, manifest_completeness, assessed_boundary, generated_truth, reconciliation\n\n## Non-deterministic artifacts (an agent's judgment; weight them by the recorded reviewer and model)\n\n- security-gate verdicts by an agent reviewer applying the versioned checklist\n- quality-gate judgment items\n- field-mode reviewer answers\n\nchecklist version at export: cl-34c604b32ce3\n\n## Human-authored artifacts\n\n- findings-register dispositions and risk acceptances\n- carried-finding owners, milestones and reasons\n- governance changes and their sign-off\n- attestations on every gate row\n- field-mode declarations\n\n## Machine-generated artifacts in this bundle\n\ntraceability index, implementation narrative, degradation statement, coverage inventory, generated truth, composition inventories, redacted scan bundle, this statement, the manifest with its hashes.\n\n"
+Ran 1 test in 0.570s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.472s
+OK
+exit 0

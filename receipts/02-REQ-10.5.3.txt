@@ -1,0 +1,16 @@
+REQ:        REQ-10.5.3
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   stopped distinguishing the agent verdicts from the deterministic artifacts
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes
+--- output with the property broken (must show failure) ---
+FAIL: test_generated_from_records_and_distinguishes_artifact_classes (selftest.test_export.Disclosure.test_generated_from_records_and_distinguishes_artifact_classes)
+AssertionError: 'agent reviewer' not found in "## Non-deterministic artifacts (an agent's judgment; weight them by the recorded reviewer and model)\n\n- (as above)\n\nchecklist version at export: cl-34c604b32ce3\n\n"
+Ran 1 test in 0.484s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.440s
+OK
+exit 0

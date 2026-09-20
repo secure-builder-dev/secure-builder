@@ -8,7 +8,7 @@ from engine import catalogue, distribute
 from engine.checks import citations
 from engine.config import Config
 from engine.outcome import State
-from .helpers import ROOT, cli, find_line, tree, write, write_config
+from .helpers import ROOT, cli, find_line, tree, write, write_config, line_with
 
 NL = chr(10)
 
@@ -115,8 +115,8 @@ class Catalogue(unittest.TestCase):
     def test_data_statement_names_every_vendored_set(self):
         text = (ROOT / "engine/data/README.md").read_text(encoding="utf-8")
         for name in ("nist-sp-800-53-r5.json", "publications.json", "owasp-top10.json", "OWASP MASVS", "Model weights"):
-            self.assertIn(name, text)
-        self.assertIn("public domain", text)
+            line_with(text, name)
+        line_with(text, "public domain")
         self.assertTrue(any("OWASP MASVS | Not vendored" in l for l in text.splitlines()), "operator-supplied sets are stated as such")
 
 

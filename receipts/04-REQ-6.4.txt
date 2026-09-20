@@ -1,0 +1,16 @@
+REQ:        REQ-6.4
+SPEC:       04
+CHECK:      engine/export.py
+MUTATION:   wrote an index page that fetches at render time
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Offline.test_package_refuses_a_page_that_would_not_render_offline
+--- output with the property broken (must show failure) ---
+FAIL: test_package_refuses_a_page_that_would_not_render_offline (selftest.test_export.Offline.test_package_refuses_a_page_that_would_not_render_offline)
+AssertionError: ExportError not raised
+Ran 1 test in 0.761s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.846s
+OK
+exit 0

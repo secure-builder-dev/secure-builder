@@ -143,6 +143,58 @@ def q8_external_tools_only_stubbed(root):
     return [f"tool '{t}': invoked by the harness, exercised by no integration test" for t in sorted(tools) if t not in integ]
 
 
+BORROWED_NAME = re.compile(r"(?i)(prod(uction)?|dump|export[-_]?\d{4}|backup|snapshot[-_]?\d{4}|real[-_]?data)")
+BORROWED_READ = re.compile(r"""(?:open|read_text|read_bytes|Path)\(\s*["'](?:\.\./|/|[A-Za-z]:[\\/])""")
+FIXTURE_SIZE_LIMIT = 64 * 1024
+
+
+def q9_borrowed_fixtures(root):
+    """Fixtures are constructed, not borrowed from production data (spec 05 REQ-2.4): a
+    borrowed artifact stops exercising the case when production changes and nobody
+    notices because it still parses. Reported: data files beside the tests that are
+    large or named like a production capture, and test code that reads fixtures from
+    outside the test tree."""
+    root = pathlib.Path(root)
+    out = []
+    dirs = {p.parent for p in test_files(root)}
+    for d in sorted(dirs):
+        for p in sorted(x for x in d.rglob("*") if x.is_file()):
+            if p.suffix == ".py" or "__pycache__" in p.parts:
+                continue
+            rel = p.relative_to(root).as_posix()
+            if p.stat().st_size > FIXTURE_SIZE_LIMIT:
+                out.append(f"{rel}: {p.stat().st_size // 1024} KB data file beside the tests — a capture, not a constructed fixture")
+            elif BORROWED_NAME.search(p.name):
+                out.append(f"{rel}: named like a production capture")
+    for p in test_files(root):
+        for n, line in _code_lines(_read(p)):
+            if BORROWED_READ.search(line):
+                out.append(f"{p.relative_to(root).as_posix()}:{n}: reads a fixture from outside the test tree: {line.strip()[:90]}")
+    return out
+
+
+AUDIT_ID = "AUD-"
+
+
+def finding_id(text):
+    """A stable identifier for one audit finding, so its disposition can be recorded."""
+    import hashlib
+    where, _, rest = text.partition(": ")
+    key = re.sub(r":\d+$", "", where) + "|" + rest[:60]
+    return AUDIT_ID + hashlib.sha256(key.encode("utf-8")).hexdigest()[:10]
+
+
+def dispositioned(root):
+    """Audit finding ids that carry a row in the findings register (table A): the finding
+    became a check or a checklist line (spec 05 REQ-10.2; spec 01 §1.4)."""
+    from .records import findings as findings_mod
+    try:
+        a, _, _ = findings_mod.read(root)
+    except OSError:
+        return set()
+    return {r["id"] for r in a if r["id"].startswith(AUDIT_ID)}
+
+
 QUESTIONS = [
     ("1 dormant test files", q1_dormant_tests),
     ("2 checks without a negative fixture", None),   # needs the registry
@@ -152,6 +204,7 @@ QUESTIONS = [
     ("6 tests that skip on environment", q6_environment_dependent_tests),
     ("7 command sequences continuing past failure", q7_sequences_continuing_past_failure),
     ("8 external tools exercised only against stubs", q8_external_tools_only_stubbed),
+    ("9 fixtures borrowed rather than constructed", q9_borrowed_fixtures),
 ]
 
 
@@ -163,10 +216,17 @@ def run(root, registry):
         lines.append("[audit] COULD NOT RUN: no test files found — nothing to audit is not a clean audit")
         return lines, 0, True
     total = 0
+    done = dispositioned(root)
+    undispositioned = 0
     for title, fn in QUESTIONS:
         items = q2_checks_without_negative_fixture(root, registry) if fn is None else fn(root)
         lines.append(f"[audit] {title}: {len(items)} finding(s)")
-        lines += [f"    - {i}" for i in items]
+        for i in items:
+            fid = finding_id(i)
+            tag = "dispositioned" if fid in done else "REQUIRES DISPOSITION"
+            undispositioned += fid not in done
+            lines.append(f"    - {fid} [{tag}] {i}")
         total += len(items)
-    lines.append(f"[audit] {total} finding(s) require disposition: each becomes a check or a checklist line")
+    lines.append(f"[audit] {total} finding(s); {undispositioned} require disposition: each becomes a check or a checklist line, "
+                 f"recorded in the findings register under its AUD- identifier")
     return lines, total, False

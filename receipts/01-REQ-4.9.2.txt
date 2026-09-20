@@ -1,0 +1,16 @@
+REQ:        REQ-4.9.2
+SPEC:       01
+CHECK:      engine/export.py
+MUTATION:   left the composition inventory out of the export
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete
+--- output with the property broken (must show failure) ---
+FAIL: test_bundle_is_dated_bound_to_commit_hashed_and_complete (selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete)
+AssertionError: 'sbom/app.cdx.json' not found in {'RETENTION.md', 'gate-log/gate-log.md', '03-degradation-statement.md', 'records/mutation-results.md', 'index.html', 'records/plan-of-action.md', 'scan/actionable.md', 'records/coverage-inventory.md', '02-implementation-narrative.md', '00-DISCLOSURE.md', 'scan/BUNDLE.json', 'records/governance-changelog.md', 'scan/raw/grype-app.json', 'records/reconciliation-obligations.md', 'records/findings-register.md', 'records/standing-state-deltas.md', 'scan/sbom/app.cdx.json', '01-traceability-index.md', 'records/generated-truth.md'} : sbom/app.cdx.json
+Ran 1 test in 0.651s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.824s
+OK
+exit 0

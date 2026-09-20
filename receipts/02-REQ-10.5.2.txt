@@ -1,0 +1,16 @@
+REQ:        REQ-10.5.2
+SPEC:       02
+CHECK:      engine/export.py
+MUTATION:   moved the disclosure to the back of the bundle
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete
+--- output with the property broken (must show failure) ---
+FAIL: test_bundle_is_dated_bound_to_commit_hashed_and_complete (selftest.test_export.Package.test_bundle_is_dated_bound_to_commit_hashed_and_complete)
+AssertionError: '00-DISCLOSURE.md' not found in {'records/findings-register.md', 'records/generated-truth.md', 'records/reconciliation-obligations.md', 'RETENTION.md', 'records/standing-state-deltas.md', 'records/coverage-inventory.md', 'gate-log/gate-log.md', '02-implementation-narrative.md', 'records/governance-changelog.md', 'scan/BUNDLE.json', 'sbom/app.cdx.json', 'zz-DISCLOSURE.md', '01-traceability-index.md', 'scan/raw/grype-app.json', 'scan/actionable.md', 'records/plan-of-action.md', 'scan/sbom/app.cdx.json', '03-degradation-statement.md', 'records/mutation-results.md', 'index.html'} : 00-DISCLOSURE.md
+Ran 1 test in 0.821s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.817s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-10.3.1
+SPEC:       04
+CHECK:      engine/probes.py
+MUTATION:   gave a high-side instance no way to classify code it received
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Inventory.test_three_states_from_gate_log_evidence
+--- output with the property broken (must show failure) ---
+FAIL: test_three_states_from_gate_log_evidence (selftest.test_probes.Inventory.test_three_states_from_gate_log_evidence)
+AssertionError: 'never assessed' != 'assessed elsewhere, evidence not available'
+Ran 1 test in 0.472s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.421s
+OK
+exit 0

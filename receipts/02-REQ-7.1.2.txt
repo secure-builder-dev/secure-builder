@@ -1,0 +1,16 @@
+REQ:        REQ-7.1.2
+SPEC:       02
+CHECK:      engine/probes.py
+MUTATION:   keyed snapshots by time instead of commit
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Snapshot.test_snapshot_keyed_by_commit_and_idempotent
+--- output with the property broken (must show failure) ---
+FAIL: test_snapshot_keyed_by_commit_and_idempotent (selftest.test_probes.Snapshot.test_snapshot_keyed_by_commit_and_idempotent)
+AssertionError: '86ff09ee2a22af56e219a3258d38b6bfe574c251-1789928555.358484.json' != '86ff09ee2a22af56e219a3258d38b6bfe574c251.json'
+Ran 1 test in 0.356s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.236s
+OK
+exit 0

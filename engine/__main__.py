@@ -32,6 +32,9 @@
   catalogue ingest FILE [--acknowledge-markings] | bundle DIR | ingest-bundle DIR | list   adopt catalogues deliberately, with a diff
   governance show | propose | record change_id= file_section= grounding= approved_by=   the governance protocol (spec 01 §11)
   disposition checklist-line file=AGENTS.md section="## Project rules" text="..." source="[finding: F-1]"   append a grounded line
+  probe [test_result="12 passed"]   capture the standing-state snapshot for HEAD and diff it against the previous gate's
+  inventory           regenerate the coverage inventory (the assessed boundary)
+  undeclared          regenerate the undeclared-controls list (the manifest completeness probe)
   status              orientation: position and exactly one next action (always exits 0)
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
@@ -650,6 +653,43 @@ def cmd_disposition(root, argv):
     return 0
 
 
+def cmd_probe(root, argv):
+    from . import gitutil, probes
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"probe: COULD NOT RUN — {e}")
+        return 2
+    head = gitutil.head(root)
+    if not head:
+        print("probe: COULD NOT RUN — no commit")
+        return 2
+    o = probes.run_probe(root, cfg, head, _kv(argv).get("test_result"))
+    for line in o.lines():
+        print(line)
+    return o.exit_code
+
+
+def cmd_inventory(root, argv):
+    from . import probes
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError:
+        cfg = None
+    rows, counts = probes.write_inventory(root, cfg)
+    print(f"inventory: {counts['assessed']} assessed, {counts['never']} never assessed, {counts['elsewhere']} assessed elsewhere "
+          f"(evidence not available) -> {probes.INVENTORY}")
+    return 0
+
+
+def cmd_undeclared(root, argv):
+    from . import probes
+    o = probes.completeness_probe(root, None)
+    for line in o.lines():
+        print(line)
+    return 0
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -719,7 +759,8 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
-            "governance": cmd_governance, "disposition": cmd_disposition}
+            "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
+            "inventory": cmd_inventory, "undeclared": cmd_undeclared}
 
 
 def main(argv=None):

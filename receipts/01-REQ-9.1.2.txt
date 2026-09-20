@@ -1,0 +1,16 @@
+REQ:        REQ-9.1.2
+SPEC:       01
+CHECK:      engine/probes.py
+MUTATION:   dropped a measurement from the fixed set
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Snapshot.test_measurement_set_and_no_suite_run
+--- output with the property broken (must show failure) ---
+FAIL: test_measurement_set_and_no_suite_run (selftest.test_probes.Snapshot.test_measurement_set_and_no_suite_run)
+AssertionError: 0 != 1
+Ran 1 test in 0.293s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.257s
+OK
+exit 0

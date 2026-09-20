@@ -1,0 +1,112 @@
+# Coverage inventory — the assessed boundary
+
+Generated 2026-09-20 from the gate log. A file is *assessed* because a passing gate-log
+row's range contains it — never because it looks reviewed. 'Assessed' means assessed at least once;
+it is not a clean bill of health. *Assessed elsewhere, evidence not available* is code received across
+a boundary without its gate records: neither assessed here nor unassessed.
+
+- assessed by a gate: 0 (0%)
+- never assessed: 99 (100%)
+- assessed elsewhere, evidence not available: 0 (0%)
+
+| file | state | evidence |
+|---|---|---|
+| engine/__init__.py | never assessed |  |
+| engine/__main__.py | never assessed |  |
+| engine/audit.py | never assessed |  |
+| engine/catalogue.py | never assessed |  |
+| engine/checklist.py | never assessed |  |
+| engine/checks/__init__.py | never assessed |  |
+| engine/checks/artifact_binding.py | never assessed |  |
+| engine/checks/attack_surface.py | never assessed |  |
+| engine/checks/citations.py | never assessed |  |
+| engine/checks/control_manifest.py | never assessed |  |
+| engine/checks/coverage_range.py | never assessed |  |
+| engine/checks/credential_scan.py | never assessed |  |
+| engine/checks/divergence.py | never assessed |  |
+| engine/checks/doc_consistency.py | never assessed |  |
+| engine/checks/findings_register.py | never assessed |  |
+| engine/checks/harness_self_scan.py | never assessed |  |
+| engine/checks/injection_scan.py | never assessed |  |
+| engine/checks/license_policy.py | never assessed |  |
+| engine/checks/lint.py | never assessed |  |
+| engine/checks/negative_fixtures.py | never assessed |  |
+| engine/checks/no_network.py | never assessed |  |
+| engine/checks/record_integrity.py | never assessed |  |
+| engine/checks/record_schema.py | never assessed |  |
+| engine/checks/reference_integrity.py | never assessed |  |
+| engine/checks/run_attestation.py | never assessed |  |
+| engine/checks/scanner_pins.py | never assessed |  |
+| engine/config.py | never assessed |  |
+| engine/controlshape.py | never assessed |  |
+| engine/coverage.py | never assessed |  |
+| engine/degradation.py | never assessed |  |
+| engine/dist/hooks/guard.py | never assessed |  |
+| engine/dist/hooks/pre-commit.py | never assessed |  |
+| engine/dist/run.py | never assessed |  |
+| engine/distribute.py | never assessed |  |
+| engine/gate.py | never assessed |  |
+| engine/gitutil.py | never assessed |  |
+| engine/governance.py | never assessed |  |
+| engine/guard.py | never assessed |  |
+| engine/handoff.py | never assessed |  |
+| engine/integration.py | never assessed |  |
+| engine/licenses.py | never assessed |  |
+| engine/lifecycle.py | never assessed |  |
+| engine/manifest.py | never assessed |  |
+| engine/mutate.py | never assessed |  |
+| engine/net.py | never assessed |  |
+| engine/outcome.py | never assessed |  |
+| engine/ownership.py | never assessed |  |
+| engine/records/__init__.py | never assessed |  |
+| engine/records/changelog.py | never assessed |  |
+| engine/records/findings.py | never assessed |  |
+| engine/records/gatelog.py | never assessed |  |
+| engine/records/schema.py | never assessed |  |
+| engine/records/table.py | never assessed |  |
+| engine/records/templates.py | never assessed |  |
+| engine/routes.py | never assessed |  |
+| engine/scan/__init__.py | never assessed |  |
+| engine/scan/alarm.py | never assessed |  |
+| engine/scan/bundles.py | never assessed |  |
+| engine/scan/images.py | never assessed |  |
+| engine/scan/runner.py | never assessed |  |
+| engine/sequence.py | never assessed |  |
+| engine/stamp.py | never assessed |  |
+| engine/tools.py | never assessed |  |
+| hooks/commit-msg.py | never assessed |  |
+| hooks/install.py | never assessed |  |
+| hooks/pre-commit.py | never assessed |  |
+| integration/__init__.py | never assessed |  |
+| integration/itest_scanners.py | never assessed |  |
+| selftest/__init__.py | never assessed |  |
+| selftest/helpers.py | never assessed |  |
+| selftest/stubs.py | never assessed |  |
+| selftest/test_audit.py | never assessed |  |
+| selftest/test_checks_docs.py | never assessed |  |
+| selftest/test_checks_scan.py | never assessed |  |
+| selftest/test_citations.py | never assessed |  |
+| selftest/test_cli.py | never assessed |  |
+| selftest/test_config.py | never assessed |  |
+| selftest/test_coverage.py | never assessed |  |
+| selftest/test_degradation.py | never assessed |  |
+| selftest/test_distribute.py | never assessed |  |
+| selftest/test_gate.py | never assessed |  |
+| selftest/test_governance.py | never assessed |  |
+| selftest/test_guard.py | never assessed |  |
+| selftest/test_integration_tier.py | never assessed |  |
+| selftest/test_manifest.py | never assessed |  |
+| selftest/test_net.py | never assessed |  |
+| selftest/test_outcome.py | never assessed |  |
+| selftest/test_records.py | never assessed |  |
+| selftest/test_scan.py | never assessed |  |
+| selftest/test_sequence.py | never assessed |  |
+| selftest/test_tools.py | never assessed |  |
+| selftest/test_version.py | never assessed |  |
+| tools/gen_ledger.py | never assessed |  |
+| tools/hooks_test.py | never assessed |  |
+| tools/ledger.py | never assessed |  |
+| tools/progress.py | never assessed |  |
+| tools/progress_test.py | never assessed |  |
+| tools/receipt.py | never assessed |  |
+| tools/receipt_test.py | never assessed |  |

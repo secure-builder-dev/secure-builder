@@ -1,0 +1,16 @@
+REQ:        REQ-7.2.3
+SPEC:       02
+CHECK:      engine/records/templates.py
+MUTATION:   stopped presenting the delta series as the continuous monitoring record
+FILE:       engine/records/templates.py
+TEST:       python -m unittest selftest.test_records.Statements.test_deltas_presented_as_continuous_monitoring_record
+--- output with the property broken (must show failure) ---
+FAIL: test_deltas_presented_as_continuous_monitoring_record (selftest.test_records.Statements.test_deltas_presented_as_continuous_monitoring_record)
+AssertionError: False is not true
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

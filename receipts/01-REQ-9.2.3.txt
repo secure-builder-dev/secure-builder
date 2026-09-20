@@ -1,0 +1,16 @@
+REQ:        REQ-9.2.3
+SPEC:       01
+CHECK:      engine/probes.py
+MUTATION:   let control decay pass once dispositioned
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Deltas.test_control_decay_blocks_even_when_dispositioned
+--- output with the property broken (must show failure) ---
+FAIL: test_control_decay_blocks_even_when_dispositioned (selftest.test_probes.Deltas.test_control_decay_blocks_even_when_dispositioned)
+AssertionError: False is not true
+Ran 1 test in 0.446s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.411s
+OK
+exit 0

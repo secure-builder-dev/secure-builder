@@ -424,6 +424,10 @@ class Statements(unittest.TestCase):
         lines = templates.governance_changelog().splitlines()
         self.assertTrue(any("configuration change" in l for l in lines))
 
+    def test_deltas_presented_as_continuous_monitoring_record(self):
+        lines = templates.standing_state_deltas().splitlines()
+        self.assertTrue(any("continuous monitoring record" in l for l in lines))
+
     def test_one_name_one_artifact(self):
         import re
         withdrawn = re.compile(r"standing exceptions register|permanent record", re.I)

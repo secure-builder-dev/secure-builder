@@ -30,6 +30,8 @@ REGISTRY = [
     "scanner_pins",
     "artifact_binding",
     "citations",
+    "manifest_completeness",
+    "assessed_boundary",
 ]
 
 

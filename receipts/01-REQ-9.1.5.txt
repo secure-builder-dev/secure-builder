@@ -1,0 +1,17 @@
+REQ:        REQ-9.1.5
+SPEC:       01
+CHECK:      engine/probes.py
+MUTATION:   made the probe run the test suite itself
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Snapshot.test_measurement_set_and_no_suite_run
+--- output with the property broken (must show failure) ---
+FAIL: test_measurement_set_and_no_suite_run (selftest.test_probes.Snapshot.test_measurement_set_and_no_suite_run)
+    self.assertNotIn("run_tool", inspect.getsource(probes.measure), "the probe never runs the suite; the result is passed in")
+AssertionError: 'run_tool' unexpectedly found in 'def measure(root, cfg, test_result=None):\n    """The fixed measurement set. Fast; never runs the test suite (the result is passed in)."""\n    root = pathlib.Path(root)\n    ci_text = "\\n".join(p.read_text(encoding="utf-8", errors="replace") for p in root.glob(".github/workflows/*.yml"))\n    test_cmd = " ".join(cfg.get("test_command") or []) if cfg else ""\n    lint_cmd = " ".join(cfg.get("lint_command") or []) if cfg else ""\n    m = {}\n    m["ci_runs_tests"] = bool(ci_text) and (("engine check" in ci_text) or (bool(test_cmd) and test_cmd in ci_text) or bool(re.search(r"\\b(pytest|npm test|unittest|gradlew test)\\b", ci_text)))\n    m["ci_runs_lint"] = bool(ci_text) and (("engine check" in ci_text) or (bool(lint_cmd) and lint_cmd in ci_text) or bool(re.search(r"\\b(lint|eslint|flake8|ruff)\\b", ci_text)))\n    files = gitutil.tracked_files(root) if gitutil.is_repo(root) else []\n    m["deployment_artifact_count"] = len([f for f in files if re.search(r"(^|/)(Dockerfile|docker-compose[^/]*\\.ya?ml|deploy/|k8s/|helm/|terraform/|[^/]*\\.tf$)", f)])\n    from . import tools\n    m["test_result_counts"] = test_result or str(tools.run_tool("pytest", []).exit_code)\n    try:\n        state, results, structural = manifest.verify(root)\n        m["control_manifest_result"] = state\n        m["required_artifacts_present"] = all(r["facts"].get("artifact_present", True) for r in results)\n    except manifest.ManifestError:\n        m["control_manifest_result"] = "absent"\n        m["required_artifacts_present"] = True\n    m["exported_symbols_without_call_site"] = _uncalled_exports(root, files)\n    return m\n' : the probe never runs the suite; the result is passed in
+Ran 1 test in 0.226s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.288s
+OK
+exit 0

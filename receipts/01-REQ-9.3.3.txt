@@ -1,0 +1,16 @@
+REQ:        REQ-9.3.3
+SPEC:       01
+CHECK:      engine/checks/assessed_boundary.py
+MUTATION:   made the never-reviewed inventory gate the build
+FILE:       engine/checks/assessed_boundary.py
+TEST:       python -m unittest selftest.test_probes.Adoption.test_every_row_needs_a_disposition
+--- output with the property broken (must show failure) ---
+FAIL: test_every_row_needs_a_disposition (selftest.test_probes.Adoption.test_every_row_needs_a_disposition)
+AssertionError: True is not false
+Ran 1 test in 0.439s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.380s
+OK
+exit 0

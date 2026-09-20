@@ -1,0 +1,16 @@
+REQ:        REQ-12.4
+SPEC:       01
+CHECK:      engine/checks/assessed_boundary.py
+MUTATION:   let an ungated merge go unrecorded
+FILE:       engine/checks/assessed_boundary.py
+TEST:       python -m unittest selftest.test_probes.Ungated.test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded
+--- output with the property broken (must show failure) ---
+FAIL: test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded (selftest.test_probes.Ungated.test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded)
+AssertionError: False is not true : []
+Ran 1 test in 0.908s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.172s
+OK
+exit 0

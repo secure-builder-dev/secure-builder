@@ -1,0 +1,16 @@
+REQ:        REQ-8.1.3
+SPEC:       02
+CHECK:      engine/probes.py
+MUTATION:   presented assessed-once as a clean bill of health
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Inventory.test_three_states_from_gate_log_evidence
+--- output with the property broken (must show failure) ---
+FAIL: test_three_states_from_gate_log_evidence (selftest.test_probes.Inventory.test_three_states_from_gate_log_evidence)
+AssertionError: 'it is not a clean bill of health' not found in "# Coverage inventory — the assessed boundary\n\nGenerated 2026-09-20 from the gate log. A file is *assessed* because a passing gate-log\nrow's range contains it — never because it looks reviewed. 'Assessed' means assessed at least once;\nit is a clean bill of health. *Assessed elsewhere, evidence not available* is code received across\na boundary without its gate records: neither assessed here nor unassessed.\n\n- assessed by a gate: 1 (50%)\n- never assessed: 0 (0%)\n- assessed elsewhere, evidence not available: 1 (50%)\n\n| file | state | evidence |\n|---|---|---|\n| src/app.py | assessed elsewhere, evidence not available | received across a boundary without its gate records |\n| src/new.py | assessed | e#1 |\n"
+Ran 1 test in 0.459s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.355s
+OK
+exit 0

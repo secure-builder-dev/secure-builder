@@ -1,0 +1,15 @@
+REQ:        REQ-7.2.1
+SPEC:       02
+CHECK:      engine/probes.py
+MUTATION:   left deltas only in per-clone snapshots, never in the durable record
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Deltas.test_undispositioned_delta_opens_ticket_and_does_not_block
+--- output with the property broken (must show failure) ---
+ERROR: test_undispositioned_delta_opens_ticket_and_does_not_block (selftest.test_probes.Deltas.test_undispositioned_delta_opens_ticket_and_does_not_block)
+Ran 1 test in 0.407s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.335s
+OK
+exit 0

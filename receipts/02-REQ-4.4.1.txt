@@ -1,0 +1,16 @@
+REQ:        REQ-4.4.1
+SPEC:       02
+CHECK:      engine/probes.py
+MUTATION:   stopped reporting inbound code that reached the protected branch without a gate
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Ungated.test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded
+--- output with the property broken (must show failure) ---
+FAIL: test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded (selftest.test_probes.Ungated.test_commit_on_protected_branch_outside_any_gate_is_reported_unless_recorded)
+AssertionError: Lists differ: [] != ['c83b34c1a1301157e42184a553a579d980aafdea']
+Ran 1 test in 0.652s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.173s
+OK
+exit 0

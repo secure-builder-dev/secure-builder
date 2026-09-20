@@ -1,0 +1,16 @@
+REQ:        REQ-9.2.2
+SPEC:       01
+CHECK:      engine/probes.py
+MUTATION:   left an undispositioned delta with neither a ticket nor a block
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Deltas.test_undispositioned_delta_opens_ticket_and_does_not_block
+--- output with the property broken (must show failure) ---
+FAIL: test_undispositioned_delta_opens_ticket_and_does_not_block (selftest.test_probes.Deltas.test_undispositioned_delta_opens_ticket_and_does_not_block)
+AssertionError: False is not true
+Ran 1 test in 0.463s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.408s
+OK
+exit 0

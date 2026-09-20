@@ -1,0 +1,16 @@
+REQ:        REQ-7.5.4
+SPEC:       01
+CHECK:      engine/probes.py
+MUTATION:   made the completeness probe block
+FILE:       engine/probes.py
+TEST:       python -m unittest selftest.test_probes.Completeness.test_undeclared_control_listed_and_dispositions_retained
+--- output with the property broken (must show failure) ---
+FAIL: test_undeclared_control_listed_and_dispositions_retained (selftest.test_probes.Completeness.test_undeclared_control_listed_and_dispositions_retained)
+AssertionError: True is not false : the probe never blocks
+Ran 1 test in 0.281s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.316s
+OK
+exit 0

@@ -24,6 +24,7 @@ ENGINE_OWNED = {
     f"{ENGINE_DIR}/agents/": "engine/dist/agents/",          # reviewer definitions, whole, tracked
     f"{ENGINE_DIR}/hooks/": "engine/dist/hooks/",            # pre-execution hooks
     f"{ENGINE_DIR}/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
+    f"{ENGINE_DIR}/.gitignore": "engine/dist/gitignore",      # what stays out of version control (spec 02 §2)
 }
 
 # Written only when missing; never touched again.
@@ -33,6 +34,11 @@ SEED_IF_ABSENT = {
     f"{ENGINE_DIR}/records/gate-log.md": "engine/dist/templates/records/gate-log.md",
     f"{ENGINE_DIR}/records/findings-register.md": "engine/dist/templates/records/findings-register.md",
     f"{ENGINE_DIR}/records/governance-changelog.md": "engine/dist/templates/records/governance-changelog.md",
+    f"{ENGINE_DIR}/records/carried-findings.md": "engine/dist/templates/records/carried-findings.md",
+    f"{ENGINE_DIR}/records/standing-state-deltas.md": "engine/dist/templates/records/standing-state-deltas.md",
+    f"{ENGINE_DIR}/records/reconciliation-obligations.md": "engine/dist/templates/records/reconciliation-obligations.md",
+    f"{ENGINE_DIR}/records/high-side-changes.md": "engine/dist/templates/records/high-side-changes.md",
+    f"{ENGINE_DIR}/records/ingest-records.md": "engine/dist/templates/records/ingest-records.md",
     f"{ENGINE_DIR}/records/README.md": "engine/dist/templates/records/README.md",
 }
 

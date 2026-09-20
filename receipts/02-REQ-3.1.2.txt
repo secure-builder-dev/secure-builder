@@ -1,0 +1,16 @@
+REQ:        REQ-3.1.2
+SPEC:       02
+CHECK:      engine/records/schema.py
+MUTATION:   dropped the attesting human from the gate-log schema
+FILE:       engine/records/schema.py
+TEST:       python -m unittest selftest.test_records.Schema.test_gate_log_carries_every_required_field
+--- output with the property broken (must show failure) ---
+FAIL: test_gate_log_carries_every_required_field (selftest.test_records.Schema.test_gate_log_carries_every_required_field)
+AssertionError: 'attested_by' not found in ['date', 'unit', 'range', 'run', 'mode', 'verdict', 'findings', 'tickets', 'reviewer', 'reviewer_class', 'model', 'harness_version', 'checklist_version', 'side', 'controls', 'supersedes', 'deferred', 'obligation']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

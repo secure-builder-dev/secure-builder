@@ -1,0 +1,15 @@
+REQ:        REQ-6.3
+SPEC:       11
+CHECK:      engine/records/gatelog.py
+MUTATION:   sent field verdicts to a separate log
+FILE:       engine/records/gatelog.py
+TEST:       python -m unittest selftest.test_records.GateLog.test_field_row_is_a_distinct_class
+--- output with the property broken (must show failure) ---
+ERROR: test_field_row_is_a_distinct_class (selftest.test_records.GateLog.test_field_row_is_a_distinct_class)
+Ran 1 test in 0.005s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.009s
+OK
+exit 0

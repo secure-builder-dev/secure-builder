@@ -22,6 +22,10 @@ REGISTRY = [
     "harness_self_scan",
     "lint",
     "coverage_range",
+    "record_schema",
+    "record_integrity",
+    "run_attestation",
+    "findings_register",
 ]
 
 

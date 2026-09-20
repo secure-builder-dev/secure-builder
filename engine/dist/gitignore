@@ -1,0 +1,6 @@
+# © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
+# Per-clone runtime state and raw scan output stay out of version control (spec 02 REQ-2.2, REQ-2.3).
+# Records, the scan verdict stamp, catalogues and configuration are committed.
+local/
+scan/raw/

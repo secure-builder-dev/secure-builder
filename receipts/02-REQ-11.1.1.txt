@@ -1,0 +1,16 @@
+REQ:        REQ-11.1.1
+SPEC:       02
+CHECK:      engine/checks/record_schema.py
+MUTATION:   proceeded silently past an absent load-bearing record
+FILE:       engine/checks/record_schema.py
+TEST:       python -m unittest selftest.test_records.Checks.test_schema_check_absent_record_is_a_finding
+--- output with the property broken (must show failure) ---
+FAIL: test_schema_check_absent_record_is_a_finding (selftest.test_records.Checks.test_schema_check_absent_record_is_a_finding)
+AssertionError: False is not true
+Ran 1 test in 0.011s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

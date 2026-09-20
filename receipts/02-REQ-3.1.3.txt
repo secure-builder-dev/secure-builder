@@ -1,0 +1,16 @@
+REQ:        REQ-3.1.3
+SPEC:       02
+CHECK:      engine/records/gatelog.py
+MUTATION:   accepted branch names as a range
+FILE:       engine/records/gatelog.py
+TEST:       python -m unittest selftest.test_records.GateLog.test_range_must_be_commits_not_branch_names
+--- output with the property broken (must show failure) ---
+FAIL: test_range_must_be_commits_not_branch_names (selftest.test_records.GateLog.test_range_must_be_commits_not_branch_names)
+AssertionError: Malformed not raised
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.005s
+OK
+exit 0

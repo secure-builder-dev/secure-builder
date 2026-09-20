@@ -1,0 +1,16 @@
+REQ:        REQ-4.2.3
+SPEC:       02
+CHECK:      engine/records/findings.py
+MUTATION:   let a risk be marked accepted with an intention in place of proof
+FILE:       engine/records/findings.py
+TEST:       python -m unittest selftest.test_records.Findings.test_risk_needs_attack_path_and_accepted_needs_proof
+--- output with the property broken (must show failure) ---
+FAIL: test_risk_needs_attack_path_and_accepted_needs_proof (selftest.test_records.Findings.test_risk_needs_attack_path_and_accepted_needs_proof)
+AssertionError: Malformed not raised
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

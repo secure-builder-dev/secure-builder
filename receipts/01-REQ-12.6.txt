@@ -1,0 +1,16 @@
+REQ:        REQ-12.6
+SPEC:       01
+CHECK:      engine/records/findings.py
+MUTATION:   reintroduced a withdrawn name for the register
+FILE:       engine/records/findings.py
+TEST:       python -m unittest selftest.test_records.Statements.test_one_name_one_artifact
+--- output with the property broken (must show failure) ---
+FAIL: test_one_name_one_artifact (selftest.test_records.Statements.test_one_name_one_artifact)
+AssertionError: <re.Match object; span=(150, 178), match='standing exceptions register'> is not None : findings.py uses a withdrawn name for the findings register
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.005s
+OK
+exit 0

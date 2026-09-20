@@ -1,0 +1,15 @@
+REQ:        REQ-12.1
+SPEC:       01
+CHECK:      engine/records/table.py
+MUTATION:   let a row be appended with required fields absent
+FILE:       engine/records/table.py
+TEST:       python -m unittest selftest.test_records.Table.test_append_requires_every_column_and_writes_unknown_for_blank
+--- output with the property broken (must show failure) ---
+ERROR: test_append_requires_every_column_and_writes_unknown_for_blank (selftest.test_records.Table.test_append_requires_every_column_and_writes_unknown_for_blank)
+Ran 1 test in 0.005s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

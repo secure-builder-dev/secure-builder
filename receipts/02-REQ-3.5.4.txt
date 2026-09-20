@@ -1,0 +1,16 @@
+REQ:        REQ-3.5.4
+SPEC:       02
+CHECK:      engine/checks/record_integrity.py
+MUTATION:   stopped flagging a started marker that is gone from the tree relative to HEAD
+FILE:       engine/checks/record_integrity.py
+TEST:       python -m unittest selftest.test_records.Checks.test_integrity_check_catches_deleted_marker
+--- output with the property broken (must show failure) ---
+FAIL: test_integrity_check_catches_deleted_marker (selftest.test_records.Checks.test_integrity_check_catches_deleted_marker)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.447s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.363s
+OK
+exit 0

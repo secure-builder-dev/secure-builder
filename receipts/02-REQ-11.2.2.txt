@@ -1,0 +1,16 @@
+REQ:        REQ-11.2.2
+SPEC:       02
+CHECK:      engine/records/table.py
+MUTATION:   skipped a malformed row silently instead of treating it as absent
+FILE:       engine/records/table.py
+TEST:       python -m unittest selftest.test_records.Table.test_malformed_row_reported_not_skipped
+--- output with the property broken (must show failure) ---
+FAIL: test_malformed_row_reported_not_skipped (selftest.test_records.Table.test_malformed_row_reported_not_skipped)
+AssertionError: Lists differ: [{'date': 'only', 'unit': 'three', 'range'[34 chars]: 1}] != []
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

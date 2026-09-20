@@ -1,0 +1,16 @@
+REQ:        REQ-5.3
+SPEC:       02
+CHECK:      engine/records/changelog.py
+MUTATION:   presented a retroactive row as contemporaneous
+FILE:       engine/records/changelog.py
+TEST:       python -m unittest selftest.test_records.Changelog.test_sign_off_must_record_what_was_shown
+--- output with the property broken (must show failure) ---
+FAIL: test_sign_off_must_record_what_was_shown (selftest.test_records.Changelog.test_sign_off_must_record_what_was_shown)
+AssertionError: Tuples differ: ('no', 'typo fix') != ('yes', 'typo fix')
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

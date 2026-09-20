@@ -1,0 +1,16 @@
+REQ:        REQ-11.5.2
+SPEC:       02
+CHECK:      engine/records/gatelog.py
+MUTATION:   stopped marking superseded rows wherever the series is read
+FILE:       engine/records/gatelog.py
+TEST:       python -m unittest selftest.test_records.GateLog.test_supersede_appends_and_marks_never_erases
+--- output with the property broken (must show failure) ---
+FAIL: test_supersede_appends_and_marks_never_erases (selftest.test_records.GateLog.test_supersede_appends_and_marks_never_erases)
+AssertionError: False is not true
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.017s
+OK
+exit 0

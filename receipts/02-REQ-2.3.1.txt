@@ -1,0 +1,16 @@
+REQ:        REQ-2.3.1
+SPEC:       02
+CHECK:      engine/dist/gitignore
+MUTATION:   excluded the whole scan directory, taking the verdict stamp out of version control
+FILE:       engine/dist/gitignore
+TEST:       python -m unittest selftest.test_records.Statements.test_gitignore_keeps_records_and_stamp_committed
+--- output with the property broken (must show failure) ---
+FAIL: test_gitignore_keeps_records_and_stamp_committed (selftest.test_records.Statements.test_gitignore_keeps_records_and_stamp_committed)
+AssertionError: 'scan/raw/' not found in ['# © 2026 Casey Houle. All rights reserved.', '# ENGINE-OWNED: local edits to this file are discarded on update', '# Per-clone runtime state and raw scan output stay out of version control (spec 02 REQ-2.2, REQ-2.3).', '# Records, the scan verdict stamp, catalogues and configuration are committed.', 'local/', 'scan/']
+Ran 1 test in 0.045s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.046s
+OK
+exit 0

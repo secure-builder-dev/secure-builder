@@ -1,0 +1,15 @@
+REQ:        REQ-5.1
+SPEC:       02
+CHECK:      engine/records/schema.py
+MUTATION:   dropped the external grounding from the governance changelog
+FILE:       engine/records/schema.py
+TEST:       python -m unittest selftest.test_records.Changelog.test_sign_off_must_record_what_was_shown
+--- output with the property broken (must show failure) ---
+ERROR: test_sign_off_must_record_what_was_shown (selftest.test_records.Changelog.test_sign_off_must_record_what_was_shown)
+Ran 1 test in 0.005s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

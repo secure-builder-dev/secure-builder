@@ -1,0 +1,16 @@
+REQ:        REQ-11.5.3
+SPEC:       02
+CHECK:      engine/records/gatelog.py
+MUTATION:   recorded a superseding row without the disposition of the finding it produces
+FILE:       engine/records/gatelog.py
+TEST:       python -m unittest selftest.test_records.GateLog.test_supersede_appends_and_marks_never_erases
+--- output with the property broken (must show failure) ---
+FAIL: test_supersede_appends_and_marks_never_erases (selftest.test_records.GateLog.test_supersede_appends_and_marks_never_erases)
+AssertionError: 'disposition: F-9 -> permanent check' not found in '1: superseding epic-1#1 — wrong: missed an unscoped query; found by: incident 7'
+Ran 1 test in 0.007s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.016s
+OK
+exit 0

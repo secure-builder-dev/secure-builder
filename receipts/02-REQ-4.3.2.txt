@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.2
+SPEC:       02
+CHECK:      engine/records/findings.py
+MUTATION:   let an automated agent accept its own finding
+FILE:       engine/records/findings.py
+TEST:       python -m unittest selftest.test_records.Findings.test_agent_cannot_accept_its_own_finding
+--- output with the property broken (must show failure) ---
+FAIL: test_agent_cannot_accept_its_own_finding (selftest.test_records.Findings.test_agent_cannot_accept_its_own_finding)
+AssertionError: Malformed not raised
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

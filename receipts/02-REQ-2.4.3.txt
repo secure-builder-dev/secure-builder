@@ -1,0 +1,16 @@
+REQ:        REQ-2.4.3
+SPEC:       02
+CHECK:      engine/records/gatelog.py
+MUTATION:   stopped reading the one-file-per-run layout
+FILE:       engine/records/gatelog.py
+TEST:       python -m unittest selftest.test_records.GateLog.test_series_reads_rotated_and_per_run_files_as_one
+--- output with the property broken (must show failure) ---
+FAIL: test_series_reads_rotated_and_per_run_files_as_one (selftest.test_records.GateLog.test_series_reads_rotated_and_per_run_files_as_one)
+AssertionError: Lists differ: ['new', 'old'] != ['new', 'old', 'per-run']
+Ran 1 test in 0.009s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.010s
+OK
+exit 0

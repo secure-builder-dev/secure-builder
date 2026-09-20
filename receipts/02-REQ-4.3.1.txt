@@ -1,0 +1,16 @@
+REQ:        REQ-4.3.1
+SPEC:       02
+CHECK:      engine/records/findings.py
+MUTATION:   let a permanent-check row be recorded by an agent with no identified human
+FILE:       engine/records/findings.py
+TEST:       python -m unittest selftest.test_records.Findings.test_row_must_name_a_human
+--- output with the property broken (must show failure) ---
+FAIL: test_row_must_name_a_human (selftest.test_records.Findings.test_row_must_name_a_human)
+AssertionError: Malformed not raised
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.005s
+OK
+exit 0

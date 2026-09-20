@@ -1,0 +1,17 @@
+REQ:        REQ-12.3
+SPEC:       01
+CHECK:      engine/__main__.py
+MUTATION:   stopped reporting finding counts per gate run for trend review
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_records.Cli.test_record_commands
+--- output with the property broken (must show failure) ---
+FAIL: test_record_commands (selftest.test_records.Cli.test_record_commands)
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting 'records: findings per gate run (spec 01 REQ-12.3, trend): e#1=0', found 0:
+Ran 1 test in 0.018s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.019s
+OK
+exit 0

@@ -18,6 +18,8 @@
   coverage            measure the harness's own self-test coverage (standard library only)
   credential-scan --staged   the credential check against the staged index, for a pre-commit hook
   accept-directive KEY "reason" "by"   accept a risky configuration directive into the baseline
+  record <kind> k=v ...   append a record row: gate-log | finding | risk | changelog | started | supersede | rotate
+  records             summarize the record set
 """
 import io
 import json
@@ -237,6 +239,81 @@ def cmd_accept_directive(root, argv):
     return 0
 
 
+def _kv(argv):
+    out = {}
+    for a in argv:
+        if "=" in a:
+            k, v = a.split("=", 1)
+            out[k] = v
+    return out
+
+
+def cmd_record(root, argv):
+    from .records import changelog, findings, gatelog, table
+    if not argv:
+        print("record <gate-log|finding|risk|changelog|started|supersede|rotate> key=value ...")
+        return 2
+    kind, kv = argv[0], _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"record: COULD NOT RUN — {e}")
+        return 2
+    try:
+        if kind == "gate-log":
+            line = gatelog.append(root, cfg, **kv)
+        elif kind == "finding":
+            line = findings.add_check(root, cfg, id=kv["id"], finding_class=kv["class"], mechanism=kv["mechanism"],
+                                      lives_in=kv["lives_in"], decided_by=kv["decided_by"], status=kv.get("status", "active"))
+        elif kind == "risk":
+            line = findings.add_risk(root, cfg, **{k: v for k, v in kv.items()})
+        elif kind == "changelog":
+            line = changelog.add(root, cfg, change_id=kv["change_id"], file_section=kv["file_section"],
+                                 base_commit=kv["base_commit"], result_commit=kv.get("result_commit", "pending"),
+                                 grounding=kv["grounding"], sign_off=kv["sign_off"],
+                                 retroactive=kv.get("retroactive", "no") == "yes", rode_along=kv.get("rode_along", "-"))
+        elif kind == "started":
+            line = str(gatelog.write_started(root, cfg, kv["unit"], kv["run"], kv["range"], kv["head"]))
+        elif kind == "supersede":
+            line = gatelog.supersede(root, cfg, kv["unit"], kv["run"], kv["wrong"], kv["found"], kv["disposition"],
+                                     kv["attested_by"], kv["reviewer"])
+        elif kind == "rotate":
+            n = gatelog.rotate(root, kv["period"])
+            line = f"{n} row(s) rotated into gate-log.{kv['period']}.md"
+        else:
+            print(f"record: unknown kind {kind!r}")
+            return 2
+    except (table.Malformed, KeyError) as e:
+        print(f"record: REFUSED — {e if not isinstance(e, KeyError) else 'missing ' + str(e)}")
+        return 1
+    print(f"record: {kind}: {line}")
+    return 0
+
+
+def cmd_records(root, argv):
+    from .records import findings, gatelog
+    rows, problems = gatelog.series(root)
+    for p in problems:
+        print(f"records: problem: {p}")
+    print(f"records: gate log: {len(rows)} row(s) across {len(gatelog.series_files(root))} file(s); "
+          f"{sum(1 for r in rows if r['_superseded'])} superseded; {len(gatelog.unmatched_markers(root))} started marker(s) without a row")
+    for r in rows:
+        mark = " [SUPERSEDED]" if r["_superseded"] else ""
+        print(f"  {r['date']} {r['unit']}#{r['run']} {r['mode']} {r['verdict']} findings={r['findings']} "
+              f"reviewer={r['reviewer']} ({r['reviewer_class']}) attested_by={r['attested_by']}{mark}")
+    trend = []
+    for r in rows:
+        if r["verdict"] == "superseded":
+            continue
+        n = r["findings"].split(":")[0].strip()
+        trend.append(f"{r['unit']}#{r['run']}={n}")
+    if trend:
+        print("records: findings per gate run (spec 01 REQ-12.3, trend): " + ", ".join(trend))
+    a, b, _ = findings.read(root)
+    print(f"records: findings register: {len(a)} permanent check(s), {len(b)} risk row(s)")
+    return 0
+
+
 def cmd_ownership(root, argv):
     for name, table in ownership.classes():
         print(f"## {name}")
@@ -249,7 +326,8 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "degradation": cmd_degradation, "version": lambda r, a: (print(version()), 0)[1],
             "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership,
             "audit": cmd_audit, "integration": cmd_integration, "coverage": cmd_coverage,
-            "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive}
+            "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
+            "record": cmd_record, "records": cmd_records}
 
 
 def main(argv=None):

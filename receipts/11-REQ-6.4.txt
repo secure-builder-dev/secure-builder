@@ -1,0 +1,16 @@
+REQ:        REQ-6.4
+SPEC:       11
+CHECK:      engine/checks/run_attestation.py
+MUTATION:   exempted field runs from the started-marker requirement
+FILE:       engine/checks/run_attestation.py
+TEST:       python -m unittest selftest.test_records.Checks.test_attestation_applies_unchanged_in_field_mode
+--- output with the property broken (must show failure) ---
+FAIL: test_attestation_applies_unchanged_in_field_mode (selftest.test_records.Checks.test_attestation_applies_unchanged_in_field_mode)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.009s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

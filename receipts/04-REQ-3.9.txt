@@ -1,0 +1,16 @@
+REQ:        REQ-3.9
+SPEC:       04
+CHECK:      engine/catalogue.py
+MUTATION:   stopped naming the handling marking the operator must acknowledge
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_ingest_refuses_handling_markings_unless_acknowledged
+--- output with the property broken (must show failure) ---
+FAIL: test_ingest_refuses_handling_markings_unless_acknowledged (selftest.test_citations.Catalogue.test_ingest_refuses_handling_markings_unless_acknowledged)
+AssertionError: 'handling marking (CUI)' not found in 'document refused (CUI); ingest refused unless the operator explicitly acknowledges that this repository is cleared for it'
+Ran 1 test in 0.066s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.069s
+OK
+exit 0

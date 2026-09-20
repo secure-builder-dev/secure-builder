@@ -1,0 +1,16 @@
+REQ:        REQ-8.3.1
+SPEC:       01
+CHECK:      engine/checks/citations.py
+MUTATION:   let a withdrawn control identifier pass as current
+FILE:       engine/checks/citations.py
+TEST:       python -m unittest selftest.test_citations.Verification.test_withdrawn_identifier_fails_naming_replacement
+--- output with the property broken (must show failure) ---
+FAIL: test_withdrawn_identifier_fails_naming_replacement (selftest.test_citations.Verification.test_withdrawn_identifier_fails_naming_replacement)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.067s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.069s
+OK
+exit 0

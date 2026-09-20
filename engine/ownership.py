@@ -25,6 +25,7 @@ ENGINE_OWNED = {
     f"{ENGINE_DIR}/hooks/": "engine/dist/hooks/",            # pre-execution hooks
     f"{ENGINE_DIR}/reference/": "engine/dist/reference/",    # reference documents (verdict block copy)
     f"{ENGINE_DIR}/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
+    f"{ENGINE_DIR}/DATA.md": "engine/data/README.md",         # every vendored data set, its source and terms (spec 06 REQ-8.5)
     f"{ENGINE_DIR}/.gitignore": "engine/dist/gitignore",      # what stays out of version control (spec 02 §2)
 }
 
@@ -42,6 +43,7 @@ SEED_IF_ABSENT = {
     f"{ENGINE_DIR}/records/ingest-records.md": "engine/dist/templates/records/ingest-records.md",
     f"{ENGINE_DIR}/records/mutation-results.md": "engine/dist/templates/records/mutation-results.md",
     f"{ENGINE_DIR}/records/README.md": "engine/dist/templates/records/README.md",
+    f"{ENGINE_DIR}/catalogues/": "engine/data/catalogues/",   # vendored standards catalogues; adopted deliberately thereafter
 }
 
 # Written beside the project's copy under REFERENCE_SUFFIX; never read by a check.

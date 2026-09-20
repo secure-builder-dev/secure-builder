@@ -1,0 +1,9 @@
+{
+  "file": "publications.json",
+  "redistribution": "titles and revision numbers; redistributable",
+  "retrieved": "2026-09-20",
+  "sha256": "cefe2c703d1a7cf55697983610c561dce0b30c4bd673d459d1bac9f708c9f8f5",
+  "source": "NIST/FIPS publication index, transcribed by the author",
+  "source_sha256": "seed-transcription",
+  "version": "publication index seed"
+}

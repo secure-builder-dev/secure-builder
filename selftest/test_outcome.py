@@ -87,6 +87,13 @@ class SummaryCounts(unittest.TestCase):
         self.assertIn("unguarded ground:", lines[0])
         self.assertEqual(len(lines), 4)
 
+    def test_non_blocking_finding_is_reported_and_does_not_block(self):
+        s = Summary([Outcome.clean("a", "d"), Outcome.found("b", "d", ["f"], blocking=False)])
+        self.assertEqual(s.exit_code, 0)
+        self.assertEqual(s.disposition_lines(), ["[summary] 1 non-blocking finding(s) require disposition (a check, a checklist line, or a recorded acceptance): b"])
+        s = Summary([Outcome.clean("a", "d"), Outcome.found("b", "d", ["f"], blocking=True)])
+        self.assertEqual(s.exit_code, 1)
+
     def test_na_under_threshold_no_finding(self):
         s = Summary([Outcome.clean("a", "d"), Outcome.not_applicable("b", "s", "d", "x")], na_threshold=0.5)
         self.assertFalse(s.na_over_threshold)

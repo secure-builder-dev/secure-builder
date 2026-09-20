@@ -1,0 +1,16 @@
+REQ:        REQ-8.4.5
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   ingested a document carrying handling markings without acknowledgement
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_ingest_refuses_handling_markings_unless_acknowledged
+--- output with the property broken (must show failure) ---
+FAIL: test_ingest_refuses_handling_markings_unless_acknowledged (selftest.test_citations.Catalogue.test_ingest_refuses_handling_markings_unless_acknowledged)
+AssertionError: 'handling marking (CUI)' not found in 'not a catalogue document: Expecting value: line 1 column 1 (char 0)'
+Ran 1 test in 0.067s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.067s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-8.4.3
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   made the offline path report current instead of not checked
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Currency.test_offline_reports_not_checked_and_exits_zero
+--- output with the property broken (must show failure) ---
+FAIL: test_offline_reports_not_checked_and_exits_zero (selftest.test_citations.Currency.test_offline_reports_not_checked_and_exits_zero)
+AssertionError: False is not true : ['currency: current — offline', 'currency: last successful verification: never']
+Ran 1 test in 0.070s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.067s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-8.5
+SPEC:       06
+CHECK:      engine/data/README.md
+MUTATION:   misstated a data set the operator must supply as vendored
+FILE:       engine/data/README.md
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_data_statement_names_every_vendored_set
+--- output with the property broken (must show failure) ---
+FAIL: test_data_statement_names_every_vendored_set (selftest.test_citations.Catalogue.test_data_statement_names_every_vendored_set)
+AssertionError: False is not true : operator-supplied sets are stated as such
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

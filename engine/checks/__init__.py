@@ -29,6 +29,7 @@ REGISTRY = [
     "control_manifest",
     "scanner_pins",
     "artifact_binding",
+    "citations",
 ]
 
 

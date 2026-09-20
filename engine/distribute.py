@@ -158,16 +158,17 @@ def update(project, source_root=SOURCE_ROOT, dry_run=False):
         record.write_text("# definitions placed by the harness; one simple filename per line\n"
                           + "".join(n + "\n" for n in shipped_agents), encoding="utf-8", newline="\n")
 
-    # 2. seed-if-absent
+    # 2. seed-if-absent (a directory entry seeds each file it holds, individually)
     for target, src_rel in own.SEED_IF_ABSENT.items():
-        t = project / target
-        if t.exists():
-            s.bump("seed-if-absent", "already present")
-            continue
-        s.bump("seed-if-absent", "seeded")
-        if not dry_run:
-            t.parent.mkdir(parents=True, exist_ok=True)
-            t.write_bytes((source_root / src_rel).read_bytes())
+        for sub, abs_src in _source_files(source_root, src_rel):
+            t = project / (target + sub if target.endswith("/") else target)
+            if t.exists():
+                s.bump("seed-if-absent", "already present")
+                continue
+            s.bump("seed-if-absent", "seeded")
+            if not dry_run:
+                t.parent.mkdir(parents=True, exist_ok=True)
+                t.write_bytes(abs_src.read_bytes())
 
     # 3. engine-reference
     for target, src_rel in own.ENGINE_REFERENCE.items():

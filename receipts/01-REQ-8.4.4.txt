@@ -1,0 +1,15 @@
+REQ:        REQ-8.4.4
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   closed the path for an operator-supplied catalogue
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_ingest_is_explicit_and_produces_a_diff
+--- output with the property broken (must show failure) ---
+ERROR: test_ingest_is_explicit_and_produces_a_diff (selftest.test_citations.Catalogue.test_ingest_is_explicit_and_produces_a_diff)
+Ran 1 test in 0.068s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.068s
+OK
+exit 0

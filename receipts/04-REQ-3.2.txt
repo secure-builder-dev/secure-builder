@@ -1,0 +1,16 @@
+REQ:        REQ-3.2
+SPEC:       04
+CHECK:      engine/catalogue.py
+MUTATION:   reported pins as current in disconnected operation
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Currency.test_offline_reports_not_checked_and_exits_zero
+--- output with the property broken (must show failure) ---
+FAIL: test_offline_reports_not_checked_and_exits_zero (selftest.test_citations.Currency.test_offline_reports_not_checked_and_exits_zero)
+AssertionError: False is not true : ['currency: pins current (assumed)', 'currency: last successful verification: never']
+Ran 1 test in 0.067s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.073s
+OK
+exit 0

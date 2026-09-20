@@ -1,0 +1,15 @@
+REQ:        REQ-3.1
+SPEC:       04
+CHECK:      engine/data/catalogues/nist-sp-800-53-r5.json
+MUTATION:   shipped a vendored catalogue that fails its own structure rule
+FILE:       engine/data/catalogues/nist-sp-800-53-r5.json
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_seed_catalogues_load_with_provenance_and_no_text
+--- output with the property broken (must show failure) ---
+ERROR: test_seed_catalogues_load_with_provenance_and_no_text (selftest.test_citations.Catalogue.test_seed_catalogues_load_with_provenance_and_no_text)
+Ran 1 test in 0.066s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.068s
+OK
+exit 0

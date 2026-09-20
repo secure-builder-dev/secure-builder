@@ -181,6 +181,9 @@ class Summary:
 
     def disposition_lines(self):
         out = []
+        if self.non_blocking:
+            out.append(f"[summary] {len(self.non_blocking)} non-blocking finding(s) require disposition (a check, a checklist line, "
+                       f"or a recorded acceptance): {', '.join(o.check for o in self.non_blocking)}")
         if self.na_over_threshold:
             unguarded = [o for o in self.outcomes if o.state is State.NOT_APPLICABLE]
             out.append(f"[summary] FINDING (non-blocking, requires disposition): "
@@ -192,7 +195,14 @@ class Summary:
         return out
 
     @property
+    def non_blocking(self):
+        return [o for o in self.outcomes if o.state is State.FINDINGS and not o.blocking]
+
+    @property
     def exit_code(self):
+        """The command's exit: blocking findings, could-not-run and deferred fail it. A
+        non-blocking finding is reported and requires disposition; it does not block
+        (spec 01 §14, REQ-13.2.4)."""
         if not self.outcomes:
             return 2
-        return max(o.exit_code for o in self.outcomes)
+        return max((o.exit_code for o in self.outcomes if not (o.state is State.FINDINGS and not o.blocking)), default=0)

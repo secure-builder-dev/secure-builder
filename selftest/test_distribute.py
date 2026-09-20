@@ -11,6 +11,7 @@ from engine.outcome import State
 from .helpers import ROOT, cli, find_line, git, git_repo, tree, write, write_config
 
 RULES = f"{own.ENGINE_DIR}/rules/RULES.md"
+SEED_FILES = sum(len(list(distribute._source_files(ROOT, src))) for src in own.SEED_IF_ABSENT.values())
 
 
 class Classes(unittest.TestCase):
@@ -56,7 +57,7 @@ class Update(unittest.TestCase):
             v = (t / own.VERSION_FILE).read_text().splitlines()
             self.assertRegex(v[0], r"^\d+\.\d+\.\d+\S*\+[0-9a-f]{12}$")
             self.assertRegex(v[1], r"^\d{4}-\d{2}-\d{2}$")
-            self.assertEqual(s.by_class["seed-if-absent"], {"seeded": len(own.SEED_IF_ABSENT)})
+            self.assertEqual(s.by_class["seed-if-absent"], {"seeded": SEED_FILES})
             self.assertEqual(s.diverged, [])
             self.assertEqual(s.removed, [])
 
@@ -69,7 +70,7 @@ class Update(unittest.TestCase):
             self.assertEqual(before, after)
             self.assertEqual(s.diverged, [])
             self.assertNotIn("overwritten", s.by_class["engine-owned"])
-            self.assertEqual(s.by_class["seed-if-absent"], {"already present": len(own.SEED_IF_ABSENT)})
+            self.assertEqual(s.by_class["seed-if-absent"], {"already present": SEED_FILES})
 
     def test_engine_owned_overwritten_with_backup_and_report(self):
         with tree() as t:
@@ -88,7 +89,7 @@ class Update(unittest.TestCase):
             s = distribute.update(t)
             self.assertEqual((t / "AGENTS.md").read_text(), "mine\n")
             self.assertEqual(s.by_class["seed-if-absent"]["already present"], 1)
-            self.assertEqual(s.by_class["seed-if-absent"]["seeded"], len(own.SEED_IF_ABSENT) - 1)
+            self.assertEqual(s.by_class["seed-if-absent"]["seeded"], SEED_FILES - 1)
 
     def test_project_owned_never_touched(self):
         with tree() as t:
@@ -105,7 +106,7 @@ class Update(unittest.TestCase):
             s = distribute.update(t, dry_run=True)
             self.assertEqual([p for p in t.rglob("*")], [])
             self.assertEqual(s.lines()[0], "update: REPORT ONLY — nothing changed")
-            self.assertEqual(s.by_class["seed-if-absent"], {"seeded": len(own.SEED_IF_ABSENT)})
+            self.assertEqual(s.by_class["seed-if-absent"], {"seeded": SEED_FILES})
 
     def test_no_version_control_action_and_dirty_tree_ok(self):
         with tree() as t:

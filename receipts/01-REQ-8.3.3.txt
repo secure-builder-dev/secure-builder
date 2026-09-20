@@ -1,0 +1,16 @@
+REQ:        REQ-8.3.3
+SPEC:       01
+CHECK:      engine/checks/citations.py
+MUTATION:   took away the escape for a deliberate mention of a withdrawn identifier
+FILE:       engine/checks/citations.py
+TEST:       python -m unittest selftest.test_citations.Verification.test_deliberate_historical_mention_allowed
+--- output with the property broken (must show failure) ---
+FAIL: test_deliberate_historical_mention_allowed (selftest.test_citations.Verification.test_deliberate_historical_mention_allowed)
+AssertionError: <State.FINDINGS: 'checked-findings'> is not <State.CLEAN: 'checked-clean'> : ['[citations] FINDINGS BLOCKING: 1 finding(s) — 1 citation(s) fail to resolve; 0 reported', '    - docs/policy.md: line 1: SA-12 is withdrawn — replaced by SR-2, SR-3, SR-5, SR-6, SR-8, SR-9, SR-10, SR-11']
+Ran 1 test in 0.071s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.068s
+OK
+exit 0

@@ -35,5 +35,8 @@
   ],
   "consistency_blocks": [
     "verdict-block"
+  ],
+  "citation_platforms_unindexed": [
+    "MASVS"
   ]
 }

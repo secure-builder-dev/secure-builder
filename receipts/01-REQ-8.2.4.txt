@@ -1,0 +1,16 @@
+REQ:        REQ-8.2.4
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   let a catalogue carry full control text, inviting retrieval on top of it
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_structure_rules
+--- output with the property broken (must show failure) ---
+FAIL: test_structure_rules (selftest.test_citations.Catalogue.test_structure_rules)
+AssertionError: 'X-1: catalogues do not store control text' not found in []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

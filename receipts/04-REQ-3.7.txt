@@ -1,0 +1,16 @@
+REQ:        REQ-3.7
+SPEC:       04
+CHECK:      engine/catalogue.py
+MUTATION:   made bundle ingestion produce no reviewable diff
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Catalogue.test_transfer_bundle_verifies_hash_and_diffs
+--- output with the property broken (must show failure) ---
+FAIL: test_transfer_bundle_verifies_hash_and_diffs (selftest.test_citations.Catalogue.test_transfer_bundle_verifies_hash_and_diffs)
+AssertionError: Lists differ: [] != ['+ NIST SP 800-777: active — Newer']
+Ran 1 test in 0.138s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.138s
+OK
+exit 0

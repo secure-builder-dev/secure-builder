@@ -1,0 +1,16 @@
+REQ:        REQ-8.4.1
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   let the currency command attempt a fetch in disconnected mode
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Currency.test_disconnected_fetch_without_flag_is_an_error
+--- output with the property broken (must show failure) ---
+FAIL: test_disconnected_fetch_without_flag_is_an_error (selftest.test_citations.Currency.test_disconnected_fetch_without_flag_is_an_error)
+AssertionError: 0 != 1
+Ran 1 test in 0.072s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.067s
+OK
+exit 0

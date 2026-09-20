@@ -1,0 +1,16 @@
+REQ:        REQ-8.4.2
+SPEC:       01
+CHECK:      engine/catalogue.py
+MUTATION:   adopted the newer catalogue automatically instead of reporting it for an explicit decision
+FILE:       engine/catalogue.py
+TEST:       python -m unittest selftest.test_citations.Currency.test_connected_compares_pins_and_records_verification_date
+--- output with the property broken (must show failure) ---
+FAIL: test_connected_compares_pins_and_records_verification_date (selftest.test_citations.Currency.test_connected_compares_pins_and_records_verification_date)
+AssertionError: '35b3fc3286e4928c780800a79aeeb917d3a9c9d57f723db4d5beae72fd342906' != 'seed-transcription'
+Ran 1 test in 0.070s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.067s
+OK
+exit 0

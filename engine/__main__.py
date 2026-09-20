@@ -28,6 +28,8 @@
   scan [--alarm] [--allow-unverified] [--skip-build]   run the five-concern scan, route findings, write the stamp
   scan bundle-images DIR | ingest-images DIR | bundle-data DIR | ingest-data DIR [--filtered-understood "why"]
   scan resolve id=<id> status=<fixed|carried|accepted> [note=...]   move an alarm finding; history appended
+  currency [--offline]   report whether vendored catalogue pins are current — the only command that reaches the network
+  catalogue ingest FILE [--acknowledge-markings] | bundle DIR | ingest-bundle DIR | list   adopt catalogues deliberately, with a diff
   status              orientation: position and exactly one next action (always exits 0)
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
@@ -537,6 +539,55 @@ def cmd_scan(root, argv):
     return {"green": 0, "unverified": 3}.get(result["verdict"], 1)
 
 
+def cmd_currency(root, argv):
+    from . import catalogue
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"currency: COULD NOT RUN — {e}")
+        return 2
+    lines, code = catalogue.currency(root, cfg, offline="--offline" in argv)
+    for line in lines:
+        print(line)
+    return code
+
+
+def cmd_catalogue(root, argv):
+    from . import catalogue
+    if not argv:
+        print("catalogue ingest FILE [--acknowledge-markings] | bundle DIR | ingest-bundle DIR | list")
+        return 2
+    sub = argv[0]
+    try:
+        if sub == "list":
+            for key, c in catalogue.load_all(root).items():
+                p = c["_provenance"]
+                print(f"{key}: {p['version']}; {len(c['entries'])} entries; source {p['source']}; retrieved {p['retrieved']}; {p['redistribution']}")
+            return 0
+        if sub == "ingest":
+            d = catalogue.ingest(root, argv[1], acknowledge_markings="--acknowledge-markings" in argv)
+            print(f"catalogue: adopted {argv[1]}; {len(d)} change(s) against the previous version:")
+            for line in d:
+                print("  " + line)
+            return 0
+        if sub == "bundle":
+            m_ = catalogue.bundle(root, argv[1])
+            print(f"catalogue: bundle produced {m_['produced']} with {len(m_['catalogues'])} catalogue(s); sha256 {m_['sha256'][:12]}…")
+            return 0
+        if sub == "ingest-bundle":
+            diffs = catalogue.ingest_bundle(root, argv[1])
+            for key, d in diffs.items():
+                print(f"catalogue: {key}: {len(d)} change(s)")
+                for line in d:
+                    print("  " + line)
+            return 0
+    except (catalogue.CatalogueError, OSError, ValueError, IndexError) as e:
+        print(f"catalogue: REFUSED — {e}")
+        return 1
+    print(f"catalogue: unknown subcommand {sub!r}")
+    return 2
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -605,7 +656,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
             "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
-            "review": cmd_review, "scan": cmd_scan}
+            "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue}
 
 
 def main(argv=None):

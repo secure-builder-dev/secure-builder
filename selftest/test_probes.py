@@ -222,6 +222,16 @@ class Ungated(unittest.TestCase):
                               compensating_control="post-hoc review", proof="tests/test_hot.py runs in CI", re_review_trigger="release",
                               owner="casey", review_by="2027-01-01", decided_by="Casey", status="accepted")
             self.assertEqual(probes.ungated_inbound(t, cfg()), [])
+            # found by the lifecycle exercise: the records commit after a merge is bookkeeping, not inbound code
+            write(t, ".engine/records/gate-log.md", (t / ".engine/records/gate-log.md").read_text(encoding="utf-8"))
+            write(t, "tickets/T-1.md", "id: T-1" + NL + "state: done" + NL)
+            book = commit(t, "records after merge")
+            write(t, "src/more.py", "z" + NL); write(t, "tickets/T-2.md", "id: T-2" + NL)
+            mixed = commit(t, "code with a ticket")
+            git(t, "update-ref", "refs/remotes/origin/main", mixed)
+            self.assertTrue(probes.is_bookkeeping(t, book))
+            self.assertFalse(probes.is_bookkeeping(t, mixed))
+            self.assertEqual(probes.ungated_inbound(t, cfg()), [mixed])
 
     def test_no_gate_rows_yet_is_none(self):
         with tree() as t:

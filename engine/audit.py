@@ -27,8 +27,9 @@ def _read(p):
 
 def test_files(root):
     out = []
-    for p in sorted(pathlib.Path(root).rglob("*.py")):
-        if any(part in ("__pycache__", ".git", ".engine") for part in p.parts):
+    root = pathlib.Path(root)
+    for p in sorted(root.rglob("*.py")):
+        if any(part in ("__pycache__", ".git", ".engine") for part in p.relative_to(root).parts):
             continue
         if p.name.startswith("test_") or p.name.endswith("_test.py"):
             out.append(p)

@@ -21,8 +21,7 @@ RULES = "engine/dist/rules/RULES.md"
 
 def harness_copy(t):
     """A copy of the harness source tree, so its rulebook and hooks can be altered."""
-    for d in ("engine", "hooks"):
-        shutil.copytree(ROOT / d, t / d, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(ROOT / "engine", t / "engine", ignore=shutil.ignore_patterns("__pycache__"))
     (t / "selftest").mkdir()
     write(t, "selftest/__init__.py", "")
 

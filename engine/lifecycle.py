@@ -83,6 +83,12 @@ def create_item(root, item_id, unit, done_when, depends_on=()):
     return p
 
 
+def unit_from_branch(branch):
+    """The unit-of-work identifier a branch carries: its last path segment, so `unit/U1`
+    and `U1` name the same unit and the identifier is usable as a file name."""
+    return branch.rsplit("/", 1)[-1].strip() or branch
+
+
 def create_unit(root, unit_id):
     p = pathlib.Path(root) / UNITS_DIR / f"{unit_id}.md"
     if p.exists():
@@ -157,7 +163,7 @@ def orient(root, cfg, ci_status=None):
         L.append(f"position: branch {branch} at {head[:12]}; remote protected branch {remote_ref} not present — cannot compare "
                  "(a local copy of the protected branch is not consulted; it drifts)")
     L.append(f"ci: {ci_status or 'not configured'}")
-    unit = branch
+    unit = unit_from_branch(branch)
     unit_hdr = read_header(root / UNITS_DIR / f"{unit}.md")
     all_items = items(root)
     mine = {k: v for k, v in all_items.items() if v.get("unit") == unit}

@@ -276,6 +276,28 @@ class Run(unittest.TestCase):
             self.assertEqual(sc.ship_images(), {"registry/svc-hardened": "deploy/Dockerfile.hardened"})
 
 
+class Impossible(unittest.TestCase):
+    def test_no_runtime_and_no_scanner_is_impossible_not_failed(self):
+        """Found by the lifecycle exercise: a scan run where scanning is impossible stamped the
+        commit red, and the red stamp then blocked the override meant for exactly that case."""
+        import unittest.mock as mock
+        with tree() as t:
+            project(t)
+            sc = runner.Scan(t, cfg(), invoke=Fake({}), engine=("host", None))
+            with mock.patch("shutil.which", return_value=None):
+                with self.assertRaises(runner.ScanError) as cm:
+                    sc.run()
+            self.assertIn("scan impossible here", str(cm.exception))
+            self.assertIn("No stamp is written", str(cm.exception))
+            self.assertIsNone(stamp.read(t))
+            # one scanner present and falling over is a failed scan, stamped red, and the override is refused
+            sc = runner.Scan(t, cfg(), invoke=Fake({}), engine=("host", None))
+            with mock.patch("shutil.which", side_effect=lambda tool: "/usr/bin/trivy" if tool == "trivy" else None):
+                r = sc.run()
+            self.assertEqual(r["verdict"], "red")
+            self.assertEqual(stamp.read(t)["verdict"], "red")
+
+
 class Aging(unittest.TestCase):
     def test_carried_past_review_by_blocks_and_fix_now_available_blocks(self):
         with tree() as t:

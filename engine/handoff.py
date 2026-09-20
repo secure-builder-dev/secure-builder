@@ -14,7 +14,7 @@ import json
 import pathlib
 import re
 
-from . import gitutil, stamp
+from . import lifecycle, gitutil, stamp
 from .records import gatelog
 
 READ_FIRST = ["AGENTS.md", ".engine/rules/RULES.md", ".engine/agents/security-gate.md",
@@ -77,7 +77,7 @@ def generate(root, cfg, *, checkpoint=False, scan_impossible=False, scan_impossi
         else:
             scan_line = f"scan: green for {head[:12]}; scanners: {', '.join(st['scanners'])}"
 
-    unit = branch
+    unit = lifecycle.unit_from_branch(branch)
     run = next_run(root, unit)
     items = sorted({(m.group(1) or ("#" + m.group(2))) for s in gitutil.log_subjects(root, merge_base, head) for m in WORK_ITEM.finditer(s)})
     item_files = [f"tickets/{i}.md" for i in items if (root / "tickets" / f"{i}.md").is_file()]

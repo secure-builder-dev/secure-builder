@@ -76,6 +76,8 @@ def _test_texts(root):
     files = gitutil.tracked_files(root) if gitutil.is_repo(root) else []
     out = {}
     for f in files:
+        if f.startswith(".engine/"):
+            continue        # the placed harness's own fixtures are not the project's tests
         if controlshape.TEST_PATH.search(f) and pathlib.Path(f).suffix in routes.SOURCE_EXT:
             p = root / f
             if p.is_file():
@@ -159,7 +161,7 @@ def security_mechanical(root, cfg, base, head, unit):
     outs.append(findings_register.run(root, cfg))                       # read at gate start
     outs.append(_attribution(root, base, head, diff))                   # spec 03 REQ-4.5
     outs.append(_frozen_surface(root, cfg, changed))                    # spec 03 REQ-4.6–4.7
-    outs.append(_plans_during_construction(root, changed, unit))        # spec 03 REQ-3.5.1–3.5.2
+    outs.append(_plans_during_construction(root, changed, unit, base, head))   # spec 03 REQ-3.5.1–3.5.2
     outs.append(_dependency_lead_time(root, cfg, diff))                 # spec 01 §6.2.1 item 10; spec 04 §10.6
     outs.append(probes.run_probe(root, cfg, head))                       # spec 01 §9.1–9.2: the standing-state probe, per gate
     outs.append(reconciliation.run(root, cfg))                            # spec 11 REQ-7.2, 7.5, 7.7: open field debt, at every gate
@@ -225,17 +227,48 @@ def _frozen_surface(root, cfg, changed):
     return Outcome.clean("frozen-surface", "; ".join(report))
 
 
-def _plans_during_construction(root, changed, unit):
+def _plans_during_construction(root, changed, unit, base=None, head=None):
+    """Design documents change in planning, not in construction (spec 03 REQ-3.5.1–3.5.2). The
+    line is drawn per commit: a commit in which the unit file says anything but 'planned' is a
+    construction commit, and a plan file it touches is a finding. The unit file's own state
+    header is lifecycle state, not design, and never counts."""
     plan_files = [f for f in changed if f.startswith("plans/")]
-    if not plan_files:
+    unit_rel = f"plans/units/{unit}.md"
+    if not [f for f in plan_files if f != unit_rel]:
         return Outcome.clean("plan-edits", "no design document changed in the range")
-    unit_file = pathlib.Path(root) / "plans" / "units" / f"{unit}.md"
+    root = pathlib.Path(root)
+    unit_file = root / unit_rel
     state = _header(unit_file).get("state", "") if unit_file.is_file() else ""
-    if state == "planned":
+    if state == "planned" or not state:
         return Outcome.clean("plan-edits", f"{len(plan_files)} design document(s) changed while the unit is in planning")
-    return Outcome.found("plan-edits", f"design documents changed during construction (unit state '{state or 'unknown'}')",
+    edited = []
+    if base and head:
+        for c in gitutil.commits_in(root, base, head):
+            shown = gitutil.git(root, "show", f"{c}:{unit_rel}")
+            st = _header_text(shown.stdout).get("state", "") if shown.returncode == 0 else ""
+            if not st or st == "planned":
+                continue                                                  # a planning commit: the unit is not yet building
+            res = gitutil.git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", c)
+            edited += [f for f in res.stdout.splitlines() if f.startswith("plans/") and f != unit_rel]
+        edited = sorted(set(edited))
+    else:
+        edited = [f for f in plan_files if f != unit_rel]
+    if not edited:
+        return Outcome.clean("plan-edits", f"{len(plan_files)} design document(s) changed, all before construction began")
+    return Outcome.found("plan-edits", f"design documents changed during construction (unit state '{state}')",
                          [f"{f}: a decision the plan did not anticipate requires a planning session, a recorded decision, and re-cut items"
-                          for f in plan_files], blocking=True)
+                          for f in edited], blocking=True)
+
+
+def _header_text(text):
+    out = {}
+    for line in text.splitlines():
+        if not line.strip():
+            break
+        m = re.match(r"^([\w-]+)\s*:\s*(.*)$", line)
+        if m:
+            out[m.group(1)] = m.group(2).strip()
+    return out
 
 
 def _dependency_lead_time(root, cfg, diff):

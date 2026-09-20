@@ -25,7 +25,8 @@ def run(root, cfg, base=None, head=None):
         if gitutil.rev(root, ref) == head:
             return Outcome.nothing_yet(NAME, "range under review", f"HEAD is the protected branch ({ref}); coverage is evaluated on branches")
         base = gitutil.merge_base(root, ref, head) or ref
-    changed = gitutil.changed_files(root, base, head)
+    # the placed harness under .engine/ is engine-owned and covered by its own suite, not the project's
+    changed = [f for f in gitutil.changed_files(root, base, head) if not f.startswith(".engine/")]
     report_path = (cfg.get("coverage_report") if cfg else None) or DEFAULT_REPORT
     report = coverage.read_report(root / report_path if not str(report_path).startswith("/") else report_path)
     thresholds = (cfg.get("coverage_thresholds") if cfg else None) or coverage.DEFAULT_THRESHOLDS

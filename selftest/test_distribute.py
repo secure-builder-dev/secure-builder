@@ -42,8 +42,10 @@ class Classes(unittest.TestCase):
     def test_every_engine_owned_source_carries_marker(self):
         for target, src in own.ENGINE_OWNED.items():
             for sub, p in distribute._source_files(ROOT, src):
-                if p.suffix in (".py", ".md", ".sh", ".txt"):
+                if own.marker_required(p.relative_to(ROOT)):
                     self.assertIn(own.ENGINE_OWNED_MARKER, p.read_text(encoding="utf-8"), str(p))
+        self.assertTrue(own.marker_required("engine/gate.py"))
+        self.assertFalse(own.marker_required("engine/dist/templates/AGENTS.md"))
 
 
 class Update(unittest.TestCase):
@@ -314,6 +316,8 @@ class NeverAutomatic(unittest.TestCase):
         with tree() as t:
             write_config(t)
             distribute.update(t)
+            write(t, "selftest/__init__.py", "")     # a fixture suite so the check does not run the placed one here
+            write(t, "selftest/test_fx.py", "import unittest" + chr(10) + "class T(unittest.TestCase):" + chr(10) + "    def test_ok(self): pass" + chr(10))
             write(t, RULES, "# edited locally\n")
             code, lines = cli(t, "check")
             self.assertEqual((t / RULES).read_text(), "# edited locally\n",

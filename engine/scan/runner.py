@@ -398,10 +398,27 @@ class Scan:
 
     # --- the whole run ---
 
+    def impossible_here(self):
+        """Spec 01 REQ-3.3.2 draws the line between an impossible scan and a failed one. With no
+        container runtime and not one scanner on the search path, the scan cannot begin: that
+        is impossible, and it is refused before any stamp is written, so the handoff override
+        applies. A scanner that is present and falls over is a failed scan, stamped red."""
+        if self.engine != "host":
+            return None
+        import shutil
+        present = [tool for tool, _, _ in images.SCANNERS.values() if shutil.which(tool)]
+        if present:
+            return None
+        return ("scan impossible here: no container runtime and no scanner on the search path. No stamp is written; "
+                "the handoff override for an impossible scan applies (`handoff --scan-impossible \"reason\"`)")
+
     def run(self, allow_unverified=False, skip_build=False, alarm=False):
         head = gitutil.head(self.root)
         if not head:
             raise ScanError("not a git repository with a commit to scan")
+        reason = self.impossible_here()
+        if reason:
+            raise ScanError(reason)
         freshness = self.check_freshness(allow_unverified=allow_unverified)
         findings = []
         findings += self.scan_hygiene()

@@ -42,7 +42,7 @@ def run(root, cfg):
             continue
         if sha(p.read_bytes()) != digest:
             findings.append(f"{rel}: differs from the copy version {recorded} placed")
-        elif p.suffix in (".py", ".md", ".sh", ".txt") and own.ENGINE_OWNED_MARKER not in p.read_text(encoding="utf-8", errors="replace"):
+        elif own.marker_required(rel) and own.ENGINE_OWNED_MARKER not in p.read_text(encoding="utf-8", errors="replace"):
             findings.append(f"{rel}: engine-owned file carries no ENGINE-OWNED marker")
     version_file = root / own.VERSION_FILE
     if not version_file.is_file():

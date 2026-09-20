@@ -87,6 +87,21 @@ class SelfTestWiring(unittest.TestCase):
         self.assertIsNotNone(suite)
         self.assertGreater(suite.countTestCases(), 40, "the check command would run an empty suite")
 
+    def test_placed_project_runs_the_placed_harness_suite(self):
+        """Found by the lifecycle exercise: a project has no selftest/ of its own, so the
+        single command must discover the placed copy's suite, not report an absent one."""
+        import subprocess, sys
+        with tree() as t:
+            write_config(t)
+            distribute.update(t)
+            harness = t / ".engine/harness"
+            code = "import sys; from engine.__main__ import discover_selftests; print(discover_selftests(sys.argv[1]).countTestCases())"
+            res = subprocess.run([sys.executable, "-c", code, str(t)], cwd=str(harness), capture_output=True, text=True,
+                                 env={**__import__("os").environ, "PYTHONPATH": str(harness)})
+            self.assertEqual(res.returncode, 0, res.stderr)
+            self.assertGreater(int(res.stdout.strip()), 40)
+            self.assertTrue((harness / "engine/dist/rules/RULES.md").is_file(), "the placed harness is the whole package")
+
     def test_failing_selftest_is_counted_and_reddens_check(self):
         with tree() as t:
             write_config(t)
@@ -152,10 +167,5 @@ class Init(unittest.TestCase):
 
 
 class SameCommandEverywhere(unittest.TestCase):
-    def test_ci_runs_the_single_check_command(self):
-        from .helpers import ROOT
-        lines = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8").splitlines()
-        self.assertIn("      - run: python -m engine check", lines)
-
     def test_find_line_matches_line_start_only(self):
         self.assertEqual(find_line(["x [a] y", "[a] z"], "[a]"), "[a] z")

@@ -81,6 +81,16 @@ class RangeCheck(unittest.TestCase):
             self.assertIs(o.state, State.CLEAN)
             self.assertEqual(o.line(), f"[coverage-range] CLEAN: 1 changed source file(s) in {base[:7]}..{head[:7]} meet their layer thresholds")
 
+    def test_placed_harness_files_in_the_range_are_not_project_source(self):
+        """Found by the lifecycle exercise: a harness update on the branch put engine-owned files
+        in the range, and the project's report could never cover them."""
+        with tree() as t:
+            base, head = branch_with_change(t, {"src/new.py": "x = 1" + chr(10), ".engine/harness/engine/gate.py": "# placed" + chr(10)})
+            write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
+            o = coverage_range.run(t, cfg())
+            self.assertIs(o.state, State.CLEAN)
+            self.assertIn("1 changed source file(s)", o.detail)
+
     def test_missing_report_could_not_run(self):
         with tree() as t:
             branch_with_change(t, {"src/new.py": "x = 1" + chr(10)})
@@ -126,3 +136,25 @@ class Collector(unittest.TestCase):
             rep = coverage.collect(t, lambda: mod.f(True))
             self.assertEqual(rep["files"]["engine/m.py"], {"covered": 2, "total": 3})
             self.assertTrue((t / ".engine/local/coverage.json").is_file())
+
+
+class ProjectCoverage(unittest.TestCase):
+    def test_project_suite_measured_into_the_report_the_range_check_reads(self):
+        """Found by the lifecycle exercise: a Python project had no way to produce the report."""
+        from .helpers import cli, tree, write, write_config
+        NL = chr(10)
+        with tree() as t:
+            write_config(t)
+            write(t, "src/__init__.py", "")
+            write(t, "src/calc.py", "def add(a, b):" + NL + "    return a + b" + NL + NL + NL + "def never(x):" + NL + "    return x * 2" + NL)
+            write(t, "tests/__init__.py", "")
+            write(t, "tests/test_calc.py", "import unittest" + NL + "from src.calc import add" + NL + NL + "class T(unittest.TestCase):" + NL + "    def test_add(self): self.assertEqual(add(1, 2), 3)" + NL)
+            code, out = cli(t, "coverage", "project")
+            self.assertEqual(code, 0, out)
+            rep = json.loads((t / ".engine/local/coverage.json").read_text(encoding="utf-8"))
+            self.assertIn("src/calc.py", rep["files"])
+            self.assertGreater(rep["files"]["src/calc.py"]["total"], rep["files"]["src/calc.py"]["covered"])
+            self.assertGreater(rep["files"]["src/calc.py"]["covered"], 0)
+            code, out = cli(t, "coverage", "project", "tests=nope")
+            self.assertEqual(code, 2)
+

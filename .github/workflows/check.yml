@@ -15,3 +15,4 @@ jobs:
       - run: python tools/progress_test.py
       - run: python tools/receipt_test.py
       - run: python tools/hooks_test.py
+      - run: python tools/build_test.py

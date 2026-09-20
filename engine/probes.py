@@ -331,4 +331,16 @@ def ungated_inbound(root, cfg):
     since = [c for c in gitutil.git(root, "rev-list", "--no-merges", f"{earliest}..{protected}").stdout.split()]
     a, b, _ = findings_mod.read(root)
     recorded = " ".join(r["risk"] + " " + r["id"] for r in b)
-    return [c for c in since if c not in gated and c[:12] not in recorded and c[:7] not in recorded]
+    return [c for c in since if c not in gated and c[:12] not in recorded and c[:7] not in recorded and not is_bookkeeping(root, c)]
+
+
+BOOKKEEPING = (".engine/records/", "tickets/", "plans/units/")
+
+
+def is_bookkeeping(root, commit):
+    """A commit that touches only records, tickets and unit state carries no code: it is the
+    lifecycle's own bookkeeping after a merge, not inbound code, and is not reported as ungated.
+    Rows it appends are still held to the record checks (markers, schema, attestation)."""
+    res = gitutil.git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+    files = [f for f in res.stdout.splitlines() if f.strip()]
+    return bool(files) and all(f.startswith(BOOKKEEPING) for f in files)

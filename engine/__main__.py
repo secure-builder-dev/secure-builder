@@ -106,11 +106,15 @@ SELFTEST_PATTERN = "test_*.py"
 
 
 def discover_selftests(root):
-    """The suite the check command runs. Discovery, not a hand-maintained list."""
-    suite_dir = pathlib.Path(root) / "selftest"
-    if not suite_dir.is_dir():
-        return None
-    return unittest.TestLoader().discover(str(suite_dir), pattern=SELFTEST_PATTERN, top_level_dir=str(root))
+    """The suite the check command runs. Discovery, not a hand-maintained list. In the
+    harness's own tree the suite is beside the package; in a project the placed copy
+    under .engine/harness carries it, and the single command runs it there too."""
+    root = pathlib.Path(root)
+    for top in (root, root / ".engine" / "harness"):
+        suite_dir = top / "selftest"
+        if suite_dir.is_dir():
+            return unittest.TestLoader().discover(str(suite_dir), pattern=SELFTEST_PATTERN, top_level_dir=str(top))
+    return None
 
 
 def _flatten(suite):
@@ -122,7 +126,13 @@ def _flatten(suite):
 
 
 def run_selftests(root, reverse=False):
-    """Run the hermetic self-test suite and report pass/fail/skip separately (spec 05 REQ-9.4)."""
+    """Run the hermetic self-test suite and report pass/fail/skip separately (spec 05 REQ-9.4).
+    In a project, the placed copy's suite runs in its own process from its own tree, so
+    the placed harness tests the placed harness."""
+    root = pathlib.Path(root)
+    placed = root / ".engine" / "harness"
+    if not (root / "selftest").is_dir() and (placed / "selftest").is_dir():
+        return _run_placed_selftests(placed, reverse)
     suite = discover_selftests(root)
     if suite is None:
         return {"pass": 0, "fail": 0, "skip": 0, "skips": []}
@@ -138,6 +148,31 @@ def run_selftests(root, reverse=False):
     skips = [t.id().split(".")[-1] for t, _ in result.skipped]
     return {"pass": result.testsRun - failed - len(result.skipped), "fail": failed,
             "skip": len(result.skipped), "skips": skips}
+
+
+NESTING_GUARD = "ENGINE_PLACED_SELFTEST"
+
+
+def _run_placed_selftests(harness, reverse):
+    import os
+    import subprocess
+    if os.environ.get(NESTING_GUARD):
+        # the placed suite's own tests place further harnesses; running each one's suite again would never end
+        print("[selftest] COULD NOT RUN: a placed suite does not run a suite placed inside one of its own fixtures")
+        return {"pass": 0, "fail": 0, "skip": 0, "skips": []}
+    code = ("import json, sys; from engine.__main__ import run_selftests; "
+            f"print(json.dumps(run_selftests(sys.argv[1], reverse={bool(reverse)!r})))")
+    env = dict(os.environ, PYTHONPATH=str(harness), PYTHONIOENCODING="utf-8", **{NESTING_GUARD: "1"})
+    res = subprocess.run([sys.executable, "-c", code, str(harness)], cwd=str(harness), capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", env=env)
+    lines = res.stdout.splitlines()
+    for line in lines[:-1]:
+        print(line)
+    try:
+        return json.loads(lines[-1])
+    except (IndexError, ValueError):
+        print(f"[selftest] COULD NOT RUN: the placed suite did not report (exit {res.returncode}): {res.stderr.strip()[-300:]}")
+        return {"pass": 0, "fail": 1, "skip": 0, "skips": []}
 
 
 def cmd_init(root, argv):
@@ -230,12 +265,32 @@ def cmd_integration(root, argv):
 
 
 def cmd_coverage(root, argv):
-    def suite():
-        run_selftests(root)
-    rep = coverage.collect(root, suite)
+    """`coverage` measures the harness's own suite. `coverage project [source=src] [tests=tests]`
+    measures a Python project's unittest suite with the same standard-library collector and
+    writes the report the coverage-range check reads; other stacks bring their own report in
+    the same shape (files -> covered/total)."""
+    kv = _kv(argv)
+    if argv and argv[0] == "project":
+        source, tests = kv.get("source", "src"), kv.get("tests", "tests")
+        root = pathlib.Path(root)
+        if not (root / tests).is_dir():
+            print(f"coverage: COULD NOT RUN — no {tests}/ directory to run")
+            return 2
+        sys.path.insert(0, str(root))
+
+        def suite():
+            s = unittest.TestLoader().discover(str(root / tests), pattern="test*.py", top_level_dir=str(root))
+            unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(s)
+        rep = coverage.collect(root, suite, prefix=source)
+        what = f"{source}/ modules"
+    else:
+        def suite():
+            run_selftests(root)
+        rep = coverage.collect(root, suite)
+        what = "harness modules"
     tot = sum(v["total"] for v in rep["files"].values())
     cov = sum(v["covered"] for v in rep["files"].values())
-    print(f"coverage: {cov}/{tot} executable lines ({(100.0 * cov / tot) if tot else 0:.1f}%) across {len(rep['files'])} harness modules -> .engine/local/coverage.json")
+    print(f"coverage: {cov}/{tot} executable lines ({(100.0 * cov / tot) if tot else 0:.1f}%) across {len(rep['files'])} {what} -> .engine/local/coverage.json")
     return 0 if tot else 2
 
 

@@ -23,7 +23,7 @@ from . import version
 
 SOURCE_ROOT = pathlib.Path(__file__).resolve().parent.parent   # the harness's own tree
 SKIP_NAMES = {"__pycache__", ".pyc"}
-SKIP_DIRS_IN_PACKAGE = {"dist"}
+SKIP_DIRS_IN_PACKAGE = set()      # the placed harness is the whole package: its self-tests read engine/dist
 
 
 def sha(data):

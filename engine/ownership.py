@@ -71,6 +71,15 @@ PROJECT_OWNED = [
 ]
 
 ENGINE_OWNED_MARKER = "ENGINE-OWNED: local edits to this file are discarded on update"
+# Seeds and templates ship inside the placed package as reference copies; they are engine-owned there
+# (overwritten on update) but carry no marker, because the copy seeded into the project is project-owned.
+MARKER_EXEMPT = ("engine/dist/templates/",)
+
+
+def marker_required(rel):
+    """Whether an engine-owned file at this path (relative to either tree) must carry the marker."""
+    rel = str(rel).replace(chr(92), "/")
+    return not any(x in rel for x in MARKER_EXEMPT) and rel.endswith((".py", ".md", ".sh", ".txt"))
 BACKUP_SUFFIX = ".pre-update"
 REFERENCE_SUFFIX = ".engine-reference"
 TRACKING_RECORD = f"{ENGINE_DIR}/agents/.placed"

@@ -52,6 +52,20 @@ def green_stamp(t, head):
 
 
 class Handoff(unittest.TestCase):
+    def test_unit_is_the_branch_last_segment(self):
+        """Found by the lifecycle exercise: a branch named unit/U1 put a slash in the unit
+        identifier, and the started marker could not be written."""
+        from engine import lifecycle
+        self.assertEqual(lifecycle.unit_from_branch("unit/U1"), "U1")
+        self.assertEqual(lifecycle.unit_from_branch("U1"), "U1")
+        with tree() as t:
+            project(t); head = feature(t)
+            git(t, "checkout", "-q", "-b", "unit/U9")
+            green_stamp(t, head)
+            doc = handoff.generate(t, cfg())
+            self.assertEqual(doc["unit"], "U9")
+            self.assertTrue((t / ".engine/records/started/U9-1.json").is_file())
+
     def test_refuses_without_scan_stamp_for_this_commit(self):
         with tree() as t:
             project(t); head = feature(t)
@@ -332,6 +346,41 @@ class SecurityMechanical(unittest.TestCase):
             pe = next(o for o in outs if o.check == "plan-edits")
             self.assertIs(pe.state, State.FINDINGS)
             self.assertTrue(pe.blocking)
+
+    def test_placed_harness_fixtures_are_not_the_project_tests(self):
+        """Found by the lifecycle exercise: the harness's own test fixtures, placed under
+        .engine/, satisfied a project's negative-test requirement for a route they mention."""
+        with tree() as t:
+            base = project(t)
+            write(t, ".engine/harness/selftest/test_gate.py", TEST)      # the harness fixture that mentions /items/<id>
+            head = feature(t, files={"src/app.py": APP, "src/auth.py": AUTH, "tests/test_items.py": "from src.app import item" + NL +
+                                     "def test_items_ok():" + NL + "    assert item({'token': 't'})" + NL})
+            o = gate.negative_test_set(t, cfg(), base, head)
+            self.assertIs(o.state, State.FINDINGS)
+            self.assertTrue(any("no test asserts rejection without credentials" in f for f in o.findings), o.findings)
+            self.assertTrue(any("one principal cannot reach another" in f for f in o.findings), o.findings)
+
+    def test_plan_written_then_built_on_one_branch_is_not_a_construction_edit(self):
+        """Found by the lifecycle exercise: PLAN then BUILD on the same branch put the unit file
+        and the plan in the range, and the state transition read as a design edit."""
+        with tree() as t:
+            base = project(t)
+            lifecycle.create_unit(t, "epic-7")
+            write(t, "plans/design.md", "## Interfaces" + NL + "- GET /items/<id>" + NL)
+            commit(t, "plan")
+            lifecycle.transition_unit(t, "epic-7", "building")
+            commit(t, "start building")
+            head = feature(t)
+            outs, _ = gate.security_mechanical(t, cfg(), base, head, "epic-7")
+            pe = next(o for o in outs if o.check == "plan-edits")
+            self.assertIs(pe.state, State.CLEAN, pe.line())
+            write(t, "plans/design.md", "## Interfaces" + NL + "- GET /items/<id>" + NL + "- DELETE /items/<id>" + NL)
+            head = commit(t, "revise plan mid-build")
+            outs, _ = gate.security_mechanical(t, cfg(), base, head, "epic-7")
+            pe = next(o for o in outs if o.check == "plan-edits")
+            self.assertIs(pe.state, State.FINDINGS)
+            self.assertEqual(len(pe.findings), 1)
+            self.assertTrue(pe.findings[0].startswith("plans/design.md:"))
 
     def test_dependency_needs_approval_on_target(self):
         with tree() as t:

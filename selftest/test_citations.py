@@ -2,6 +2,7 @@
 # ENGINE-OWNED: local edits to this file are discarded on update
 """Standards citation and currency (spec 01 §8; spec 04 §3; spec 06 REQ-8.5)."""
 import json
+import shutil
 import unittest
 
 from engine import catalogue, distribute
@@ -215,10 +216,13 @@ class Verification(unittest.TestCase):
             self.assertIs(citations.run(t, cfg()).state, State.COULD_NOT_RUN)
 
     def test_harness_own_checklist_citations_resolve(self):
-        o = citations.run(ROOT, Config({"governed_documents": ["engine/dist/agents/*.md"]}))
-        self.assertIs(o.state, State.FINDINGS)
-        self.assertFalse(o.blocking, "only MASVS (platform not indexed) may be reported; nothing may fail")
-        self.assertTrue(all("MASVS" in f for f in o.findings), o.findings)
+        with tree() as t:
+            shutil.copytree(ROOT / "engine" / "data" / "catalogues", t / ".engine" / "catalogues")
+            shutil.copytree(ROOT / "engine" / "dist" / "agents", t / "agents")
+            o = citations.run(t, Config({"governed_documents": ["agents/*.md"]}))
+            self.assertIs(o.state, State.FINDINGS)
+            self.assertFalse(o.blocking, "only MASVS (platform not indexed) may be reported; nothing may fail")
+            self.assertTrue(all("MASVS" in f for f in o.findings), o.findings)
 
 
 class Currency(unittest.TestCase):

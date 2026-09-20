@@ -9,4 +9,5 @@ block; it makes incompleteness visible.
 | engine/distribute.py | sha | cryptography | not-a-control | content hash for placed-file divergence detection; not a security control |
 | engine/export.py | redaction_problems | redaction | not-a-control | the self-check on EXP-REDACT's output; the control is redact, declared |
 | engine/scan/bundles.py | sha256 | cryptography | not-a-control | bundle integrity digest; not a security control |
+| engine/topology.py | render_authority | authentication | not-a-control | renders the record-authority table (which side owns which record); the word 'authority' is about records, not authentication |
 | engine/export.py | redact |  | declared or gone |  |

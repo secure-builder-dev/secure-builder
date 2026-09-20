@@ -6,7 +6,7 @@ it is not a clean bill of health. *Assessed elsewhere, evidence not available* i
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 99 (100%)
+- never assessed: 103 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -18,6 +18,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/checklist.py | never assessed |  |
 | engine/checks/__init__.py | never assessed |  |
 | engine/checks/artifact_binding.py | never assessed |  |
+| engine/checks/assessed_boundary.py | never assessed |  |
 | engine/checks/attack_surface.py | never assessed |  |
 | engine/checks/citations.py | never assessed |  |
 | engine/checks/control_manifest.py | never assessed |  |
@@ -30,6 +31,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/checks/injection_scan.py | never assessed |  |
 | engine/checks/license_policy.py | never assessed |  |
 | engine/checks/lint.py | never assessed |  |
+| engine/checks/manifest_completeness.py | never assessed |  |
 | engine/checks/negative_fixtures.py | never assessed |  |
 | engine/checks/no_network.py | never assessed |  |
 | engine/checks/record_integrity.py | never assessed |  |
@@ -58,6 +60,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/net.py | never assessed |  |
 | engine/outcome.py | never assessed |  |
 | engine/ownership.py | never assessed |  |
+| engine/probes.py | never assessed |  |
 | engine/records/__init__.py | never assessed |  |
 | engine/records/changelog.py | never assessed |  |
 | engine/records/findings.py | never assessed |  |
@@ -98,6 +101,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | selftest/test_manifest.py | never assessed |  |
 | selftest/test_net.py | never assessed |  |
 | selftest/test_outcome.py | never assessed |  |
+| selftest/test_probes.py | never assessed |  |
 | selftest/test_records.py | never assessed |  |
 | selftest/test_scan.py | never assessed |  |
 | selftest/test_sequence.py | never assessed |  |

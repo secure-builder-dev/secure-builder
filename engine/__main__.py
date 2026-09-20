@@ -35,6 +35,7 @@
   probe [test_result="12 passed"]   capture the standing-state snapshot for HEAD and diff it against the previous gate's
   inventory           regenerate the coverage inventory (the assessed boundary)
   undeclared          regenerate the undeclared-controls list (the manifest completeness probe)
+  truth               regenerate the generated system truth and compare it with plans/design.md
   status              orientation: position and exactly one next action (always exits 0)
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
@@ -690,6 +691,14 @@ def cmd_undeclared(root, argv):
     return 0
 
 
+def cmd_truth(root, argv):
+    from . import truth
+    o = truth.check(root, None)
+    for line in o.lines():
+        print(line)
+    return o.exit_code
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -760,7 +769,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
             "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
-            "inventory": cmd_inventory, "undeclared": cmd_undeclared}
+            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth}
 
 
 def main(argv=None):

@@ -1,0 +1,16 @@
+REQ:        REQ-9.2
+SPEC:       02
+CHECK:      engine/truth.py
+MUTATION:   let a hand-edited truth file survive the check instead of regenerating it
+FILE:       engine/truth.py
+TEST:       python -m unittest selftest.test_truth.Generation.test_hand_edit_is_detected_and_regeneration_overwrites
+--- output with the property broken (must show failure) ---
+FAIL: test_hand_edit_is_detected_and_regeneration_overwrites (selftest.test_truth.Generation.test_hand_edit_is_detected_and_regeneration_overwrites)
+AssertionError: True is not false : the check regenerates; a hand edit never survives
+Ran 1 test in 0.506s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.439s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-9.4
+SPEC:       02
+CHECK:      engine/gate.py
+MUTATION:   enumerated routes from a hand-maintained list instead of the generated truth
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_truth.LoadBearing.test_negative_test_enumeration_uses_the_generated_inventory
+--- output with the property broken (must show failure) ---
+FAIL: test_negative_test_enumeration_uses_the_generated_inventory (selftest.test_truth.LoadBearing.test_negative_test_enumeration_uses_the_generated_inventory)
+AssertionError: 'routes.inventory(' not found in 'def negative_test_set(root, cfg, base, head):\n    """REQ-5.2: for every route added or changed in the range, a test asserting\n    rejection without credentials; for record-scoped routes, cross-principal\n    rejection; for operations that can remove the last privileged principal, a\n    test that it is prevented. Routes come from the generated inventory."""\n    name = "negative-tests"\n    inv = [{"method": "GET", "path": "/", "file": "hand-list", "line": 0, "record_scoped": False}]\n    changed = set(gitutil.changed_files(root, base, head))\n    touched = [r for r in inv if r["file"] in changed]\n    ops = [o for o in routes.privileged_operations(root) if o["file"] in changed]\n    if not inv and not ops:\n        return Outcome.nothing_yet(name, "HTTP routes", "the generated inventory holds no routes and no privileged operations — this section is empty, not passed")\n    if not touched and not ops:\n        return Outcome.nothing_yet(name, "routes added or changed in this range",\n                                   f"{len(inv)} route(s) exist; none is in the range — this section is empty, not passed")\n    tests = _test_texts(root)\n    findings = []\n    for r in touched:\n        hits = [t for t, text in tests.items() if r["path"] in text and NEG_ASSERT.search(text)]\n        if not hits:\n            findings.append(f"{r[\'method\']} {r[\'path\']} ({r[\'file\']}:{r[\'line\']}): no test asserts rejection without credentials")\n        if r["record_scoped"]:\n            cross = [t for t, text in tests.items() if r["path"] in text and CROSS_PRINCIPAL.search(text)]\n            if not cross:\n                findings.append(f"{r[\'method\']} {r[\'path\']}: record-scoped, and no test asserts one principal cannot reach another\'s records")\n    for o in ops:\n        if not any(o["symbol"] in text and LAST_ADMIN.search(text) for text in tests.values()):\n            findings.append(f"{o[\'symbol\']} ({o[\'file\']}:{o[\'line\']}): can remove a privileged principal, and no test asserts the last one is protected")\n    if findings:\n        return Outcome.found(name, f"{len(findings)} negative-test gap(s) on {len(touched)} route(s) and {len(ops)} privileged operation(s)",\n                             findings, blocking=True)\n    return Outcome.clean(name, f"{len(touched)} route(s) and {len(ops)} privileged operation(s) in the range each have their rejection tests")\n'
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.001s
+OK
+exit 0

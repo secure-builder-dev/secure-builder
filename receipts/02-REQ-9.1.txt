@@ -1,0 +1,16 @@
+REQ:        REQ-9.1
+SPEC:       02
+CHECK:      engine/truth.py
+MUTATION:   stopped generating the data-structure inventory from the code
+FILE:       engine/truth.py
+TEST:       python -m unittest selftest.test_truth.Generation.test_generated_from_code_and_marked_never_hand_edited
+--- output with the property broken (must show failure) ---
+FAIL: test_generated_from_code_and_marked_never_hand_edited (selftest.test_truth.Generation.test_generated_from_code_and_marked_never_hand_edited)
+AssertionError: Lists differ: [] != ['Item', 'items']
+Ran 1 test in 0.172s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.291s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-9.3
+SPEC:       02
+CHECK:      engine/truth.py
+MUTATION:   reconciled the plan to the code silently
+FILE:       engine/truth.py
+TEST:       python -m unittest selftest.test_truth.Comparison.test_divergence_is_a_human_decision_never_reconciled
+--- output with the property broken (must show failure) ---
+FAIL: test_divergence_is_a_human_decision_never_reconciled (selftest.test_truth.Comparison.test_divergence_is_a_human_decision_never_reconciled)
+AssertionError: '- items' unexpectedly found in '## Interfaces\n- ANY /items\n- POST /orders\n## Data\n- Item\n- items\n' : the code's structures are never silently added to the plan
+Ran 1 test in 0.331s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.308s
+OK
+exit 0

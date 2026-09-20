@@ -32,6 +32,7 @@ REGISTRY = [
     "citations",
     "manifest_completeness",
     "assessed_boundary",
+    "generated_truth",
 ]
 
 

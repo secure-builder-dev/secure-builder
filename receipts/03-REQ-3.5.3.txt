@@ -1,0 +1,16 @@
+REQ:        REQ-3.5.3
+SPEC:       03
+CHECK:      engine/truth.py
+MUTATION:   declared the plan and the code consistent without surfacing the divergence to a person
+FILE:       engine/truth.py
+TEST:       python -m unittest selftest.test_truth.Comparison.test_divergence_is_a_human_decision_never_reconciled
+--- output with the property broken (must show failure) ---
+FAIL: test_divergence_is_a_human_decision_never_reconciled (selftest.test_truth.Comparison.test_divergence_is_a_human_decision_never_reconciled)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.284s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.206s
+OK
+exit 0

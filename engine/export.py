@@ -17,7 +17,7 @@ import json
 import pathlib
 import re
 
-from . import checklist, degradation, field, gitutil, manifest, mutate, probes, truth, version
+from . import checklist, degradation, field, gitutil, manifest, mutate, probes, topology, truth, version
 from . import config as cfgmod
 from .checks import REGISTRY
 from .records import findings as findings_mod
@@ -36,6 +36,8 @@ RECORD_FILES = [
     ("reconciliation-obligations.md", ".engine/records/reconciliation-obligations.md"),
     ("mutation-results.md", ".engine/records/mutation-results.md"),
     ("generated-truth.md", ".engine/records/generated-truth.md"),
+    ("ingest-records.md", ".engine/records/ingest-records.md"),
+    ("high-side-changes.md", ".engine/records/high-side-changes.md"),
 ]
 # Artifacts whose content is a deterministic function of the inputs, and those that are not (spec 01 §1.5).
 DETERMINISTIC = ("mechanical checks (the registry below)", "control wiring verification (manifest)", "mutation results",
@@ -205,6 +207,11 @@ def disclosure(root, cfg, commit):
     L += [f"- {d}" for d in NON_DETERMINISTIC]
     L += ["", f"checklist version at export: {checklist.version()}", "", "## Human-authored artifacts", ""]
     L += [f"- {d}" for d in HUMAN_AUTHORED]
+    L += ["", "## Topology", "", f"side: {cfg.side}; topology: {cfg.topology}"]
+    L += [f"- {line}" for line in topology.report(root, cfg)]
+    if cfg.side == "high":
+        L.append("- this record set is the deliverable one for anything assessed against the high-side system (spec 04 REQ-10.1.5); "
+                 "it was produced without any return path from the high side")
     L += ["", "## Machine-generated artifacts in this bundle", "",
           "traceability index, implementation narrative, degradation statement, coverage inventory, generated truth, "
           "composition inventories, redacted scan bundle, this statement, the manifest with its hashes.", ""]
@@ -351,6 +358,9 @@ def package(root, cfg, out_dir, marking=None):
         put("03-degradation-statement.md", degradation.statement(root), "degradation statement (spec 04 §7)")
     except cfgmod.ConfigError as e:
         problems.append(f"degradation statement: {e}")
+    put("04-record-authority.md", topology.render_authority(cfg), "record authority and what crosses (spec 04 §10.1–10.2)")
+    if (root / topology.RECEIVED).is_file():
+        put("records/received-drops.json", (root / topology.RECEIVED).read_text(encoding="utf-8"), "received source drops")
     for i, p in enumerate(gatelog.series_files(root)):
         put(f"gate-log/{p.name}", p.read_text(encoding="utf-8"), "gate log series")
     if not gatelog.series_files(root):

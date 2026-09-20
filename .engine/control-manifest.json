@@ -3,15 +3,20 @@
   "scope_statement": "This manifest covers system-specific controls and the system-specific portion of hybrid controls. Fully inherited controls are implemented by the hosting platform, are tracked in the platform's system security plan, and are outside this harness's verification scope.",
   "controls": [
     {
-      "id": "CTRL-EXAMPLE",
-      "placeholder": true,
-      "description": "Replace this placeholder with a real control. A manifest holding only placeholders is reported as template-only, never as passing.",
-      "location": {"file": "src/example.py", "symbol": "require_auth"},
+      "id": "EXP-REDACT",
+      "description": "Environment identifiers (digests, registry paths, hosts, account identifiers, home paths) are redacted from every exported scan artifact; vulnerability identifiers, package names and versions are kept (spec 02 REQ-6.4.2-6.4.3).",
+      "location": {
+        "file": "engine/export.py",
+        "symbol": "redact"
+      },
       "required_artifact": null,
-      "test_pattern": "tests/test_auth*",
+      "test_pattern": "selftest/test_export*",
       "status": "system-specific",
       "counterpart": null,
-      "mutation": null
+      "mutation": {
+        "shape": "redaction",
+        "note": "the export self-checks its output with redaction_problems; a disarmed redact refuses the bundle"
+      }
     }
   ]
 }

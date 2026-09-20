@@ -1,0 +1,16 @@
+REQ:        REQ-10.4.2
+SPEC:       04
+CHECK:      engine/topology.py
+MUTATION:   accepted 'will not be ported' without a written reason
+FILE:       engine/topology.py
+TEST:       python -m unittest selftest.test_topology.Divergence.test_record_fields_and_backport_statuses
+--- output with the property broken (must show failure) ---
+FAIL: test_record_fields_and_backport_statuses (selftest.test_topology.Divergence.test_record_fields_and_backport_statuses)
+AssertionError: unexpectedly None : will not be ported
+Ran 1 test in 1.120s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.072s
+OK
+exit 0

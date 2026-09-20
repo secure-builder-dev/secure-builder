@@ -23,6 +23,7 @@
   manifest            verify the control manifest and print recomputed call sites
   mutate              break every declared control, run the project's suite, restore (spec 01 §5.3)
   export <package|scan|verify|traceability|disclosure> ...   evidence package bound to the commit, hashed at export
+  topology <authority|drop|receive|change|status> ...   two-instance topology across a one-way boundary (spec 04 §10)
   field <declare|run|reconcile|clear|status|table|models> ...   field mode (spec 11): a bounded gate that incurs recorded debt
   handoff [--checkpoint] [--scan-impossible "reason"]   generate the review handoff; writes the started marker
   gate prepare|submit|no-model ...   run the gates' mechanical parts; record a verdict block; or record a no-model run
@@ -824,6 +825,51 @@ def cmd_export(root, argv):
     return 2
 
 
+def cmd_topology(root, argv):
+    """Two-instance topology (spec 04 §10): authority | drop | receive | change | status."""
+    from . import topology
+    if not argv:
+        print("topology authority | topology drop out=<dir> operator=<name> [revision=HEAD] [--no-records] | "
+              "topology receive dir=<drop> operator=<name> [filtered_understood=<why>] | "
+              "topology change commit=<sha> what=<..> why=<..> authorized_by=<name> backport=<status> | topology status")
+        return 2
+    sub, kv = argv[0], _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"topology: COULD NOT RUN — {e}")
+        return 2
+    try:
+        if sub == "authority":
+            print(topology.render_authority(cfg), end="")
+            return 0
+        if sub == "drop":
+            d = topology.source_drop(root, kv["out"], cfg, kv.get("operator", ""), kv.get("revision", "HEAD"), include_records="--no-records" not in argv)
+            print(f"topology: drop {d['bundle_id']} at {d['revision'][:12]}: {len(d['files'])} file(s); records {'included' if d['records_transferred'] else 'NOT included'}")
+            return 0
+        if sub == "receive":
+            d = topology.receive_drop(root, kv["dir"], cfg, kv.get("operator", ""), kv.get("filtered_understood", ""))
+            print(f"topology: received {d['bundle_id']} from side {d['source_side']} ({len(d['files'])} file(s)); ingest recorded; "
+                  f"commit the received tree, then gate it here")
+            return 0
+        if sub == "change":
+            line = topology.record_change(root, cfg, commit=kv["commit"], what=kv.get("what", ""), why_not_low_side=kv.get("why", ""),
+                                          authorized_by=kv.get("authorized_by", ""), backport_status=kv.get("backport", ""))
+            print(f"topology: recorded — {line}")
+            return 0
+        if sub == "status":
+            for l in topology.report(root, cfg):
+                print(l)
+            for r in topology.unported(root):
+                print(f"  {r['commit']} {r['date'][:10]} {r['what']} — {r['backport_status']}")
+            return 0
+    except (topology.TopologyError, KeyError, OSError, ValueError) as e:
+        print(f"topology: REFUSED — {e}")
+        return 2
+    print("topology: unknown subcommand")
+    return 2
+
+
 def cmd_status(root, argv):
     from . import lifecycle
     try:
@@ -894,7 +940,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
             "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
-            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field, "export": cmd_export}
+            "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field, "export": cmd_export, "topology": cmd_topology}
 
 
 def main(argv=None):

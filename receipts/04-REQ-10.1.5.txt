@@ -1,0 +1,17 @@
+REQ:        REQ-10.1.5
+SPEC:       04
+CHECK:      engine/export.py
+MUTATION:   stopped stating on the high side that its record set is the deliverable one
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_topology.Export.test_high_side_export_is_self_contained_and_carries_ingest_and_divergence
+--- output with the property broken (must show failure) ---
+FAIL: test_high_side_export_is_self_contained_and_carries_ingest_and_divergence (selftest.test_topology.Export.test_high_side_export_is_self_contained_and_carries_ingest_and_divergence)
+    raise AssertionError(f"expected exactly one line containing {needle!r}, found {len(hits)}:" + chr(10) + text)
+AssertionError: expected exactly one line containing 'this record set is the deliverable one for anything assessed against the high-side system', found 0:
+Ran 1 test in 1.146s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.322s
+OK
+exit 0

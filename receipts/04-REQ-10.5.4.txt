@@ -1,0 +1,16 @@
+REQ:        REQ-10.5.4
+SPEC:       04
+CHECK:      engine/export.py
+MUTATION:   left the ingest records out of the export
+FILE:       engine/export.py
+TEST:       python -m unittest selftest.test_topology.Export.test_high_side_export_is_self_contained_and_carries_ingest_and_divergence
+--- output with the property broken (must show failure) ---
+FAIL: test_high_side_export_is_self_contained_and_carries_ingest_and_divergence (selftest.test_topology.Export.test_high_side_export_is_self_contained_and_carries_ingest_and_divergence)
+AssertionError: 'records/ingest-records.md' not found in {'RETENTION.md', 'records/generated-truth.md', 'records/standing-state-deltas.md', '00-DISCLOSURE.md', 'records/governance-changelog.md', '03-degradation-statement.md', '04-record-authority.md', 'gate-log/gate-log.md', 'records/coverage-inventory.md', 'records/plan-of-action.md', 'index.html', 'records/high-side-changes.md', '01-traceability-index.md', 'records/findings-register.md', '02-implementation-narrative.md', 'records/mutation-results.md', 'records/reconciliation-obligations.md', 'records/received-drops.json'} : records/ingest-records.md
+Ran 1 test in 1.258s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 1.079s
+OK
+exit 0

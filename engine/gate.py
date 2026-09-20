@@ -17,8 +17,8 @@ import json
 import pathlib
 import re
 
-from . import checklist, controlshape, gitutil, governance, manifest, mutate, probes, routes, version
-from .checks import reconciliation, coverage_range, findings_register
+from . import checklist, controlshape, gitutil, governance, manifest, mutate, probes, routes, topology, version
+from .checks import high_side_changes, reconciliation, coverage_range, findings_register
 from .outcome import Outcome, State
 from .records import findings as findings_mod
 from .records import gatelog, now
@@ -163,6 +163,9 @@ def security_mechanical(root, cfg, base, head, unit):
     outs.append(_dependency_lead_time(root, cfg, diff))                 # spec 01 §6.2.1 item 10; spec 04 §10.6
     outs.append(probes.run_probe(root, cfg, head))                       # spec 01 §9.1–9.2: the standing-state probe, per gate
     outs.append(reconciliation.run(root, cfg))                            # spec 11 REQ-7.2, 7.5, 7.7: open field debt, at every gate
+    if cfg.topology != "single":
+        outs.append(high_side_changes.run(root, cfg))                     # spec 04 REQ-10.4.3: unported count at every gate
+        outs.append(_originated_without_record(root, cfg, base, head))    # spec 04 REQ-10.4.1: no high-side change without a record
     gov_outs, is_gov = governance.check_range(root, cfg, base, head, unit)   # spec 01 §11
     outs += gov_outs
     ctx["governance"] = is_gov
@@ -172,6 +175,20 @@ def security_mechanical(root, cfg, base, head, unit):
     ctx["checklist"] = checklist.compose(cfg)
     ctx["checklist_version"] = checklist.version()
     return outs, ctx
+
+
+def _originated_without_record(root, cfg, base, head):
+    name = "high-side-origin"
+    if cfg.side != "high":
+        return Outcome.not_applicable(name, f"side '{cfg.side}'", "changes originate here by design; only the high side receives code it did not build",
+                                      "the low-side gate log")
+    recorded = {r["commit"][:12] for r in topology.changes(root)[0]}
+    missing = [c for c in topology.originated_here(root, cfg, base, head) if c[:12] not in recorded]
+    if missing:
+        return Outcome.found(name, "the range carries content no received drop delivered and no high-side change record names",
+                             [f"{c[:12]}: record it with what changed, why it could not wait for the low-side path, who authorized it, and its back-port status" for c in missing],
+                             blocking=True)
+    return Outcome.clean(name, "every commit in the range is received content or a recorded high-side change")
 
 
 def _attribution(root, base, head, diff):

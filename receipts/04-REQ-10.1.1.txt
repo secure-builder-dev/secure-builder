@@ -1,0 +1,16 @@
+REQ:        REQ-10.1.1
+SPEC:       04
+CHECK:      engine/topology.py
+MUTATION:   left an artifact class with no declared authoritative side
+FILE:       engine/topology.py
+TEST:       python -m unittest selftest.test_topology.Authority.test_every_artifact_class_names_its_authoritative_side
+--- output with the property broken (must show failure) ---
+FAIL: test_every_artifact_class_names_its_authoritative_side (selftest.test_topology.Authority.test_every_artifact_class_names_its_authoritative_side)
+AssertionError: False is not true : evidence export
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

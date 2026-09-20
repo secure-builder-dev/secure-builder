@@ -1,0 +1,16 @@
+REQ:        REQ-10.2.3
+SPEC:       04
+CHECK:      engine/topology.py
+MUTATION:   made correctness depend on a return path
+FILE:       engine/topology.py
+TEST:       python -m unittest selftest.test_topology.Authority.test_crossings_enumerated_and_nothing_required_returns
+--- output with the property broken (must show failure) ---
+FAIL: test_crossings_enumerated_and_nothing_required_returns (selftest.test_topology.Authority.test_crossings_enumerated_and_nothing_required_returns)
+AssertionError: True is not false
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

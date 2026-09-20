@@ -35,6 +35,7 @@ REGISTRY = [
     "generated_truth",
     "reconciliation",
     "enforcement",
+    "high_side_changes",
 ]
 
 

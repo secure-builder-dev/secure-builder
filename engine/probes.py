@@ -256,6 +256,9 @@ def inventory(root, cfg):
     for d in received_drops(root):
         if not d.get("records_transferred"):
             elsewhere.update(d.get("files", []))
+        else:   # spec 04 REQ-10.3.2: transferred gate records are evidence of assessment on the other side, recorded as such
+            for f, ev in (d.get("assessed") or {}).items():
+                assessed.setdefault(f, []).extend(f"{e} on side {d.get('source_side', 'unknown')} (transferred with drop {d.get('bundle_id', '?')})" for e in ev)
     rows, counts = [], {"assessed": 0, "never": 0, "elsewhere": 0}
     for f in files:
         if f in assessed:

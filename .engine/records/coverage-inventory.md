@@ -6,7 +6,7 @@ it is not a clean bill of health. *Assessed elsewhere, evidence not available* i
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 109 (100%)
+- never assessed: 114 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -26,6 +26,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/checks/credential_scan.py | never assessed |  |
 | engine/checks/divergence.py | never assessed |  |
 | engine/checks/doc_consistency.py | never assessed |  |
+| engine/checks/enforcement.py | never assessed |  |
 | engine/checks/findings_register.py | never assessed |  |
 | engine/checks/generated_truth.py | never assessed |  |
 | engine/checks/harness_self_scan.py | never assessed |  |
@@ -49,6 +50,8 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | engine/dist/hooks/pre-commit.py | never assessed |  |
 | engine/dist/run.py | never assessed |  |
 | engine/distribute.py | never assessed |  |
+| engine/enforcement.py | never assessed |  |
+| engine/export.py | never assessed |  |
 | engine/field.py | never assessed |  |
 | engine/gate.py | never assessed |  |
 | engine/gitutil.py | never assessed |  |
@@ -98,11 +101,13 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | selftest/test_coverage.py | never assessed |  |
 | selftest/test_degradation.py | never assessed |  |
 | selftest/test_distribute.py | never assessed |  |
+| selftest/test_export.py | never assessed |  |
 | selftest/test_field.py | never assessed |  |
 | selftest/test_gate.py | never assessed |  |
 | selftest/test_governance.py | never assessed |  |
 | selftest/test_guard.py | never assessed |  |
 | selftest/test_integration_tier.py | never assessed |  |
+| selftest/test_leftovers.py | never assessed |  |
 | selftest/test_manifest.py | never assessed |  |
 | selftest/test_net.py | never assessed |  |
 | selftest/test_outcome.py | never assessed |  |

@@ -1,0 +1,16 @@
+REQ:        REQ-10.2.2
+SPEC:       04
+CHECK:      engine/topology.py
+MUTATION:   dropped detection-data bundles from the enumerated low-to-high set
+FILE:       engine/topology.py
+TEST:       python -m unittest selftest.test_topology.Authority.test_crossings_enumerated_and_nothing_required_returns
+--- output with the property broken (must show failure) ---
+FAIL: test_crossings_enumerated_and_nothing_required_returns (selftest.test_topology.Authority.test_crossings_enumerated_and_nothing_required_returns)
+AssertionError: 'detection-data' not found in ['source', 'gate-records', 'catalogues', 'scanner-images', 'approved-dependencies']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

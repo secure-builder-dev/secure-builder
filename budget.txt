@@ -1,0 +1,1 @@
+400 iterations. Spec 07 sizes a full v1.0 at 350-400; raise deliberately, not by habit.

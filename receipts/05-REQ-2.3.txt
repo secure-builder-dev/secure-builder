@@ -1,0 +1,16 @@
+REQ:        REQ-2.3
+SPEC:       05
+CHECK:      engine/checks/negative_fixtures.py
+MUTATION:   made a missing negative fixture a non-blocking note rather than an untested check
+FILE:       engine/checks/negative_fixtures.py
+TEST:       python -m unittest selftest.test_audit.Q2NegativeFixtures.test_registered_check_fails_when_a_fixture_is_missing
+--- output with the property broken (must show failure) ---
+FAIL: test_registered_check_fails_when_a_fixture_is_missing (selftest.test_audit.Q2NegativeFixtures.test_registered_check_fails_when_a_fixture_is_missing)
+AssertionError: False is not true
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

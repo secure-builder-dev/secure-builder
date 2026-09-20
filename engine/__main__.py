@@ -12,6 +12,9 @@
   update --project P [--dry-run]   place or refresh the harness in a project (spec 06)
   adopt --project P   adopt into an existing project and inventory pre-existing code
   ownership           print the four ownership classes
+  audit               the standing self-test audit (spec 05 §10); reports, never blocks
+  integration         run the integration tier with the real external tools (spec 05 §6.1)
+  check --reverse-tests   run the self-test suite in reverse order (order independence)
 """
 import io
 import json
@@ -20,7 +23,7 @@ import sys
 import unittest
 
 from . import config as cfgmod
-from . import degradation, distribute, ownership, version
+from . import audit, degradation, distribute, integration, ownership, version
 from .checks import run_all
 from .outcome import Summary
 
@@ -42,7 +45,7 @@ def cmd_check(root, argv):
     for line in summary.disposition_lines():
         print(line)
 
-    st = run_selftests(root)
+    st = run_selftests(root, reverse="--reverse-tests" in argv)
     print(f"[selftest] {st['pass']} passed, {st['fail']} failed, {st['skip']} skipped"
           + (f" (skipped: {', '.join(st['skips'])})" if st["skips"] else ""))
     if st["pass"] + st["fail"] + st["skip"] == 0:
@@ -81,11 +84,21 @@ def discover_selftests(root):
     return unittest.TestLoader().discover(str(suite_dir), pattern=SELFTEST_PATTERN, top_level_dir=str(root))
 
 
-def run_selftests(root):
+def _flatten(suite):
+    for item in suite:
+        if isinstance(item, unittest.TestSuite):
+            yield from _flatten(item)
+        else:
+            yield item
+
+
+def run_selftests(root, reverse=False):
     """Run the hermetic self-test suite and report pass/fail/skip separately (spec 05 REQ-9.4)."""
     suite = discover_selftests(root)
     if suite is None:
         return {"pass": 0, "fail": 0, "skip": 0, "skips": []}
+    if reverse:
+        suite = unittest.TestSuite(list(_flatten(suite))[::-1])
     stream = io.StringIO()
     result = unittest.TextTestRunner(stream=stream, verbosity=1).run(suite)
     failed = len(result.failures) + len(result.errors)
@@ -171,6 +184,22 @@ def cmd_adopt(root, argv):
     return 0
 
 
+def cmd_audit(root, argv):
+    from .checks import REGISTRY
+    lines, total, could_not = audit.run(root, REGISTRY)
+    for line in lines:
+        print(line)
+    return 2 if could_not else 0
+
+
+def cmd_integration(root, argv):
+    code, lines = integration.run(root)
+    for line in lines:
+        print(line)
+    print(f"integration: {'PASSED' if code == 0 else 'NOT VERIFIED' if code == 2 else 'FAILED'} (exit {code})")
+    return code
+
+
 def cmd_ownership(root, argv):
     for name, table in ownership.classes():
         print(f"## {name}")
@@ -181,7 +210,8 @@ def cmd_ownership(root, argv):
 
 COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "degradation": cmd_degradation, "version": lambda r, a: (print(version()), 0)[1],
-            "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership}
+            "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership,
+            "audit": cmd_audit, "integration": cmd_integration}
 
 
 def main(argv=None):

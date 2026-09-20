@@ -1,0 +1,16 @@
+REQ:        REQ-13.3.1
+SPEC:       01
+CHECK:      engine/audit.py
+MUTATION:   made the audit stop recognising an assertion that any truthy exit code satisfies
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_audit.Q4Truthy.test_truthy_exit_assertion_flagged
+--- output with the property broken (must show failure) ---
+FAIL: test_truthy_exit_assertion_flagged (selftest.test_audit.Q4Truthy.test_truthy_exit_assertion_flagged)
+AssertionError: Lists differ: [] != ['selftest/test_x.py:2: asserts a class of values: self.assertTrue(rc)']
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.003s
+OK
+exit 0

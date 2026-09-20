@@ -1,0 +1,17 @@
+REQ:        REQ-6.5
+SPEC:       05
+CHECK:      engine/integration.py
+MUTATION:   dropped the environment from the release record of a passing integration run
+FILE:       engine/integration.py
+TEST:       python -m unittest selftest.test_integration_tier.WithRuntime.test_passing_tier_records_environment
+--- output with the property broken (must show failure) ---
+FAIL: test_passing_tier_records_environment (selftest.test_integration_tier.WithRuntime.test_passing_tier_records_environment)
+    self.assertRegex(rec, r"integration tier: passed \(environment: .*docker: Docker version 0\.0\.0-stub\)")
+AssertionError: Regex didn't match: 'integration tier: passed \\(environment: .*docker: Docker version 0\\.0\\.0-stub\\)' not found in '# Release record\n\nÂ© 2026 Casey Houle. All rights reserved.\n\nAppend-only. One line per integration-tier run, with the environment it ran in.\n\n- 2026-09-20 Â· 0.1.0-dev+fc08212cb4e8 Â· integration tier: passed (environment: unrecorded)\n'
+Ran 1 test in 0.035s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.030s
+OK
+exit 0

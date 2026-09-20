@@ -1,0 +1,17 @@
+REQ:        REQ-13.3.2
+SPEC:       01
+CHECK:      selftest/helpers.py
+MUTATION:   made the line-targeting helper match anywhere in a line instead of the line that carries the claim
+FILE:       selftest/helpers.py
+TEST:       python -m unittest selftest.test_cli.SameCommandEverywhere.test_find_line_matches_line_start_only
+--- output with the property broken (must show failure) ---
+FAIL: test_find_line_matches_line_start_only (selftest.test_cli.SameCommandEverywhere.test_find_line_matches_line_start_only)
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting '[a]', found 2:
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

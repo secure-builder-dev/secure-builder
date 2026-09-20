@@ -1,0 +1,16 @@
+REQ:        REQ-13.5.1
+SPEC:       01
+CHECK:      engine/sequence.py
+MUTATION:   made a non-zero verification result count as success before the next step
+FILE:       engine/sequence.py
+TEST:       python -m unittest selftest.test_sequence.StopsAtFailure.test_nonzero_int_is_failure
+--- output with the property broken (must show failure) ---
+FAIL: test_nonzero_int_is_failure (selftest.test_sequence.StopsAtFailure.test_nonzero_int_is_failure)
+AssertionError: Tuples differ: ('', ['check', 'push']) != ('check', [])
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

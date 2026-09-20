@@ -1,0 +1,17 @@
+REQ:        REQ-3.2
+SPEC:       05
+CHECK:      tools/receipt.py
+MUTATION:   stopped recording the observed result of the mutation in the receipt
+FILE:       tools/receipt.py
+TEST:       python tools/receipt_test.py ReceiptTool.test_writes_receipt_when_mutation_breaks_check
+--- output with the property broken (must show failure) ---
+FAIL: test_writes_receipt_when_mutation_breaks_check (__main__.ReceiptTool.test_writes_receipt_when_mutation_breaks_check)
+    self.assertIn("FAIL: threshold changed", text.split("--- output with the property broken")[1].split("--- output with the property restored")[0])
+AssertionError: 'FAIL: threshold changed' not found in ' (must show failure) ---\n(not recorded)\nexit 1\n'
+Ran 1 test in 0.121s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.064s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.2
+SPEC:       05
+CHECK:      engine/tools.py
+MUTATION:   made tool resolution ignore the search path a test places a stub on
+FILE:       engine/tools.py
+TEST:       python -m unittest selftest.test_tools.Stubbing.test_stub_shadows_tool_and_records_invocation
+--- output with the property broken (must show failure) ---
+FAIL: test_stub_shadows_tool_and_records_invocation (selftest.test_tools.Stubbing.test_stub_shadows_tool_and_records_invocation)
+AssertionError: False is not true
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.054s
+OK
+exit 0

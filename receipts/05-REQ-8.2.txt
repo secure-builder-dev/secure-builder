@@ -1,0 +1,18 @@
+REQ:        REQ-8.2
+SPEC:       05
+CHECK:      engine/sequence.py
+MUTATION:   made the sequence continue past a failed verification
+FILE:       engine/sequence.py
+TEST:       python -m unittest selftest.test_sequence.StopsAtFailure.test_nothing_after_a_failed_step_runs
+--- output with the property broken (must show failure) ---
+FAIL: test_nothing_after_a_failed_step_runs (selftest.test_sequence.StopsAtFailure.test_nothing_after_a_failed_step_runs)
+    self.assertEqual(ran, ["verify"], "the irreversible step must not run after a failed verification")
+AssertionError: Lists differ: ['verify', 'commit'] != ['verify']
++ ['verify'] : the irreversible step must not run after a failed verification
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

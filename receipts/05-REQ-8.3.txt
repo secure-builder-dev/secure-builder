@@ -1,0 +1,16 @@
+REQ:        REQ-8.3
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   made the audit stop flagging scripts that continue past a failed step
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_audit.Q7Q8.test_script_without_guard_flagged
+--- output with the property broken (must show failure) ---
+FAIL: test_script_without_guard_flagged (selftest.test_audit.Q7Q8.test_script_without_guard_flagged)
+AssertionError: Lists differ: [] != ['deploy.sh: no `set -e` and no per-step guard']
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

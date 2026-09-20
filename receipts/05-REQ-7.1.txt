@@ -1,0 +1,16 @@
+REQ:        REQ-7.1
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   exempted the harness's own tooling from the audit
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_audit.Q1Dormant.test_test_file_no_path_invokes_is_dormant
+--- output with the property broken (must show failure) ---
+FAIL: test_test_file_no_path_invokes_is_dormant (selftest.test_audit.Q1Dormant.test_test_file_no_path_invokes_is_dormant)
+AssertionError: Lists differ: [] != ['tools/thing_test.py: no CI workflow, script or hook invokes it']
+Ran 1 test in 0.005s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.005s
+OK
+exit 0

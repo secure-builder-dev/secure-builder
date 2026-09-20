@@ -1,0 +1,17 @@
+REQ:        REQ-3.1
+SPEC:       05
+CHECK:      tools/receipt.py
+MUTATION:   made the acceptance procedure run the test without actually breaking the property
+FILE:       tools/receipt.py
+TEST:       python tools/receipt_test.py ReceiptTool.test_writes_receipt_when_mutation_breaks_check
+--- output with the property broken (must show failure) ---
+FAIL: test_writes_receipt_when_mutation_breaks_check (__main__.ReceiptTool.test_writes_receipt_when_mutation_breaks_check)
+AssertionError: False is not true : NOT WRITTEN: broken run exited 0 — the mutation did not break the check. Fix the test, not the code.
+  OK
+Ran 1 test in 0.067s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.062s
+OK
+exit 0

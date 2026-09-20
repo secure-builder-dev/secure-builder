@@ -1,0 +1,16 @@
+REQ:        REQ-4.2
+SPEC:       05
+CHECK:      engine/tools.py
+MUTATION:   collapsed every non-zero tool exit into 1, so a tool that fell over reads as a detection
+FILE:       engine/tools.py
+TEST:       python -m unittest selftest.test_tools.Stubbing.test_exit_code_is_exact_not_a_class
+--- output with the property broken (must show failure) ---
+FAIL: test_exit_code_is_exact_not_a_class (selftest.test_tools.Stubbing.test_exit_code_is_exact_not_a_class)
+AssertionError: 1 != 125 : 125 is 'the tool fell over', never 'detection'
+Ran 1 test in 0.056s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.100s
+OK
+exit 0

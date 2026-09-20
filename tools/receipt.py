@@ -44,7 +44,7 @@ def run(cmd):
 
 
 def make(spec, req, check, file, old, new, description, test_cmd):
-    if re.search(r"\b(delete|remove|rename|rm)\b", description, re.I):
+    if re.search(r"\b(delet|remov|renam|rm\b)", description, re.I):
         return f"refused: mutation description reads as a removal: {description!r}"
     path = ROOT / file
     original = path.read_bytes()

@@ -1,0 +1,16 @@
+REQ:        REQ-6.7
+SPEC:       05
+CHECK:      tools/progress.py
+MUTATION:   let v1.0 be reached with no release record of the integration tier at all
+FILE:       tools/progress.py
+TEST:       python tools/progress_test.py ProgressFixtures.test_missing_release_record_fails
+--- output with the property broken (must show failure) ---
+FAIL: test_missing_release_record_fails (__main__.ProgressFixtures.test_missing_release_record_fails)
+AssertionError: 0 == 0 : expected failure; verdict was: progress: v1.0 REACHED — 1 requirements done, all clauses satisfied
+Ran 1 test in 0.157s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.153s
+OK
+exit 0

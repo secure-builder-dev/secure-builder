@@ -6,7 +6,7 @@ import unittest
 from engine import net
 from engine.checks import no_network
 from engine.outcome import State
-from .helpers import tree
+from .helpers import ROOT, tree, write
 
 
 class Door(unittest.TestCase):
@@ -31,10 +31,23 @@ class Door(unittest.TestCase):
 
 class SelfScan(unittest.TestCase):
     def test_harness_source_is_clean(self):
+        o = no_network.run(ROOT, None)
+        self.assertIs(o.state, State.CLEAN, o.line())
+        self.assertRegex(o.line(), r"^\[no-network\] CLEAN: \d+ harness modules import no network library outside net\.py$")
+
+    def test_direct_import_in_harness_module_is_blocking(self):
         with tree() as t:
+            write(t, "engine/checks/__init__.py", "")
+            write(t, "engine/net.py", "import urllib.request" + chr(10))
+            write(t, "engine/sneaky.py", "import socket" + chr(10))
             o = no_network.run(t, None)
-            self.assertIs(o.state, State.CLEAN, o.line())
-            self.assertRegex(o.line(), r"^\[no-network\] CLEAN: \d+ harness modules import no network library outside net\.py$")
+            self.assertIs(o.state, State.FINDINGS)
+            self.assertTrue(o.blocking)
+            self.assertEqual(o.findings, ["engine/sneaky.py:1: import socket"])
+
+    def test_no_harness_tree_could_not_run(self):
+        with tree() as t:
+            self.assertIs(no_network.run(t, None).state, State.COULD_NOT_RUN)
 
     def test_forbidden_pattern_catches_direct_imports(self):
         for line in ("import socket", "from urllib import request", "import http.client", "import ssl"):

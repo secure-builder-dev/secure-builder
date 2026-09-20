@@ -1,0 +1,16 @@
+REQ:        REQ-6.4
+SPEC:       05
+CHECK:      engine/integration.py
+MUTATION:   let the integration tier record a pass when its tests failed
+FILE:       engine/integration.py
+TEST:       python -m unittest selftest.test_integration_tier.WithRuntime.test_failing_tier_recorded_as_failed
+--- output with the property broken (must show failure) ---
+FAIL: test_failing_tier_recorded_as_failed (selftest.test_integration_tier.WithRuntime.test_failing_tier_recorded_as_failed)
+AssertionError: 0 != 1
+Ran 1 test in 0.164s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.080s
+OK
+exit 0

@@ -11,8 +11,19 @@ FORBIDDEN = re.compile(r"^\s*(import|from)\s+(socket|urllib|http\.client|http\b|
 NAME = "no-network"
 
 
+def harness_tree(root):
+    """The harness source under root: the engine itself, or a placed copy."""
+    root = pathlib.Path(root)
+    for cand in (root / "engine", root / ".engine" / "harness" / "engine"):
+        if (cand / "checks" / "__init__.py").is_file():
+            return cand
+    return None
+
+
 def run(root, cfg):
-    here = pathlib.Path(__file__).resolve().parent.parent
+    here = harness_tree(root)
+    if here is None:
+        return Outcome.could_not_run(NAME, "no harness source tree found under the project root")
     hits = []
     scanned = 0
     for p in sorted(here.rglob("*.py")):

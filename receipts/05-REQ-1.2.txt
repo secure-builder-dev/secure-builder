@@ -1,0 +1,16 @@
+REQ:        REQ-1.2
+SPEC:       05
+CHECK:      tools/receipt.py
+MUTATION:   accepted a check on the evidence that its test passes, without the broken run failing
+FILE:       tools/receipt.py
+TEST:       python tools/receipt_test.py ReceiptTool.test_refuses_when_mutation_does_not_break_check
+--- output with the property broken (must show failure) ---
+FAIL: test_refuses_when_mutation_does_not_break_check (__main__.ReceiptTool.test_refuses_when_mutation_does_not_break_check)
+AssertionError: False is not true : wrote receipts\99-REQ-1.2.txt
+Ran 1 test in 0.045s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.042s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-3.3
+SPEC:       05
+CHECK:      tools/progress.py
+MUTATION:   let one receipt stand for a different requirement than the one it was written for
+FILE:       tools/progress.py
+TEST:       python tools/progress_test.py ProgressFixtures.test_receipt_for_wrong_requirement_fails
+--- output with the property broken (must show failure) ---
+FAIL: test_receipt_for_wrong_requirement_fails (__main__.ProgressFixtures.test_receipt_for_wrong_requirement_fails)
+AssertionError: 0 == 0 : expected failure; verdict was: progress: v1.0 REACHED — 1 requirements done, all clauses satisfied
+Ran 1 test in 0.106s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.130s
+OK
+exit 0

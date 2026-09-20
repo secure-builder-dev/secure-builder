@@ -1,0 +1,17 @@
+REQ:        REQ-10.1
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   dropped the eighth audit question
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_audit.Command.test_audit_reports_and_exits_zero
+--- output with the property broken (must show failure) ---
+FAIL: test_audit_reports_and_exits_zero (selftest.test_audit.Command.test_audit_reports_and_exits_zero)
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting '[audit] 8 external tools', found 0:
+Ran 1 test in 0.082s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.083s
+OK
+exit 0

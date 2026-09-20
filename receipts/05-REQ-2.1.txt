@@ -1,0 +1,16 @@
+REQ:        REQ-2.1
+SPEC:       05
+CHECK:      engine/audit.py
+MUTATION:   treated every check as having a negative fixture
+FILE:       engine/audit.py
+TEST:       python -m unittest selftest.test_audit.Q2NegativeFixtures.test_check_without_failing_test_is_reported
+--- output with the property broken (must show failure) ---
+FAIL: test_check_without_failing_test_is_reported (selftest.test_audit.Q2NegativeFixtures.test_check_without_failing_test_is_reported)
+AssertionError: Lists differ: [] != ["check 'alpha': no self-test exercises it against an input that makes it fail"]
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

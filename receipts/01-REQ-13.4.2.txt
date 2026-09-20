@@ -1,0 +1,16 @@
+REQ:        REQ-13.4.2
+SPEC:       01
+CHECK:      hooks/pre-commit.py
+MUTATION:   let a commit through while the check that demands a demonstrated failure is red
+FILE:       hooks/pre-commit.py
+TEST:       python tools/hooks_test.py HookRepo.test_red_check_refused
+--- output with the property broken (must show failure) ---
+FAIL: test_red_check_refused (__main__.HookRepo.test_red_check_refused)
+AssertionError: 0 != 1
+Ran 1 test in 0.386s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.295s
+OK
+exit 0

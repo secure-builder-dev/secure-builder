@@ -13,3 +13,5 @@ jobs:
           python-version: "3.12"
       - run: python -m engine check
       - run: python tools/progress_test.py
+      - run: python tools/receipt_test.py
+      - run: python tools/hooks_test.py

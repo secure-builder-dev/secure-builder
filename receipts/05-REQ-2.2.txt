@@ -1,0 +1,16 @@
+REQ:        REQ-2.2
+SPEC:       05
+CHECK:      hooks/pre-commit.py
+MUTATION:   made the pre-commit hook skip the check that catches a check committed without its fixture
+FILE:       hooks/pre-commit.py
+TEST:       python tools/hooks_test.py HookRepo.test_red_check_refused
+--- output with the property broken (must show failure) ---
+FAIL: test_red_check_refused (__main__.HookRepo.test_red_check_refused)
+AssertionError: 0 != 1
+Ran 1 test in 0.305s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.381s
+OK
+exit 0

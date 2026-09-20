@@ -333,6 +333,14 @@ class ProgressFixtures(unittest.TestCase):
         rc, _, verdict = self.run_progress("--drift-only")
         self.assertEqual((rc, verdict), (1, "drift-only: 1 row(s) claim done falsely"))
 
+    def test_header_text_inside_captured_output_does_not_split_sections(self):
+        quoted = GOOD_RECEIPT.replace(
+            "[check-one] FAIL threshold not enforced",
+            "[check-one] FAIL threshold not enforced (compare '--- output with the property restored' text)")
+        write(self.root, "receipts/01-REQ-1.1.txt", quoted)
+        rc, lines, verdict = self.run_progress()
+        self.assertEqual(rc, 0, "\n".join(lines))
+
     # --- helper ---
 
     def _set_row(self, status, impl, receipt, note):
@@ -343,3 +351,4 @@ class ProgressFixtures(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
+

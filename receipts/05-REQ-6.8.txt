@@ -1,0 +1,16 @@
+REQ:        REQ-6.8
+SPEC:       05
+CHECK:      engine/integration.py
+MUTATION:   let an integration tier that could not run exit as a pass
+FILE:       engine/integration.py
+TEST:       python -m unittest selftest.test_integration_tier.NoRuntime.test_records_not_verified_and_does_not_pass
+--- output with the property broken (must show failure) ---
+FAIL: test_records_not_verified_and_does_not_pass (selftest.test_integration_tier.NoRuntime.test_records_not_verified_and_does_not_pass)
+AssertionError: 0 != 2
+Ran 1 test in 0.031s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.030s
+OK
+exit 0

@@ -12,6 +12,7 @@ REGISTRY = [
     "config",
     "no_network",
     "divergence",
+    "negative_fixtures",
 ]
 
 

@@ -111,8 +111,11 @@ def check_receipt(root, row):
         if re.search(r"\b" + re.escape(bad), fields["MUTATION"], re.I):
             return (f"receipt {rpath} MUTATION reads as a removal ('{bad.strip()}'), "
                     "not a property-level alteration (spec 07 §2.2)")
-    b = text.find(BROKEN_HDR)
-    r = text.find(RESTORED_HDR)
+    # headers count only at the start of a line: captured output may quote them mid-line
+    mb = re.search("^" + re.escape(BROKEN_HDR), text, re.M)
+    mr = re.search("^" + re.escape(RESTORED_HDR), text, re.M)
+    b = mb.start() if mb else -1
+    r = mr.start() if mr else -1
     if b < 0 or r < 0:
         return f"receipt {rpath} lacks a broken and/or restored section"
     if r < b:

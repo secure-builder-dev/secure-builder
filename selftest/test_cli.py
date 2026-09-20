@@ -25,6 +25,15 @@ class T(unittest.TestCase):
 """
 
 
+ORDER_SUITE = """import unittest, pathlib
+class T(unittest.TestCase):
+    def test_a(self):
+        pathlib.Path(__file__).resolve().parent.parent.joinpath("order.log").open("a").write("a ")
+    def test_b(self):
+        pathlib.Path(__file__).resolve().parent.parent.joinpath("order.log").open("a").write("b ")
+"""
+
+
 class Registry(unittest.TestCase):
     def test_every_check_module_is_registered(self):
         here = pathlib.Path(checks.__file__).parent
@@ -40,8 +49,8 @@ class Check(unittest.TestCase):
     def test_uninitialized_tree_is_red_with_blocking_config_finding(self):
         with tree() as t:
             code, lines = cli(t, "check", "--json")
-            self.assertNotEqual(code, 0)
             self.assertTrue(find_line(lines, "[config] FINDINGS BLOCKING").endswith("no control baseline is defined"))
+            self.assertEqual(code, 2, "blocking config finding plus an absent harness suite exits 2")
 
     def test_initialized_tree_reports_mode_and_version(self):
         with tree() as t:
@@ -67,7 +76,7 @@ class Check(unittest.TestCase):
             code, lines = cli(t, "check")
             find_line(lines, "[selftest] 0 passed, 0 failed, 0 skipped")
             find_line(lines, "[selftest] COULD NOT RUN: zero test cases discovered")
-            self.assertNotEqual(code, 0)
+            self.assertEqual(code, 2)
 
 
 class SelfTestWiring(unittest.TestCase):
@@ -100,6 +109,20 @@ class SelfTestWiring(unittest.TestCase):
             self.assertEqual(code, 0)
 
 
+class OrderIndependence(unittest.TestCase):
+    def test_reverse_flag_runs_suite_backwards(self):
+        with tree() as t:
+            write_config(t)
+            write(t, "selftest/__init__.py", "")
+            write(t, "selftest/test_fx.py", ORDER_SUITE)
+            distribute.update(t)
+            cli_sub(t, "check")
+            self.assertEqual((t / "order.log").read_text().split(), ["a", "b"])
+            (t / "order.log").unlink()
+            cli_sub(t, "check", "--reverse-tests")
+            self.assertEqual((t / "order.log").read_text().split(), ["b", "a"])
+
+
 class FailureOutput(unittest.TestCase):
     def test_find_line_reports_observed_lines(self):
         with self.assertRaises(AssertionError) as cm:
@@ -123,3 +146,13 @@ class Init(unittest.TestCase):
         with tree() as t:
             code, lines = cli(t, "init", "track=web")
             self.assertEqual(code, 2)
+
+
+class SameCommandEverywhere(unittest.TestCase):
+    def test_ci_runs_the_single_check_command(self):
+        from .helpers import ROOT
+        lines = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8").splitlines()
+        self.assertIn("      - run: python -m engine check", lines)
+
+    def test_find_line_matches_line_start_only(self):
+        self.assertEqual(find_line(["x [a] y", "[a] z"], "[a]"), "[a] z")

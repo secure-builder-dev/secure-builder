@@ -1,0 +1,16 @@
+REQ:        REQ-5.1
+SPEC:       05
+CHECK:      selftest/stubs.py
+MUTATION:   gave a self-test helper a direct network import
+FILE:       selftest/stubs.py
+TEST:       python -m unittest selftest.test_integration_tier.Separation.test_hermetic_tier_imports_no_runtime_or_network
+--- output with the property broken (must show failure) ---
+FAIL: test_hermetic_tier_imports_no_runtime_or_network (selftest.test_integration_tier.Separation.test_hermetic_tier_imports_no_runtime_or_network)
+AssertionError: <re.Match object; span=(0, 13), match='import socket'> is not None : stubs.py:13: import socket
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

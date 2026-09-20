@@ -1,0 +1,16 @@
+REQ:        REQ-9.5
+SPEC:       05
+CHECK:      engine/config.py
+MUTATION:   broke the web-shape path, which the per-shape coverage must catch
+FILE:       engine/config.py
+TEST:       python -m unittest selftest.test_config.Axes.test_web_sets_app_type_na
+--- output with the property broken (must show failure) ---
+FAIL: test_web_sets_app_type_na (selftest.test_config.Axes.test_web_sets_app_type_na)
+AssertionError: 'unset' != 'n/a'
+Ran 1 test in 0.003s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.002s
+OK
+exit 0

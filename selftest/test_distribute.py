@@ -271,17 +271,17 @@ class InstructionFileSplit(unittest.TestCase):
         self.assertEqual(len(line), 1, "the seeded instruction file must import the rulebook exactly once")
         path = line[0].split(": ", 1)[1].strip()
         self.assertEqual(own.class_of(path), "engine-owned", f"{path} must be an engine-owned path")
-        self.assertIn("## Project rules", text)
+        self.assertIn("## Project rules", text.splitlines())
 
     def test_instruction_file_states_precedence_and_that_it_is_not_a_control(self):
-        text = self.TEMPLATE.read_text(encoding="utf-8")
-        self.assertIn("wins over this file", text)
-        self.assertIn("no enforcement", text)
+        lines = self.TEMPLATE.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len([l for l in lines if "wins over this file" in l]), 1)
+        self.assertEqual(len([l for l in lines if "no enforcement" in l]), 1)
 
     def test_rulebook_states_precedence_and_that_it_is_not_a_control(self):
-        text = self.RULES_SRC.read_text(encoding="utf-8")
-        self.assertIn("## Precedence", text)
-        self.assertIn("carries no enforcement", text)
+        lines = self.RULES_SRC.read_text(encoding="utf-8").splitlines()
+        self.assertIn("## Precedence", lines)
+        self.assertEqual(len([l for l in lines if "carries no enforcement" in l]), 1)
 
     def test_rulebook_uses_no_references_of_its_own(self):
         for l in self.RULES_SRC.read_text(encoding="utf-8").splitlines():
@@ -289,10 +289,10 @@ class InstructionFileSplit(unittest.TestCase):
                              f"an included file must not reference further files: {l!r}")
 
     def test_rulebook_is_short_and_states_only_the_three_things(self):
-        text = self.RULES_SRC.read_text(encoding="utf-8")
-        self.assertLess(len(text.splitlines()), 120, "the always-loaded rules must stay short")
+        lines = self.RULES_SRC.read_text(encoding="utf-8").splitlines()
+        self.assertLess(len(lines), 120, "the always-loaded rules must stay short")
         for h in ("## Non-negotiables", "## Where things live", "## Lifecycle"):
-            self.assertIn(h, text)
+            self.assertIn(h, lines)
 
     def test_changes_note_placed_engine_owned(self):
         with tree() as t:

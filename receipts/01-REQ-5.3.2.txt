@@ -1,0 +1,16 @@
+REQ:        REQ-5.3.2
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   mutated a decision function with a no-op instead of a permissive constant
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Shapes.test_mutations_by_shape_python
+--- output with the property broken (must show failure) ---
+FAIL: test_mutations_by_shape_python (selftest.test_manifest.Shapes.test_mutations_by_shape_python)
+AssertionError: 'def can_delete(user, record):\n    return True  # engine:mutation' not found in 'def require_auth(request, next):\n    """Reject requests without a valid token."""\n    if not request.get(\'token\'):\n        raise PermissionError(\'no token\')\n    return next(request)\n\ndef can_delete(user, record):\n    return None  # engine:mutation\n    return user[\'id\'] == record[\'owner\']\n\ndef scope_to_owner(query, user):\n    return [r for r in query if r[\'owner\'] == user[\'id\']]\n'
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.001s
+OK
+exit 0

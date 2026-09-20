@@ -1,0 +1,19 @@
+REQ:        REQ-5.3.1
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   recorded every mutation as having failed the suite regardless of the suite's result
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Mutation.test_control_whose_mutation_leaves_suite_green_is_a_finding
+--- output with the property broken (must show failure) ---
+FAIL: test_control_whose_mutation_leaves_suite_green_is_a_finding (selftest.test_manifest.Mutation.test_control_whose_mutation_leaves_suite_green_is_a_finding)
+    self.assertEqual(summary["state"], "failed")
+AssertionError: 'passed' != 'failed'
+- passed
++ failed
+Ran 1 test in 0.144s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.144s
+OK
+exit 0

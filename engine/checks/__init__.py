@@ -26,6 +26,7 @@ REGISTRY = [
     "record_integrity",
     "run_attestation",
     "findings_register",
+    "control_manifest",
 ]
 
 

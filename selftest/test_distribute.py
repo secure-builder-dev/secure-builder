@@ -29,6 +29,8 @@ class Classes(unittest.TestCase):
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/rules/RULES.md"), "engine-owned")
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/agents/x.md"), "engine-owned")
         self.assertEqual(own.class_of("AGENTS.md"), "seed-if-absent")
+        self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/control-manifest.json"), "seed-if-absent",
+                         "the control manifest is seeded once and never overwritten by tooling")
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/records/gate-log.md"), "seed-if-absent")
         self.assertEqual(own.class_of("plans/x.md"), "project-owned")
         self.assertIsNone(own.class_of("something/else"))

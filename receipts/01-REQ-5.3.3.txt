@@ -1,0 +1,17 @@
+REQ:        REQ-5.3.3
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   proceeded to mutate against an already-failing suite
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Mutation.test_red_baseline_aborts
+--- output with the property broken (must show failure) ---
+FAIL: test_red_baseline_aborts (selftest.test_manifest.Mutation.test_red_baseline_aborts)
+AssertionError: 'passed' != 'red-baseline'
+- passed
+Ran 1 test in 0.176s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.150s
+OK
+exit 0

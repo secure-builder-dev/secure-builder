@@ -1,0 +1,19 @@
+REQ:        REQ-5.3.4
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   left the mutated file in place after the run
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Mutation.test_every_control_mutated_suite_must_fail_and_files_restored
+--- output with the property broken (must show failure) ---
+FAIL: test_every_control_mutated_suite_must_fail_and_files_restored (selftest.test_manifest.Mutation.test_every_control_mutated_suite_must_fail_and_files_restored)
+    self.assertEqual(summary["state"], "passed")
+AssertionError: 'failed' != 'passed'
+- failed
++ passed
+Ran 1 test in 0.140s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.108s
+OK
+exit 0

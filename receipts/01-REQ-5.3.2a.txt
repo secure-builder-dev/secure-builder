@@ -1,0 +1,20 @@
+REQ:        REQ-5.3.2a
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   mutated only the first branch of a multi-branch control
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Mutation.test_each_branch_mutated_independently
+--- output with the property broken (must show failure) ---
+FAIL: test_each_branch_mutated_independently (selftest.test_manifest.Mutation.test_each_branch_mutated_independently)
+    self.assertEqual([(r["branch"], r["verdict"]) for r in summary["results"]], [("owner", "suite-failed"), ("raise", "suite-failed")])
+AssertionError: Lists differ: [('owner', 'suite-failed')] != [('owner', 'suite-failed'), ('raise', 'suite-failed')]
+('raise', 'suite-failed')
+- [('owner', 'suite-failed')]
++ [('owner', 'suite-failed'), ('raise', 'suite-failed')]
+Ran 1 test in 0.120s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.174s
+OK
+exit 0

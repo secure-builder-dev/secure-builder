@@ -1,0 +1,20 @@
+REQ:        REQ-7.4.2
+SPEC:       01
+CHECK:      engine/mutate.py
+MUTATION:   mutated only the first declared control
+FILE:       engine/mutate.py
+TEST:       python -m unittest selftest.test_manifest.Mutation.test_every_control_mutated_suite_must_fail_and_files_restored
+--- output with the property broken (must show failure) ---
+FAIL: test_every_control_mutated_suite_must_fail_and_files_restored (selftest.test_manifest.Mutation.test_every_control_mutated_suite_must_fail_and_files_restored)
+    self.assertEqual([r["verdict"] for r in summary["results"]], ["suite-failed", "suite-failed"])
+AssertionError: Lists differ: ['suite-failed'] != ['suite-failed', 'suite-failed']
+'suite-failed'
+- ['suite-failed']
++ ['suite-failed', 'suite-failed']
+Ran 1 test in 0.209s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.151s
+OK
+exit 0

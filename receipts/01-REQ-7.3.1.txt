@@ -1,0 +1,18 @@
+REQ:        REQ-7.3.1
+SPEC:       01
+CHECK:      engine/manifest.py
+MUTATION:   let a control with no production call site verify
+FILE:       engine/manifest.py
+TEST:       python -m unittest selftest.test_manifest.Verify.test_lost_call_site_fails
+--- output with the property broken (must show failure) ---
+FAIL: test_lost_call_site_fails (selftest.test_manifest.Verify.test_lost_call_site_fails)
+    self.assertEqual(state, "failed")
+AssertionError: 'resolved' != 'failed'
++ failed
+Ran 1 test in 0.274s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.308s
+OK
+exit 0

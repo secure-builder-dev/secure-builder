@@ -32,6 +32,7 @@ OBLIGATIONS = ("reconciliation-obligations", 1, [
     "id", "opened", "unit", "range", "deferred_checks", "declared_by", "reason", "status", "discharged_by_run", "side",
 ])
 DIVERGENCE = ("high-side-changes", 1, ["date", "commit", "what", "why_not_low_side", "authorized_by", "backport_status", "side"])
+MUTATION = ("mutation-results", 1, ["date", "control", "branch", "mutation", "baseline", "result", "side"])
 INGEST = ("ingest-records", 1, ["date", "bundle", "production_date", "arrival_date", "hash_result", "modified_in_transit", "operator", "side"])
 
 REVIEWER_CLASSES = ("human", "automated", "automated-with-human-review")
@@ -39,7 +40,7 @@ VERDICTS = ("pass", "fail", "advisory", "field-pass", "field-fail", "superseded"
 MODES = ("normal", "field")
 UNKNOWN = "unknown"
 
-ALL = {s[0]: s for s in (GATE_LOG, FINDINGS_A, FINDINGS_B, GOVERNANCE, CARRIED, DELTAS, OBLIGATIONS, DIVERGENCE, INGEST)}
+ALL = {s[0]: s for s in (GATE_LOG, FINDINGS_A, FINDINGS_B, GOVERNANCE, CARRIED, DELTAS, OBLIGATIONS, DIVERGENCE, INGEST, MUTATION)}
 
 # Which file carries which schema(s), relative to the project root.
 FILES = {
@@ -51,6 +52,7 @@ FILES = {
     ".engine/records/reconciliation-obligations.md": ["reconciliation-obligations"],
     ".engine/records/high-side-changes.md": ["high-side-changes"],
     ".engine/records/ingest-records.md": ["ingest-records"],
+    ".engine/records/mutation-results.md": ["mutation-results"],
 }
 
 

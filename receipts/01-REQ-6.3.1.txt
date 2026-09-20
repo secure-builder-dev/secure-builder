@@ -1,0 +1,16 @@
+REQ:        REQ-6.3.1
+SPEC:       01
+CHECK:      engine/controlshape.py
+MUTATION:   made the completeness-review trigger ignore the diff's changed lines
+FILE:       engine/controlshape.py
+TEST:       python -m unittest selftest.test_manifest.ControlShape.test_diff_is_control_shaped_on_added_lines_or_paths
+--- output with the property broken (must show failure) ---
+FAIL: test_diff_is_control_shaped_on_added_lines_or_paths (selftest.test_manifest.ControlShape.test_diff_is_control_shaped_on_added_lines_or_paths)
+AssertionError: Lists differ: [] != ['authorization']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

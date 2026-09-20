@@ -39,6 +39,7 @@ SEED_IF_ABSENT = {
     f"{ENGINE_DIR}/records/reconciliation-obligations.md": "engine/dist/templates/records/reconciliation-obligations.md",
     f"{ENGINE_DIR}/records/high-side-changes.md": "engine/dist/templates/records/high-side-changes.md",
     f"{ENGINE_DIR}/records/ingest-records.md": "engine/dist/templates/records/ingest-records.md",
+    f"{ENGINE_DIR}/records/mutation-results.md": "engine/dist/templates/records/mutation-results.md",
     f"{ENGINE_DIR}/records/README.md": "engine/dist/templates/records/README.md",
 }
 

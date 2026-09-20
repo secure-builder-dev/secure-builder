@@ -20,6 +20,8 @@
   accept-directive KEY "reason" "by"   accept a risky configuration directive into the baseline
   record <kind> k=v ...   append a record row: gate-log | finding | risk | changelog | started | supersede | rotate
   records             summarize the record set
+  manifest            verify the control manifest and print recomputed call sites
+  mutate              break every declared control, run the project's suite, restore (spec 01 §5.3)
 """
 import io
 import json
@@ -314,6 +316,50 @@ def cmd_records(root, argv):
     return 0
 
 
+def cmd_manifest(root, argv):
+    from . import manifest
+    try:
+        state, results, structural = manifest.verify(root)
+    except manifest.ManifestError as e:
+        print(f"manifest: COULD NOT RUN — {e}")
+        return 2
+    print(f"manifest: {state}")
+    for s_ in structural:
+        print(f"  - {s_}")
+    for r in results:
+        sites = r["facts"].get("call_sites", [])
+        print(f"  {r['id']} [{r['status']}{' / ' + r['counterpart'] if r['counterpart'] else ''}]: "
+              f"{len(sites)} call site(s) recomputed, {len(r['facts'].get('tests', []))} test(s)"
+              + (f"; problems: {'; '.join(r['problems'])}" if r["problems"] else ""))
+        for site in sites[:5]:
+            print(f"      called at {site}")
+    return {"resolved": 0, "template-only": 0}.get(state, 1)
+
+
+def cmd_mutate(root, argv):
+    from . import manifest, mutate
+    try:
+        cfg = cfgmod.load(root)
+        data = manifest.load(root)
+    except (cfgmod.ConfigError, manifest.ManifestError) as e:
+        print(f"mutate: COULD NOT RUN — {e}")
+        return 2
+    controls = manifest.real_controls(data)
+    if not controls:
+        print("mutate: NOTHING TO CHECK YET — the manifest declares no controls")
+        return 0
+    summary = mutate.run(root, cfg, controls)
+    if "results" not in summary:
+        print(f"mutate: COULD NOT RUN — {summary['reason']}")
+        return 2
+    for r in summary["results"]:
+        print(f"  {r['control']} [{r['branch']}]: {r['verdict']} — {r['mutation']}")
+    bad = [r for r in summary["results"] if r["verdict"] != "suite-failed"]
+    print(f"mutate: {'FAIL' if bad else 'PASS'} — {len(summary['results']) - len(bad)} mutation(s) failed the suite, "
+          f"{len(bad)} did not (a control whose mutation leaves the suite green is a blocking finding)")
+    return 1 if bad else 0
+
+
 def cmd_ownership(root, argv):
     for name, table in ownership.classes():
         print(f"## {name}")
@@ -327,7 +373,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership,
             "audit": cmd_audit, "integration": cmd_integration, "coverage": cmd_coverage,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
-            "record": cmd_record, "records": cmd_records}
+            "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate}
 
 
 def main(argv=None):

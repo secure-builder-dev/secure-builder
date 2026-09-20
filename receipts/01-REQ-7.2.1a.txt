@@ -1,0 +1,16 @@
+REQ:        REQ-7.2.1a
+SPEC:       01
+CHECK:      engine/manifest.py
+MUTATION:   accepted a manifest without the scope statement
+FILE:       engine/manifest.py
+TEST:       python -m unittest selftest.test_manifest.Structure.test_scope_statement_required_verbatim
+--- output with the property broken (must show failure) ---
+FAIL: test_scope_statement_required_verbatim (selftest.test_manifest.Structure.test_scope_statement_required_verbatim)
+AssertionError: 'scope statement is missing or differs from the required text' not found in []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

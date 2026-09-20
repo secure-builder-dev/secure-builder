@@ -1,0 +1,16 @@
+REQ:        REQ-7.2.2
+SPEC:       01
+CHECK:      engine/ownership.py
+MUTATION:   took the control manifest out of the seed-if-absent class so it is no longer a project-owned, seeded-once file
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_class_of
+--- output with the property broken (must show failure) ---
+FAIL: test_class_of (selftest.test_distribute.Classes.test_class_of)
+AssertionError: None != 'seed-if-absent' : the control manifest is seeded once and never overwritten by tooling
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-7.5.2
+SPEC:       01
+CHECK:      engine/controlshape.py
+MUTATION:   narrowed the one control-shape definition so scoping code is no longer recognised
+FILE:       engine/controlshape.py
+TEST:       python -m unittest selftest.test_manifest.ControlShape.test_control_symbols_in_file
+--- output with the property broken (must show failure) ---
+FAIL: test_control_symbols_in_file (selftest.test_manifest.ControlShape.test_control_symbols_in_file)
+AssertionError: Lists differ: [('re[55 chars]n_delete', ['authorization'])] != [('re[55 chars]n_delete', ['authorization']), ('scope_to_owner', ['scoping'])]
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

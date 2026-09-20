@@ -1,0 +1,16 @@
+REQ:        REQ-7.2.1
+SPEC:       01
+CHECK:      engine/manifest.py
+MUTATION:   stopped requiring a proving-test pattern on each manifest entry
+FILE:       engine/manifest.py
+TEST:       python -m unittest selftest.test_manifest.StructureMore.test_entry_requires_every_field
+--- output with the property broken (must show failure) ---
+FAIL: test_entry_requires_every_field (selftest.test_manifest.StructureMore.test_entry_requires_every_field)
+AssertionError: "C-1: missing 'test_pattern'" not found in []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

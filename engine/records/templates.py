@@ -62,6 +62,12 @@ def ingest_records():
             f"hash result, and whether the content was modified in transit.\n\n{_table(sch.INGEST)}")
 
 
+def mutation_results():
+    return (f"# Mutation results\n\n{HEADER}\n\nDeveloper security testing evidence: every declared control broken on purpose,\n"
+            f"one row per control and branch, with whether the project's suite failed. A row whose\n"
+            f"result is not suite-failed is a control whose tests do not depend on it.\n\n{_table(sch.MUTATION)}")
+
+
 RENDERERS = {
     "gate-log.md": gate_log,
     "findings-register.md": findings_register,
@@ -71,6 +77,7 @@ RENDERERS = {
     "reconciliation-obligations.md": reconciliation_obligations,
     "high-side-changes.md": high_side_changes,
     "ingest-records.md": ingest_records,
+    "mutation-results.md": mutation_results,
 }
 
 

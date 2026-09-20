@@ -1,0 +1,16 @@
+REQ:        REQ-7.2.5
+SPEC:       01
+CHECK:      engine/manifest.py
+MUTATION:   let a hybrid entry omit its shared-responsibility counterpart
+FILE:       engine/manifest.py
+TEST:       python -m unittest selftest.test_manifest.Structure.test_hybrid_requires_counterpart
+--- output with the property broken (must show failure) ---
+FAIL: test_hybrid_requires_counterpart (selftest.test_manifest.Structure.test_hybrid_requires_counterpart)
+AssertionError: 'C-1: a hybrid control names its shared-responsibility counterpart' not found in []
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-7.3.2
+SPEC:       01
+CHECK:      engine/manifest.py
+MUTATION:   counted a mention in a comment as a call site
+FILE:       engine/manifest.py
+TEST:       python -m unittest selftest.test_manifest.Recomputation.test_call_sites_recomputed_direct_indirect_not_comment_not_test
+--- output with the property broken (must show failure) ---
+FAIL: test_call_sites_recomputed_direct_indirect_not_comment_not_test (selftest.test_manifest.Recomputation.test_call_sites_recomputed_direct_indirect_not_comment_not_test)
+AssertionError: Lists differ: ['src/app.py:4', 'src/app.py:5'] != ['src/app.py:5']
+Ran 1 test in 0.139s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.164s
+OK
+exit 0

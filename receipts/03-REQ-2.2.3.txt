@@ -1,0 +1,16 @@
+REQ:        REQ-2.2.3
+SPEC:       03
+CHECK:      engine/handoff.py
+MUTATION:   put something not derivable from version control or configuration into the handoff
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_contains_exactly_the_contract_and_no_free_text
+--- output with the property broken (must show failure) ---
+FAIL: test_contains_exactly_the_contract_and_no_free_text (selftest.test_gate.Handoff.test_contains_exactly_the_contract_and_no_free_text)
+AssertionError: Items in the first set but not the second:
+Ran 1 test in 0.620s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.470s
+OK
+exit 0

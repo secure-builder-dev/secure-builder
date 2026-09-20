@@ -285,6 +285,10 @@ class InstructionFileSplit(unittest.TestCase):
         self.assertIn("## Precedence", lines)
         self.assertEqual(len([l for l in lines if "carries no enforcement" in l]), 1)
 
+    def test_rulebook_forbids_reading_environment_secrets(self):
+        lines = self.RULES_SRC.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len([l for l in lines if "never read or reproduce environment secrets" in l]), 1)
+
     def test_rulebook_uses_no_references_of_its_own(self):
         for l in self.RULES_SRC.read_text(encoding="utf-8").splitlines():
             self.assertFalse(l.startswith(("Read and follow:", "@", "import ")),

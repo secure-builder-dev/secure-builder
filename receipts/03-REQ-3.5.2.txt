@@ -1,0 +1,16 @@
+REQ:        REQ-3.5.2
+SPEC:       03
+CHECK:      engine/gate.py
+MUTATION:   made a mid-construction plan change a note instead of stopping construction
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.SecurityMechanical.test_plan_edited_during_construction_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_plan_edited_during_construction_is_blocking (selftest.test_gate.SecurityMechanical.test_plan_edited_during_construction_is_blocking)
+AssertionError: False is not true
+Ran 1 test in 0.465s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.516s
+OK
+exit 0

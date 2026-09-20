@@ -1,0 +1,16 @@
+REQ:        REQ-2.2.2
+SPEC:       03
+CHECK:      engine/__main__.py
+MUTATION:   replaced the separate process with an instruction to disregard prior context
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_review_launches_a_fresh_process_with_only_the_handoff
+--- output with the property broken (must show failure) ---
+FAIL: test_review_launches_a_fresh_process_with_only_the_handoff (selftest.test_gate.Handoff.test_review_launches_a_fresh_process_with_only_the_handoff)
+AssertionError: Lists differ: ['rev[14 chars]resh disregard-prior-context:C:\\Users\\cjhou\[74 chars].md'] != ['rev[14 chars]resh C:\\Users\\cjhou\\AppData\\Local\\Temp\\e[50 chars].md']
+Ran 1 test in 0.711s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.692s
+OK
+exit 0

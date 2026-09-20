@@ -1,0 +1,16 @@
+REQ:        REQ-10.6.3
+SPEC:       04
+CHECK:      engine/gate.py
+MUTATION:   reported the unapproved dependency without naming the lead time
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.SecurityMechanical.test_dependency_needs_approval_on_target
+--- output with the property broken (must show failure) ---
+FAIL: test_dependency_needs_approval_on_target (selftest.test_gate.SecurityMechanical.test_dependency_needs_approval_on_target)
+AssertionError: 'lead time to approval and transfer: 10-15 working days' not found in 'left-pad: not recorded in the dependency policy'
+Ran 1 test in 0.407s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.352s
+OK
+exit 0

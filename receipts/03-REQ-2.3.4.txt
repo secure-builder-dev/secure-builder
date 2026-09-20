@@ -1,0 +1,16 @@
+REQ:        REQ-2.3.4
+SPEC:       03
+CHECK:      engine/handoff.py
+MUTATION:   made a checkpoint indistinguishable from a gate handoff
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_checkpoint_is_advisory
+--- output with the property broken (must show failure) ---
+FAIL: test_checkpoint_is_advisory (selftest.test_gate.Handoff.test_checkpoint_is_advisory)
+AssertionError: 'gate handoff' != 'advisory checkpoint'
+Ran 1 test in 0.614s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.681s
+OK
+exit 0

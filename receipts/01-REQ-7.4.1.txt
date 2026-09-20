@@ -1,0 +1,16 @@
+REQ:        REQ-7.4.1
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   let a control-shaped diff through with no manifest entry in the same change
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.SecurityMechanical.test_control_shaped_diff_needs_manifest_entry_in_same_change
+--- output with the property broken (must show failure) ---
+FAIL: test_control_shaped_diff_needs_manifest_entry_in_same_change (selftest.test_gate.SecurityMechanical.test_control_shaped_diff_needs_manifest_entry_in_same_change)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.485s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.406s
+OK
+exit 0

@@ -22,6 +22,11 @@
   records             summarize the record set
   manifest            verify the control manifest and print recomputed call sites
   mutate              break every declared control, run the project's suite, restore (spec 01 §5.3)
+  handoff [--checkpoint] [--scan-impossible "reason"]   generate the review handoff; writes the started marker
+  gate prepare|submit|no-model ...   run the gates' mechanical parts; record a verdict block; or record a no-model run
+  review unit=<u> run=<n>   launch the reviewer as a fresh process whose only input is the handoff (spec 03 §2.2)
+  status              orientation: position and exactly one next action (always exits 0)
+  item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
 import io
 import json
@@ -360,6 +365,169 @@ def cmd_mutate(root, argv):
     return 1 if bad else 0
 
 
+def cmd_handoff(root, argv):
+    from . import handoff
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"handoff: COULD NOT RUN — {e}")
+        return 2
+    reason = ""
+    if "--scan-impossible" in argv:
+        i = argv.index("--scan-impossible")
+        reason = argv[i + 1] if i + 1 < len(argv) else ""
+    try:
+        doc = handoff.generate(root, cfg, checkpoint="--checkpoint" in argv, scan_impossible="--scan-impossible" in argv,
+                               scan_impossible_reason=reason)
+    except handoff.HandoffRefused as e:
+        print(f"handoff: REFUSED — {e}")
+        return 1
+    p = handoff.write(root, doc)
+    print(handoff.render(doc))
+    print(f"handoff: written to {p.relative_to(root).as_posix()}")
+    return 0
+
+
+def cmd_gate(root, argv):
+    from . import gate, gitutil
+    if not argv:
+        print("gate prepare unit=<u> run=<n> base=<sha> head=<sha> | gate submit unit= run= file=<verdict.json> attested_by= | gate no-model unit= run= attested_by=")
+        return 2
+    sub, kv = argv[0], _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError as e:
+        print(f"gate: COULD NOT RUN — {e}")
+        return 2
+    if sub == "prepare":
+        unit, run = kv["unit"], kv["run"]
+        base, head = gitutil.rev(root, kv["base"]), gitutil.rev(root, kv.get("head", "HEAD"))
+        if not base or not head:
+            print("gate: COULD NOT RUN — base/head do not resolve to commits")
+            return 2
+        q, s_, ctx = gate.prepare(root, cfg, unit, run, base, head)
+        print(f"gate: quality gate on {base[:12]}..{head[:12]}")
+        for o in q:
+            for line in o.lines():
+                print("  " + line)
+        if not any(o.failed for o in q):
+            print("gate: quality gate PASSED; security gate mechanical part:")
+            for o in s_:
+                for line in o.lines():
+                    print("  " + line)
+            print(f"gate: checklist for the reviewer written to .engine/local/gate-{unit}-{run}-checklist.md "
+                  f"(version {ctx['checklist_version']}; control-shaped: {'yes' if ctx['control_shaped'] else 'no'})")
+            return 1 if any(o.failed for o in s_) else 0
+        print("gate: quality gate FAILED; the security gate does not run on code whose tests do not pass (REQ-6.1.4)")
+        return 1
+    if sub == "submit":
+        try:
+            v = json.loads(pathlib.Path(kv["file"]).read_text(encoding="utf-8"))
+        except (KeyError, OSError, ValueError) as e:
+            print(f"gate: COULD NOT RUN — verdict file unreadable ({e})")
+            return 2
+        line, probs = gate.submit(root, cfg, kv["unit"], kv["run"], v, kv.get("attested_by", ""))
+        if probs:
+            print("gate: verdict REFUSED")
+            for p in probs:
+                print("  - " + p)
+            return 1
+        print(f"gate: recorded {line}")
+        return 0
+    if sub == "no-model":
+        line, probs = gate.no_model(root, cfg, kv["unit"], kv["run"], kv.get("attested_by", ""))
+        if probs:
+            print("gate: REFUSED — " + "; ".join(probs))
+            return 1
+        print(f"gate: recorded advisory row (no model; checklist not applied): {line}")
+        return 0
+    print(f"gate: unknown subcommand {sub!r}")
+    return 2
+
+
+def cmd_review(root, argv):
+    """Structural isolation: a new process, started from nothing, handed the path of the
+    generated handoff as its only argument. The reviewer command comes from the environment
+    (ENGINE_REVIEWER_CMD), never from the repository; the construction conversation is
+    not available to the new process by construction."""
+    import os
+    import shlex
+    import subprocess
+    kv = _kv(argv)
+    p = pathlib.Path(root) / ".engine" / "local" / f"handoff-{kv.get('unit', '')}-{kv.get('run', '')}.md"
+    if not p.is_file():
+        print(f"review: COULD NOT RUN — no handoff at {p.relative_to(root).as_posix()}; generate it first")
+        return 2
+    cmd = os.environ.get("ENGINE_REVIEWER_CMD", "")
+    if not cmd.strip():
+        print("review: COULD NOT RUN — ENGINE_REVIEWER_CMD is not set; it names the reviewer CLI and lives outside the repository")
+        return 2
+    from . import tools
+    args = shlex.split(cmd) + [str(p)]   # the handoff artifact is the only input
+    exe = tools.resolve(args[0])
+    if not exe:
+        print(f"review: COULD NOT RUN — reviewer '{args[0]}' is not on the search path")
+        return 2
+    args[0] = exe
+    env = {k: v for k, v in os.environ.items() if not k.startswith("ENGINE_SESSION")}
+    res = subprocess.run(args, cwd=str(root), env=env)
+    print(f"review: reviewer process exited {res.returncode}; submit its verdict block with `gate submit`")
+    return res.returncode
+
+
+def cmd_status(root, argv):
+    from . import lifecycle
+    try:
+        cfg = cfgmod.load(root)
+    except cfgmod.ConfigError:
+        cfg = None
+    for line in lifecycle.orient(root, cfg):
+        print(line)
+    return 0
+
+
+def cmd_item(root, argv):
+    from . import lifecycle
+    if not argv:
+        print("item new id=<id> unit=<unit> done_when=\"...\" [depends_on=a,b] | item claim|review|done id=<id> | unit new|building|review|merged id=<unit>")
+        return 2
+    sub, kv = argv[0], _kv(argv[1:])
+    try:
+        if sub == "new":
+            deps = [d for d in kv.get("depends_on", "").split(",") if d]
+            p = lifecycle.create_item(root, kv["id"], kv["unit"], kv.get("done_when", ""), deps)
+            print(f"item: created {p.relative_to(root).as_posix()}")
+        elif sub in ("claim", "review", "done"):
+            st = {"claim": "claimed", "review": "in review", "done": "done"}[sub]
+            print(f"item: {kv['id']} -> {lifecycle.transition_item(root, kv['id'], st)}")
+        else:
+            print(f"item: unknown subcommand {sub!r}")
+            return 2
+    except (ValueError, KeyError) as e:
+        print(f"item: REFUSED — {e}")
+        return 1
+    return 0
+
+
+def cmd_unit(root, argv):
+    from . import lifecycle
+    sub, kv = (argv[0] if argv else ""), _kv(argv[1:])
+    try:
+        if sub == "new":
+            p = lifecycle.create_unit(root, kv["id"])
+            print(f"unit: created {p.relative_to(root).as_posix()}")
+        elif sub in ("building", "review", "merged"):
+            st = {"building": "building", "review": "in review", "merged": "merged"}[sub]
+            print(f"unit: {kv['id']} -> {lifecycle.transition_unit(root, kv['id'], st)}")
+        else:
+            print("unit new|building|review|merged id=<unit>")
+            return 2
+    except (ValueError, KeyError) as e:
+        print(f"unit: REFUSED — {e}")
+        return 1
+    return 0
+
+
 def cmd_ownership(root, argv):
     for name, table in ownership.classes():
         print(f"## {name}")
@@ -373,7 +541,9 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership,
             "audit": cmd_audit, "integration": cmd_integration, "coverage": cmd_coverage,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
-            "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate}
+            "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
+            "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
+            "review": cmd_review}
 
 
 def main(argv=None):

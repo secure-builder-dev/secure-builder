@@ -1,0 +1,16 @@
+REQ:        REQ-4.5
+SPEC:       03
+CHECK:      engine/gate.py
+MUTATION:   stopped checking commit messages for agent attribution
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.SecurityMechanical.test_attribution_in_range_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_attribution_in_range_is_blocking (selftest.test_gate.SecurityMechanical.test_attribution_in_range_is_blocking)
+AssertionError: <State.CLEAN: 'checked-clean'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.454s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.374s
+OK
+exit 0

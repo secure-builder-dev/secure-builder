@@ -1,0 +1,16 @@
+REQ:        REQ-3.3.1
+SPEC:       01
+CHECK:      engine/handoff.py
+MUTATION:   accepted a stamp describing some other commit as describing this one
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_refuses_without_scan_stamp_for_this_commit
+--- output with the property broken (must show failure) ---
+FAIL: test_refuses_without_scan_stamp_for_this_commit (selftest.test_gate.Handoff.test_refuses_without_scan_stamp_for_this_commit)
+AssertionError: HandoffRefused not raised
+Ran 1 test in 0.846s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.698s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.2.4
+SPEC:       01
+CHECK:      engine/routes.py
+MUTATION:   made the route inventory come from nothing instead of the running code
+FILE:       engine/routes.py
+TEST:       python -m unittest selftest.test_gate.QualityGate.test_negative_tests_required_for_changed_routes
+--- output with the property broken (must show failure) ---
+FAIL: test_negative_tests_required_for_changed_routes (selftest.test_gate.QualityGate.test_negative_tests_required_for_changed_routes)
+AssertionError: <State.NOTHING_YET: 'nothing-to-check-yet'> is not <State.FINDINGS: 'checked-findings'>
+Ran 1 test in 0.502s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.572s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-2.1
+SPEC:       04
+CHECK:      engine/gate.py
+MUTATION:   gave the gate a path to the network during verdict computation
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.Submit.test_gate_reaches_no_network
+--- output with the property broken (must show failure) ---
+FAIL: test_gate_reaches_no_network (selftest.test_gate.Submit.test_gate_reaches_no_network)
+AssertionError: ', net' unexpectedly found in ' checklist, controlshape, gitutil, manifest, mutate, net, routes, version'
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

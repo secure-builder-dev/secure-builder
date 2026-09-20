@@ -36,6 +36,7 @@ class Statement(unittest.TestCase):
             s = degradation.statement(t)
             na = s.split("## not achieved")[1]
             self.assertIn("- protected-branch merge control: no hosting platform", na)
+            self.assertIn("a client-side hook reduces accidents and is not a control", na)
 
     def test_connected_mode_platform_controls_unaffected(self):
         with tree() as t:

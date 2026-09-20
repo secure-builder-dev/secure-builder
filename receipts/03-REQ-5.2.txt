@@ -1,0 +1,16 @@
+REQ:        REQ-5.2
+SPEC:       03
+CHECK:      engine/dist/rules/RULES.md
+MUTATION:   inlined long reference material into the always-loaded rules
+FILE:       engine/dist/rules/RULES.md
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_rulebook_is_short_and_states_only_the_three_things
+--- output with the property broken (must show failure) ---
+FAIL: test_rulebook_is_short_and_states_only_the_three_things (selftest.test_distribute.InstructionFileSplit.test_rulebook_is_short_and_states_only_the_three_things)
+AssertionError: 185 not less than 120 : the always-loaded rules must stay short
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

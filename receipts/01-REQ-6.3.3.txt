@@ -1,0 +1,16 @@
+REQ:        REQ-6.3.3
+SPEC:       01
+CHECK:      engine/checklist.py
+MUTATION:   dropped a completeness question
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_base_has_the_eleven_items
+--- output with the property broken (must show failure) ---
+FAIL: test_base_has_the_eleven_items (selftest.test_gate.Checklist.test_base_has_the_eleven_items)
+AssertionError: Lists differ: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'] != ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,17 @@
+REQ:        REQ-3.3.2
+SPEC:       01
+CHECK:      engine/handoff.py
+MUTATION:   let the impossible-scan override bypass a failed scan
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_refuses_red_scan_even_with_override
+--- output with the property broken (must show failure) ---
+FAIL: test_refuses_red_scan_even_with_override (selftest.test_gate.Handoff.test_refuses_red_scan_even_with_override)
+    self.assertIn("override exists for an impossible scan, not a failed one", str(cm.exception))
+AssertionError: 'override exists for an impossible scan, not a failed one' not found in 'the scan for this commit is red; fix on the branch, rescan, then hand off'
+Ran 1 test in 0.407s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.550s
+OK
+exit 0

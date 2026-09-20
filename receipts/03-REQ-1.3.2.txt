@@ -1,0 +1,16 @@
+REQ:        REQ-1.3.2
+SPEC:       03
+CHECK:      engine/ownership.py
+MUTATION:   pointed distribution of reviewer definitions at a source that does not exist
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_every_source_exists
+--- output with the property broken (must show failure) ---
+FAIL: test_every_source_exists (selftest.test_distribute.Classes.test_every_source_exists)
+AssertionError: False is not true : .engine/agents/ -> engine/dist/agents-old/ does not exist in the harness tree
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

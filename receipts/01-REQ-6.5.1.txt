@@ -1,0 +1,16 @@
+REQ:        REQ-6.5.1
+SPEC:       01
+CHECK:      engine/checklist.py
+MUTATION:   dropped the scan result from the verdict block
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_verdict_block_defined_once_and_copied
+--- output with the property broken (must show failure) ---
+FAIL: test_verdict_block_defined_once_and_copied (selftest.test_gate.Checklist.test_verdict_block_defined_once_and_copied)
+AssertionError: '<!-- engine:block verdict-block -->\n```\nVERDICT\nverdict: <value>\ntier: <value>\nrun: <value>\nrange: <value>\ncontrol_shaped: <value>\nmanifest_result: <value>\ncompleteness_blocks: <value>\nplatform_surface: <value>\nopen_findings: <value>\nblocking_findings: <value>\ntickets_opened: <value>\nreviewer_class: <value>\nmodel: <value>\nattested_by: <value>\nchecklist_version: <value>\nharness_version: <value>\n```\n<!-- engine:end verdict-block -->' not found in '# Verdict block reference\n\n© 2026 Casey Houle. All rights reserved.\nENGINE-OWNED: local edits to this file are discarded on update\n\nThe verdict block every gate run ends with. This copy and the one in the reviewer\ndefinition are asserted identical by the doc-consistency check (spec 01 REQ-6.5.2).\n\n<!-- engine:block verdict-block -->\n```\nVERDICT\nverdict: <value>\ntier: <value>\nrun: <value>\nrange: <value>\ncontrol_shaped: <value>\nmanifest_result: <value>\ncompleteness_blocks: <value>\nplatform_surface: <value>\nscan_verdict: <value>\nopen_findings: <value>\nblocking_findings: <value>\ntickets_opened: <value>\nreviewer_class: <value>\nmodel: <value>\nattested_by: <value>\nchecklist_version: <value>\nharness_version: <value>\n```\n<!-- engine:end verdict-block -->\n'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.4
+SPEC:       03
+CHECK:      engine/checks/doc_consistency.py
+MUTATION:   stopped following the one reference level the runtime resolves
+FILE:       engine/checks/doc_consistency.py
+TEST:       python -m unittest selftest.test_checks_docs.DocConsistency.test_follows_reference_chain_into_included_file
+--- output with the property broken (must show failure) ---
+FAIL: test_follows_reference_chain_into_included_file (selftest.test_checks_docs.DocConsistency.test_follows_reference_chain_into_included_file)
+AssertionError: <State.FINDINGS: 'checked-findings'> is not <State.CLEAN: 'checked-clean'> : ['[doc-consistency] FINDINGS BLOCKING: 1 finding(s) — 1 declared format(s) inconsistent or missing', "    - block 'verdict': expected in at least two documents, found in 1 (AGENTS.md) — nothing to compare"]
+Ran 1 test in 0.004s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

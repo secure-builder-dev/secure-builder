@@ -1,0 +1,16 @@
+REQ:        REQ-3.2.1
+SPEC:       01
+CHECK:      engine/handoff.py
+MUTATION:   let a red scan reach the review gate
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_red_scan_refused_without_override
+--- output with the property broken (must show failure) ---
+FAIL: test_red_scan_refused_without_override (selftest.test_gate.Handoff.test_red_scan_refused_without_override)
+AssertionError: HandoffRefused not raised
+Ran 1 test in 0.545s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.621s
+OK
+exit 0

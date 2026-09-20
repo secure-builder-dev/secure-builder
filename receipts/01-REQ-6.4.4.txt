@@ -1,0 +1,16 @@
+REQ:        REQ-6.4.4
+SPEC:       01
+CHECK:      engine/checklist.py
+MUTATION:   left a conditional check without a standard citation
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_every_conditional_check_cites_a_standard
+--- output with the property broken (must show failure) ---
+FAIL: test_every_conditional_check_cites_a_standard (selftest.test_gate.Checklist.test_every_conditional_check_cites_a_standard)
+AssertionError: Regex didn't match: 'NIST|FIPS|OWASP' not found in '' : ONPREM: Current OS and runtime packages
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

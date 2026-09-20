@@ -1,0 +1,16 @@
+REQ:        REQ-8.3
+SPEC:       11
+CHECK:      engine/checklist.py
+MUTATION:   let the checklist be composed per model, opening the door to reducing it
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_checklist_is_not_reduced_for_a_smaller_model
+--- output with the property broken (must show failure) ---
+FAIL: test_checklist_is_not_reduced_for_a_smaller_model (selftest.test_gate.Checklist.test_checklist_is_not_reduced_for_a_smaller_model)
+AssertionError: 'model' unexpectedly found in mappingproxy(OrderedDict({'cfg': <Parameter "cfg">, 'model': <Parameter "model=None">}))
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

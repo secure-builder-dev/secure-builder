@@ -1,0 +1,16 @@
+REQ:        REQ-6.4.3
+SPEC:       01
+CHECK:      engine/checklist.py
+MUTATION:   made the on-prem block substitute for nothing, leaving the cloud checks in place
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_substitution_removes_only_infrastructure_checks
+--- output with the property broken (must show failure) ---
+FAIL: test_substitution_removes_only_infrastructure_checks (selftest.test_gate.Checklist.test_substitution_removes_only_infrastructure_checks)
+AssertionError: 'I1' unexpectedly found in ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'I1', 'I2', 'I3', 'ELEVATED1', 'ELEVATED2', 'ELEVATED3', 'ELEVATED4', 'ELEVATED5', 'ELEVATED6', 'ONPREM1', 'ONPREM2', 'ONPREM3', 'ONPREM4', 'ONPREM5', 'ONPREM6', 'ONPREM7']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

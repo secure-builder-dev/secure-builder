@@ -1,0 +1,16 @@
+REQ:        REQ-6.1.4
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   ran the security gate on code whose quality gate failed
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.Submit.test_quality_gate_runs_before_security
+--- output with the property broken (must show failure) ---
+FAIL: test_quality_gate_runs_before_security (selftest.test_gate.Submit.test_quality_gate_runs_before_security)
+AssertionError: Lists differ: [Outcome(check='manifest-entry', state=<St[1247 chars]='')] != []
+Ran 1 test in 0.707s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.557s
+OK
+exit 0

@@ -1,0 +1,15 @@
+REQ:        REQ-3.1.2
+SPEC:       03
+CHECK:      engine/lifecycle.py
+MUTATION:   dropped a unit-of-work state
+FILE:       engine/lifecycle.py
+TEST:       python -m unittest selftest.test_gate.Lifecycle.test_states_and_header_storage
+--- output with the property broken (must show failure) ---
+ERROR: test_states_and_header_storage (selftest.test_gate.Lifecycle.test_states_and_header_storage)
+Ran 1 test in 0.004s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

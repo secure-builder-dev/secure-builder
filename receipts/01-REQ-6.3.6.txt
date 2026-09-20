@@ -1,0 +1,16 @@
+REQ:        REQ-6.3.6
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   let an unanswered completeness question through
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.Submit.test_completeness_answers_required_in_prose_with_lists
+--- output with the property broken (must show failure) ---
+FAIL: test_completeness_answers_required_in_prose_with_lists (selftest.test_gate.Submit.test_completeness_answers_required_in_prose_with_lists)
+AssertionError: 'completeness require_auth Q1: unanswered or answered with a bare pass — blocking' not found in ['completeness require_auth Q3: must produce a list, not a summary judgment']
+Ran 1 test in 0.754s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.922s
+OK
+exit 0

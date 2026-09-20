@@ -1,0 +1,16 @@
+REQ:        REQ-3.1.4
+SPEC:       03
+CHECK:      engine/lifecycle.py
+MUTATION:   stored state in a separate tracking file instead of the item file's header
+FILE:       engine/lifecycle.py
+TEST:       python -m unittest selftest.test_gate.Lifecycle.test_states_and_header_storage
+--- output with the property broken (must show failure) ---
+FAIL: test_states_and_header_storage (selftest.test_gate.Lifecycle.test_states_and_header_storage)
+AssertionError: 'planned' != 'building'
+Ran 1 test in 0.006s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.005s
+OK
+exit 0

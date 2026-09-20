@@ -1,0 +1,16 @@
+REQ:        REQ-5.2.2
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   stopped requiring a cross-principal test for record-scoped routes
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.QualityGate.test_negative_tests_required_for_changed_routes
+--- output with the property broken (must show failure) ---
+FAIL: test_negative_tests_required_for_changed_routes (selftest.test_gate.QualityGate.test_negative_tests_required_for_changed_routes)
+AssertionError: Lists differ: ['ANY[70 chars]ials'] != ['ANY[70 chars]ials', "ANY /items/<id>: record-scoped, and no[55 chars]rds"]
+Ran 1 test in 0.473s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.562s
+OK
+exit 0

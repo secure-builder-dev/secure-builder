@@ -1,0 +1,18 @@
+REQ:        REQ-3.4.5
+SPEC:       03
+CHECK:      engine/lifecycle.py
+MUTATION:   reported absent CI integration as an error
+FILE:       engine/lifecycle.py
+TEST:       python -m unittest selftest.test_gate.Lifecycle.test_orient_compares_against_remote_and_always_exits_zero
+--- output with the property broken (must show failure) ---
+FAIL: test_orient_compares_against_remote_and_always_exits_zero (selftest.test_gate.Lifecycle.test_orient_compares_against_remote_and_always_exits_zero)
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting 'ci: not configured', found 0:
+ci: ERROR: unreachable
+Ran 1 test in 0.536s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.599s
+OK
+exit 0

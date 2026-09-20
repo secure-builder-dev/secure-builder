@@ -1,0 +1,16 @@
+REQ:        REQ-2.3.2
+SPEC:       03
+CHECK:      engine/handoff.py
+MUTATION:   dropped the explicit statement that the construction conversation is not to be read
+FILE:       engine/handoff.py
+TEST:       python -m unittest selftest.test_gate.Handoff.test_contains_exactly_the_contract_and_no_free_text
+--- output with the property broken (must show failure) ---
+FAIL: test_contains_exactly_the_contract_and_no_free_text (selftest.test_gate.Handoff.test_contains_exactly_the_contract_and_no_free_text)
+AssertionError: 'Do not read the conversation' not found in 'Run the quality gate, then the security gate, on the range above. Read the diff from version control. End with the verdict block.'
+Ran 1 test in 0.483s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.584s
+OK
+exit 0

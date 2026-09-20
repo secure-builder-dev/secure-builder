@@ -1,0 +1,16 @@
+REQ:        REQ-3.4.3
+SPEC:       03
+CHECK:      engine/lifecycle.py
+MUTATION:   compared against the local copy of the protected branch instead of the remote
+FILE:       engine/lifecycle.py
+TEST:       python -m unittest selftest.test_gate.Lifecycle.test_orient_compares_against_remote_and_always_exits_zero
+--- output with the property broken (must show failure) ---
+FAIL: test_orient_compares_against_remote_and_always_exits_zero (selftest.test_gate.Lifecycle.test_orient_compares_against_remote_and_always_exits_zero)
+AssertionError: '1 ahead of / 0 behind origin/main' not found in 'position: branch epic-7 at 51ab8046f79a; 0 ahead of / 0 behind main'
+Ran 1 test in 0.498s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.464s
+OK
+exit 0

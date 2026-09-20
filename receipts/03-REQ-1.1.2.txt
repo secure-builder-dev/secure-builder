@@ -1,0 +1,16 @@
+REQ:        REQ-1.1.2
+SPEC:       03
+CHECK:      engine/dist/templates/AGENTS.md
+MUTATION:   turned the instruction file's reference into prose the runtime would not resolve
+FILE:       engine/dist/templates/AGENTS.md
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path
+--- output with the property broken (must show failure) ---
+FAIL: test_instruction_file_imports_rules_by_stable_engine_owned_path (selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path)
+AssertionError: 0 != 1 : the seeded instruction file must import the rulebook exactly once
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

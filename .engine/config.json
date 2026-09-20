@@ -19,7 +19,9 @@
     "AMENDMENTS.md",
     "hooks/README.md",
     "LIFECYCLE-EXERCISE.md",
-    "RELEASE-RECORD.md"
+    "RELEASE-RECORD.md",
+    "engine/dist/agents/*.md",
+    "engine/dist/reference/*.md"
   ],
   "lint_command": [
     "python",
@@ -30,5 +32,8 @@
     "selftest",
     "tools",
     "hooks"
+  ],
+  "consistency_blocks": [
+    "verdict-block"
   ]
 }

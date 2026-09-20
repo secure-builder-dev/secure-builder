@@ -23,6 +23,7 @@ ENGINE_OWNED = {
     f"{ENGINE_DIR}/rules/RULES.md": "engine/dist/rules/RULES.md",   # the rulebook (imported)
     f"{ENGINE_DIR}/agents/": "engine/dist/agents/",          # reviewer definitions, whole, tracked
     f"{ENGINE_DIR}/hooks/": "engine/dist/hooks/",            # pre-execution hooks
+    f"{ENGINE_DIR}/reference/": "engine/dist/reference/",    # reference documents (verdict block copy)
     f"{ENGINE_DIR}/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
     f"{ENGINE_DIR}/.gitignore": "engine/dist/gitignore",      # what stays out of version control (spec 02 §2)
 }

@@ -171,6 +171,7 @@ def init(root, *, track, mode, tier=UNSET, provider=UNSET, app_type=UNSET,
         "schema": SCHEMA, **values, "mode": mode, "topology": topology, "side": side,
         "operators": int(operators), "protected_branch": protected_branch,
         "timezone": timezone, "clock": clock, "not_applicable_threshold": 0.5,
+        "consistency_blocks": ["verdict-block"],
     }
     cfg = Config(data)
     probs = cfg.problems()

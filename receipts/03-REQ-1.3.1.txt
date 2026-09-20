@@ -1,0 +1,16 @@
+REQ:        REQ-1.3.1
+SPEC:       03
+CHECK:      engine/checklist.py
+MUTATION:   made the reviewer definition pull its procedure in by reference
+FILE:       engine/checklist.py
+TEST:       python -m unittest selftest.test_gate.Checklist.test_definition_is_self_contained_and_rendered_from_data
+--- output with the property broken (must show failure) ---
+FAIL: test_definition_is_self_contained_and_rendered_from_data (selftest.test_gate.Checklist.test_definition_is_self_contained_and_rendered_from_data)
+AssertionError: "# Se[629 chars].\n\nThe quality gate has already passed on th[6756 chars]n.\n" != "# Se[629 chars].\n\nRead and follow: .engine/reference/PROCED[6805 chars]n.\n"
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-5.2.3
+SPEC:       01
+CHECK:      engine/gate.py
+MUTATION:   stopped requiring a last-privileged-principal test
+FILE:       engine/gate.py
+TEST:       python -m unittest selftest.test_gate.QualityGate.test_last_privileged_principal_guard_needs_test
+--- output with the property broken (must show failure) ---
+FAIL: test_last_privileged_principal_guard_needs_test (selftest.test_gate.QualityGate.test_last_privileged_principal_guard_needs_test)
+AssertionError: Lists differ: [] != ['remove_admin (src/admin.py:1): can remov[68 chars]ted']
+Ran 1 test in 0.529s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.568s
+OK
+exit 0

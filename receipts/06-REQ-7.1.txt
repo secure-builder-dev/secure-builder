@@ -1,0 +1,15 @@
+REQ:        REQ-7.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made adoption require the project to already satisfy the checks
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Adopt.test_adoption_does_not_require_checks_to_pass
+--- output with the property broken (must show failure) ---
+ERROR: test_adoption_does_not_require_checks_to_pass (selftest.test_distribute.Adopt.test_adoption_does_not_require_checks_to_pass)
+Ran 1 test in 0.217s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.256s
+OK
+exit 0

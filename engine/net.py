@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The only door to the network (spec 04 REQ-2.2; spec 01 REQ-8.4.1, §14).
 
 Exactly three components may reach the network — the currency checker, scanner

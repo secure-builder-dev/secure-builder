@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Version identity (spec 06 §5)."""
 import re
 import unittest

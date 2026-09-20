@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The mechanical check registry. One command runs every check (spec 01 REQ-3.1.1).
 
 Each check is a module exposing `run(root, cfg) -> Outcome`. Registration is
@@ -10,6 +11,7 @@ import importlib
 REGISTRY = [
     "config",
     "no_network",
+    "divergence",
 ]
 
 

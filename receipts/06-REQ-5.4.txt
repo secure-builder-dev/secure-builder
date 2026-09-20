@@ -1,0 +1,16 @@
+REQ:        REQ-5.4
+SPEC:       06
+CHECK:      engine/checks/divergence.py
+MUTATION:   made the divergence check ignore a changed engine-owned file
+FILE:       engine/checks/divergence.py
+TEST:       python -m unittest selftest.test_distribute.Divergence.test_edited_engine_owned_file_is_blocking
+--- output with the property broken (must show failure) ---
+FAIL: test_edited_engine_owned_file_is_blocking (selftest.test_distribute.Divergence.test_edited_engine_owned_file_is_blocking)
+AssertionError: Lists differ: ['.en[16 chars].md: engine-owned file carries no ENGINE-OWNED marker'] != ['.en[16 chars].md: differs from the copy version 0.1.0-dev+1[15 chars]ced']
+Ran 1 test in 0.026s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.024s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-6.3
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   reported divergences only as a count, not individually
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report
+--- output with the property broken (must show failure) ---
+FAIL: test_engine_owned_overwritten_with_backup_and_report (selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report)
+AssertionError: '    - .engine/rules/RULES.md -> .engine/rules/RULES.md.pre-update' not found in ['update: applied', '  engine-owned: 1 overwritten, 24 unchanged', '  seed-if-absent: 6 already present', '  engine-reference: 3 unchanged', '  project-owned: 9 untouched', '  diverged (1) — prior content preserved beside each:']
+Ran 1 test in 0.030s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.030s
+OK
+exit 0

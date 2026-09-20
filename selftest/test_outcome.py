@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Failure semantics (spec 01 §1.2, §13.1–13.2; spec 11 §5)."""
 import unittest
 

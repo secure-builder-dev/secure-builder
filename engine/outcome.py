@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The failure semantics — the honesty rules (spec 01 §1.2, §13; spec 11 §5).
 
 Every check in the harness returns an Outcome. There are six states and they

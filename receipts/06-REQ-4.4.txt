@@ -1,0 +1,16 @@
+REQ:        REQ-4.4
+SPEC:       06
+CHECK:      engine/dist/templates/AGENTS.md
+MUTATION:   made the instruction file stop saying which file wins on conflict
+FILE:       engine/dist/templates/AGENTS.md
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_instruction_file_states_precedence_and_that_it_is_not_a_control
+--- output with the property broken (must show failure) ---
+FAIL: test_instruction_file_states_precedence_and_that_it_is_not_a_control (selftest.test_distribute.InstructionFileSplit.test_instruction_file_states_precedence_and_that_it_is_not_a_control)
+AssertionError: 'wins over this file' not found in "# Project instructions\n\n© 2026 Casey Houle. All rights reserved.\n\nThis file is loaded automatically into every agent session. It is seeded once\nby the harness and then owned by the project.\n\nRead and follow: .engine/rules/RULES.md\n\n## Precedence\n\nConflicts are resolved case by case. That statement is a\nconvention with no enforcement behind it (spec 06 REQ-4.4–4.5); the rules that\nmatter are also enforced by checks that run outside any agent's judgment.\n\n## Project rules\n\n(Project-specific invariants go here. The security gate enforces this section\nwithout being asked each time.)\n"
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

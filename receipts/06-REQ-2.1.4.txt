@@ -1,0 +1,15 @@
+REQ:        REQ-2.1.4
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   stopped preserving the prior content beside an overwritten engine-owned file
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report
+--- output with the property broken (must show failure) ---
+ERROR: test_engine_owned_overwritten_with_backup_and_report (selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report)
+Ran 1 test in 0.031s
+FAILED (errors=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.030s
+OK
+exit 0

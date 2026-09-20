@@ -1,0 +1,16 @@
+REQ:        REQ-2.3.2
+SPEC:       06
+CHECK:      engine/checks/divergence.py
+MUTATION:   made a check reference the engine-reference copy
+FILE:       engine/checks/divergence.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_reference_copy_not_read_by_any_check
+--- output with the property broken (must show failure) ---
+FAIL: test_reference_copy_not_read_by_any_check (selftest.test_distribute.Update.test_reference_copy_not_read_by_any_check)
+AssertionError: <re.Match object; span=(622, 639), match='.engine-reference'> is not None : divergence.py references the engine-reference suffix
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.001s
+OK
+exit 0

@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Harness self-scan: no component reaches the network except through engine/net.py
 (spec 04 REQ-2.2; spec 01 §14). Reads the harness's own source tree."""
 import pathlib

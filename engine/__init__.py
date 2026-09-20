@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """engine — an assurance harness. See specs/ for what it must do and why."""
 import hashlib
 import pathlib

@@ -1,0 +1,16 @@
+REQ:        REQ-2.3
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   left the records directory out of the project-owned enumeration
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_four_classes_enumerated_including_project_owned
+--- output with the property broken (must show failure) ---
+FAIL: test_four_classes_enumerated_including_project_owned (selftest.test_distribute.Classes.test_four_classes_enumerated_including_project_owned)
+AssertionError: '.engine/records/' not found in ['.engine/config.json', '.engine/local/', '.engine/scan/', '.engine/catalogues/', '.engine/VERSION', 'plans/', 'tickets/', 'src/']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

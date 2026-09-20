@@ -1,0 +1,16 @@
+REQ:        REQ-2.4.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made the update clean up a project-owned record it believed obsolete
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_project_owned_never_touched
+--- output with the property broken (must show failure) ---
+FAIL: test_project_owned_never_touched (selftest.test_distribute.Update.test_project_owned_never_touched)
+AssertionError: False is not true
+Ran 1 test in 0.023s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.022s
+OK
+exit 0

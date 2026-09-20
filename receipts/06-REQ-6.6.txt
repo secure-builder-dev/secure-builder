@@ -1,0 +1,16 @@
+REQ:        REQ-6.6
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   omitted the note naming what an update newly fails
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_changes_note_placed_engine_owned
+--- output with the property broken (must show failure) ---
+FAIL: test_changes_note_placed_engine_owned (selftest.test_distribute.InstructionFileSplit.test_changes_note_placed_engine_owned)
+AssertionError: False is not true
+Ran 1 test in 0.021s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.023s
+OK
+exit 0

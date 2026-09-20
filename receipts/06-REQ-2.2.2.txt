@@ -1,0 +1,16 @@
+REQ:        REQ-2.2.2
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   merged engine content into an existing seeded file instead of leaving it byte-identical
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_seed_if_absent_left_byte_identical
+--- output with the property broken (must show failure) ---
+FAIL: test_seed_if_absent_left_byte_identical (selftest.test_distribute.Update.test_seed_if_absent_left_byte_identical)
+AssertionError: 'mine\n# merged by update\n' != 'mine\n'
+Ran 1 test in 0.023s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.025s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-1.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   pointed the harness package entry at a subtree so the checks themselves are not placed in the project
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_places_all_classes_and_records_version
+--- output with the property broken (must show failure) ---
+FAIL: test_places_all_classes_and_records_version (selftest.test_distribute.Update.test_places_all_classes_and_records_version)
+AssertionError: False is not true
+Ran 1 test in 0.024s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.022s
+OK
+exit 0

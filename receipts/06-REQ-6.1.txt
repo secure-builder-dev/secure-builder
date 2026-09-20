@@ -1,0 +1,16 @@
+REQ:        REQ-6.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made report-only mode write seeded files anyway
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_dry_run_changes_nothing_and_says_so
+--- output with the property broken (must show failure) ---
+FAIL: test_dry_run_changes_nothing_and_says_so (selftest.test_distribute.Update.test_dry_run_changes_nothing_and_says_so)
+AssertionError: Lists differ: [WindowsPath('~/AppData/Local[692 chars]md')] != []
+Ran 1 test in 0.009s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.006s
+OK
+exit 0

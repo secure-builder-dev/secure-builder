@@ -1,0 +1,16 @@
+REQ:        REQ-2.1.2
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   changed the marker text so placed files no longer carry the declared marker
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_every_engine_owned_source_carries_marker
+--- output with the property broken (must show failure) ---
+FAIL: test_every_engine_owned_source_carries_marker (selftest.test_distribute.Classes.test_every_engine_owned_source_carries_marker)
+AssertionError: 'ENGINE-OWNED: edits here are kept' not found in '# © 2026 Casey Houle. All rights reserved.\n# ENGINE-OWNED: local edits to this file are discarded on update\n"""engine — an assurance harness. See specs/ for what it must do and why."""\nimport hashlib\nimport pathlib\n\nRELEASE = "0.1.0-dev"\n\n\ndef version():\n    """Content-derived version identity (spec 06 REQ-5.2): a digest over every\n    engine-owned source file, so the version cannot drift from what was copied."""\n    here = pathlib.Path(__file__).resolve().parent\n    h = hashlib.sha256()\n    for p in sorted(here.rglob("*.py")):\n        h.update(p.relative_to(here).as_posix().encode())\n        h.update(p.read_bytes().replace(b"\\r\\n", b"\\n"))\n    return f"{RELEASE}+{h.hexdigest()[:12]}"\n' : C:\Users\cjhou\engine\engine\__init__.py
+Ran 1 test in 0.001s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.004s
+OK
+exit 0

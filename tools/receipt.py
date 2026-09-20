@@ -36,7 +36,9 @@ def run(cmd):
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     res = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True,
                          encoding="utf-8", errors="replace", env=env)
-    out = (res.stdout + res.stderr).strip().splitlines()
+    home = str(pathlib.Path.home())
+    out = [l.replace(home, "~").replace(home.replace("\\", "/"), "~")
+           for l in (res.stdout + res.stderr).strip().splitlines()]
     keep = [l for l in out if re.search(r"\b(FAIL|ERROR|OK|Ran |passed|failed|AssertionError)", l)] or out[-6:]
     return res.returncode, keep[-8:]
 
@@ -66,7 +68,7 @@ def make(spec, req, check, file, old, new, description, test_cmd):
     receipt = ROOT / "receipts" / f"{spec}-{req}.txt"
     receipt.parent.mkdir(exist_ok=True)
     body = (f"REQ:        {req}\nSPEC:       {spec}\nCHECK:      {check}\n"
-            f"MUTATION:   {description}\nFILE:       {file}\nTEST:       {' '.join(test_cmd)}\n"
+            f"MUTATION:   {description}\nFILE:       {file}\nTEST:       {' '.join(shown)}\n"
             f"{BROKEN_HDR}\n" + "\n".join(out_b) + f"\nexit {rc_b}\n"
             f"{RESTORED_HDR}\n" + "\n".join(out_r) + f"\nexit {rc_r}\n")
     receipt.write_text(body, encoding="utf-8", newline="\n")

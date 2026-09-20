@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Project configuration — the four axes, the operating mode, the topology.
 
 Spec 01 §2: four project-level values fixed at initialization, stored in one

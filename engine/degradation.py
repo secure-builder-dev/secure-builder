@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The honest-degradation statement (spec 04 §7).
 
 On demand, states which guarantees are reduced in the current mode, in three

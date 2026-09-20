@@ -1,0 +1,16 @@
+REQ:        REQ-4.1
+SPEC:       06
+CHECK:      engine/dist/templates/AGENTS.md
+MUTATION:   pointed the instruction file's import at a path that is not the engine-owned rulebook
+FILE:       engine/dist/templates/AGENTS.md
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path
+--- output with the property broken (must show failure) ---
+FAIL: test_instruction_file_imports_rules_by_stable_engine_owned_path (selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path)
+AssertionError: 'seed-if-absent' != 'engine-owned'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

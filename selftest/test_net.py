@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The network door (spec 04 REQ-2.2, REQ-3.4; spec 01 REQ-8.4.1)."""
 import unittest
 

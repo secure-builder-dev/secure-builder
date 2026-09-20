@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Configuration model (spec 01 §2; spec 04 §1)."""
 import json
 import unittest

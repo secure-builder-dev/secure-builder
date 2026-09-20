@@ -1,0 +1,16 @@
+REQ:        REQ-3.1
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   moved reviewer definitions out of the engine-owned path the rest of the harness names
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_class_of
+--- output with the property broken (must show failure) ---
+FAIL: test_class_of (selftest.test_distribute.Classes.test_class_of)
+AssertionError: None != 'engine-owned'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

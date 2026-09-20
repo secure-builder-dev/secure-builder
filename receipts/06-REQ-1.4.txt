@@ -1,0 +1,16 @@
+REQ:        REQ-1.4
+SPEC:       06
+CHECK:      engine/__main__.py
+MUTATION:   made the check command apply an update automatically before checking
+FILE:       engine/__main__.py
+TEST:       python -m unittest selftest.test_distribute.NeverAutomatic.test_check_never_updates
+--- output with the property broken (must show failure) ---
+FAIL: test_check_never_updates (selftest.test_distribute.NeverAutomatic.test_check_never_updates)
+AssertionError: '# Engine rules\n\nÂ© 2026 Casey Houle. All [3065 chars]e.\n' != '# edited locally\n'
+Ran 1 test in 0.038s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.031s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-3.2
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   stopped removing a definition the engine placed and has since retired
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.AgentTracking.test_retired_definition_removed_project_definition_kept
+--- output with the property broken (must show failure) ---
+FAIL: test_retired_definition_removed_project_definition_kept (selftest.test_distribute.AgentTracking.test_retired_definition_removed_project_definition_kept)
+AssertionError: True is not false : a retired engine-placed definition must be removed
+Ran 1 test in 0.029s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.031s
+OK
+exit 0

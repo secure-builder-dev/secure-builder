@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """Shared fixture helpers. Every test constructs a throwaway tree and removes it
 (spec 05 REQ-5.4); nothing here touches the network, a container runtime, or
 the real repository."""

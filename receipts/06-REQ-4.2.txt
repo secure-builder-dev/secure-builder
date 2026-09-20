@@ -1,0 +1,16 @@
+REQ:        REQ-4.2
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   took the project instruction file out of the seed-if-absent class
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.Classes.test_class_of
+--- output with the property broken (must show failure) ---
+FAIL: test_class_of (selftest.test_distribute.Classes.test_class_of)
+AssertionError: None != 'seed-if-absent'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

@@ -1,0 +1,16 @@
+REQ:        REQ-2.2.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made seed-if-absent write over an existing file
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_seed_if_absent_left_byte_identical
+--- output with the property broken (must show failure) ---
+FAIL: test_seed_if_absent_left_byte_identical (selftest.test_distribute.Update.test_seed_if_absent_left_byte_identical)
+AssertionError: "# Project instructions\n\nÂ© 2026 Casey [586 chars].)\n" != 'mine\n'
+Ran 1 test in 0.022s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.022s
+OK
+exit 0

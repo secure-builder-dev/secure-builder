@@ -1,0 +1,16 @@
+REQ:        REQ-2.1.1
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   left a locally edited engine-owned file in place instead of overwriting it
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report
+--- output with the property broken (must show failure) ---
+FAIL: test_engine_owned_overwritten_with_backup_and_report (selftest.test_distribute.Update.test_engine_owned_overwritten_with_backup_and_report)
+AssertionError: b'# my local edit\n' != b'# Engine rules\n\n\xc2\xa9 2026 Casey Houle[3221 chars]e.\n'
+Ran 1 test in 0.028s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.030s
+OK
+exit 0

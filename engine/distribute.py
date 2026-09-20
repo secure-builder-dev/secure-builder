@@ -1,0 +1,227 @@
+# © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
+"""Distribution, update and adoption (spec 06).
+
+The harness is a distributable unit separate from any project. `update` places
+files into a project according to the four ownership classes; it is idempotent,
+report-only on request, performs no version-control action, and never requires a
+clean tree. Engine-owned files are overwritten whole with the prior content
+preserved beside them and the divergence reported. Seed-if-absent files are
+written once. Engine-reference copies are written beside the project's copy
+under a suffix. Project-owned paths are never touched. Definitions the engine
+placed and has since retired are removed on the strength of a tracking record
+the update itself writes; anything the engine did not place is left alone.
+"""
+import datetime
+import hashlib
+import json
+import pathlib
+import subprocess
+
+from . import ownership as own
+from . import version
+
+SOURCE_ROOT = pathlib.Path(__file__).resolve().parent.parent   # the harness's own tree
+SKIP_NAMES = {"__pycache__", ".pyc"}
+SKIP_DIRS_IN_PACKAGE = {"dist"}
+
+
+def sha(data):
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
+
+
+def _source_files(source_root, rel):
+    """Yield (relative-to-entry, absolute) for a source entry (file or directory)."""
+    src = source_root / rel
+    if src.is_file():
+        yield "", src
+        return
+    if not src.is_dir():
+        return
+    for p in sorted(src.rglob("*")):
+        if not p.is_file():
+            continue
+        parts = p.relative_to(src).parts
+        if any(x in SKIP_NAMES or x.endswith(".pyc") for x in parts):
+            continue
+        if rel == "engine/" and parts[0] in SKIP_DIRS_IN_PACKAGE:
+            continue
+        yield p.relative_to(src).as_posix(), p
+
+
+class Summary:
+    def __init__(self):
+        self.by_class = {name: {} for name, _ in own.classes()}
+        self.diverged = []     # (path, backup)
+        self.removed = []      # paths
+        self.dry_run = False
+
+    def bump(self, cls, outcome):
+        self.by_class[cls][outcome] = self.by_class[cls].get(outcome, 0) + 1
+
+    def lines(self):
+        out = [f"update: {'REPORT ONLY — nothing changed' if self.dry_run else 'applied'}"]
+        for cls, counts in self.by_class.items():
+            desc = ", ".join(f"{v} {k}" for k, v in sorted(counts.items())) or "nothing"
+            out.append(f"  {cls}: {desc}")
+        if self.diverged:
+            out.append(f"  diverged ({len(self.diverged)}) — prior content preserved beside each:")
+            out += [f"    - {p} -> {b}" for p, b in self.diverged]
+        if self.removed:
+            out.append(f"  removed ({len(self.removed)}) — placed by an earlier version, no longer shipped:")
+            out += [f"    - {p}" for p in self.removed]
+        return out
+
+
+def read_placed(project):
+    p = project / own.PLACED_MANIFEST
+    if not p.is_file():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return {}
+    return data.get("files", {}) if isinstance(data, dict) else {}
+
+
+def valid_tracking_entries(lines):
+    """REQ-3.5: simple filenames only; anything with a separator or traversal is ignored."""
+    out = []
+    for raw in lines:
+        name = raw.strip()
+        if not name or name.startswith("#"):
+            continue
+        if "/" in name or "\\" in name or name in (".", "..") or ".." in name.split("."):
+            continue
+        if name != pathlib.PurePosixPath(name).name:
+            continue
+        out.append(name)
+    return out
+
+
+def update(project, source_root=SOURCE_ROOT, dry_run=False):
+    project = pathlib.Path(project).resolve()
+    source_root = pathlib.Path(source_root).resolve()
+    s = Summary()
+    s.dry_run = dry_run
+    placed_before = read_placed(project)
+    placed_now = {}
+
+    def put(target, data, cls):
+        t = project / target
+        existed = t.exists()
+        if existed:
+            old = t.read_bytes()
+            if sha(old) == sha(data):
+                s.bump(cls, "unchanged")
+                return
+            if cls == "engine-owned":
+                backup = target + own.BACKUP_SUFFIX
+                s.diverged.append((target, backup))
+                if not dry_run:
+                    (project / backup).write_bytes(old)
+        if not dry_run:
+            t.parent.mkdir(parents=True, exist_ok=True)
+            t.write_bytes(data)
+        s.bump(cls, "overwritten" if existed else "written")
+
+    # 1. engine-owned: overwrite unconditionally, track, remove stale
+    for target, src_rel in own.ENGINE_OWNED.items():
+        for sub, abs_src in _source_files(source_root, src_rel):
+            tpath = target + sub if target.endswith("/") else target
+            data = abs_src.read_bytes()
+            put(tpath, data, "engine-owned")
+            placed_now[tpath] = sha(data)
+    for old_path in sorted(placed_before):
+        if old_path not in placed_now and (project / old_path).is_file():
+            s.removed.append(old_path)
+            s.bump("engine-owned", "removed")
+            if not dry_run:
+                (project / old_path).unlink()
+
+    # agents tracking record (REQ-3.2–3.5): simple filenames, beside the definitions
+    agents_dir = project / own.ENGINE_DIR / "agents"
+    shipped_agents = sorted(pathlib.PurePosixPath(p).name for p in placed_now
+                            if p.startswith(f"{own.ENGINE_DIR}/agents/"))
+    record = project / own.TRACKING_RECORD
+    if record.is_file():
+        for name in valid_tracking_entries(record.read_text(encoding="utf-8").splitlines()):
+            if name not in shipped_agents and (agents_dir / name).is_file():
+                rel = f"{own.ENGINE_DIR}/agents/{name}"
+                if rel not in s.removed:
+                    s.removed.append(rel)
+                    s.bump("engine-owned", "removed")
+                    if not dry_run:
+                        (agents_dir / name).unlink()
+    if not dry_run:
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        record.write_text("# definitions placed by the harness; one simple filename per line\n"
+                          + "".join(n + "\n" for n in shipped_agents), encoding="utf-8", newline="\n")
+
+    # 2. seed-if-absent
+    for target, src_rel in own.SEED_IF_ABSENT.items():
+        t = project / target
+        if t.exists():
+            s.bump("seed-if-absent", "already present")
+            continue
+        s.bump("seed-if-absent", "seeded")
+        if not dry_run:
+            t.parent.mkdir(parents=True, exist_ok=True)
+            t.write_bytes((source_root / src_rel).read_bytes())
+
+    # 3. engine-reference
+    for target, src_rel in own.ENGINE_REFERENCE.items():
+        ref = project / (target + own.REFERENCE_SUFFIX)
+        data = (source_root / src_rel).read_bytes()
+        if ref.exists() and sha(ref.read_bytes()) == sha(data):
+            s.bump("engine-reference", "unchanged")
+        else:
+            s.bump("engine-reference", "reference written")
+            if not dry_run:
+                ref.parent.mkdir(parents=True, exist_ok=True)
+                ref.write_bytes(data)
+
+    # 4. project-owned: enumerated, untouched
+    s.by_class["project-owned"]["untouched"] = len(own.PROJECT_OWNED)
+
+    # 5. version and placed manifest
+    if not dry_run:
+        v = version()
+        (project / own.VERSION_FILE).parent.mkdir(parents=True, exist_ok=True)
+        (project / own.VERSION_FILE).write_text(
+            f"{v}\n{datetime.date.today().isoformat()}\n", encoding="utf-8", newline="\n")
+        (project / own.PLACED_MANIFEST).write_text(
+            json.dumps({"version": v, "files": placed_now}, indent=1, sort_keys=True) + "\n",
+            encoding="utf-8", newline="\n")
+    return s
+
+
+def recorded_version(project):
+    p = pathlib.Path(project) / own.VERSION_FILE
+    if not p.is_file():
+        return None
+    lines = p.read_text(encoding="utf-8").splitlines()
+    return lines[0].strip() if lines else None
+
+
+def adopt(project, source_root=SOURCE_ROOT):
+    """Adopt the harness into an existing project (spec 06 §7): place files, then
+    inventory every file that predates the harness and has never passed a gate.
+    Modifies no project source."""
+    project = pathlib.Path(project).resolve()
+    s = update(project, source_root)
+    res = subprocess.run(["git", "-C", str(project), "ls-files"], capture_output=True, text=True)
+    files = [f for f in res.stdout.splitlines()
+             if f and not f.startswith(own.ENGINE_DIR + "/") and f != "AGENTS.md"] if res.returncode == 0 else []
+    inv = project / own.ENGINE_DIR / "records" / "adoption-inventory.md"
+    inv.parent.mkdir(parents=True, exist_ok=True)
+    if not inv.exists():
+        body = ["# Adoption inventory", "",
+                f"Generated {datetime.date.today().isoformat()} at adoption. Every file below predates the",
+                "harness and has never passed a gate. Each row needs a disposition — reviewed,",
+                "accepted (with reason), or scheduled — before the inventory is considered burned down.",
+                "Rows are never deleted; dispositions are filled in.", "",
+                "| file | disposition | reason |", "|---|---|---|"]
+        body += [f"| {f} |  |  |" for f in files]
+        inv.write_text("\n".join(body) + "\n", encoding="utf-8", newline="\n")
+    return s, len(files)

@@ -1,0 +1,16 @@
+REQ:        REQ-3.5
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   accepted tracking-record entries carrying path separators and traversal components
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.AgentTracking.test_tracking_entries_with_separators_ignored
+--- output with the property broken (must show failure) ---
+FAIL: test_tracking_entries_with_separators_ignored (selftest.test_distribute.AgentTracking.test_tracking_entries_with_separators_ignored)
+AssertionError: Lists differ: ['good.md', '../evil.md', 'sub/dir.md', '..', 'bad\\path.md'] != ['good.md']
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

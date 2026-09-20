@@ -1,0 +1,17 @@
+REQ:        REQ-6.2
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   dropped a class from the grouped summary
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_summary_grouped_by_class_with_counts
+--- output with the property broken (must show failure) ---
+FAIL: test_summary_grouped_by_class_with_counts (selftest.test_distribute.Update.test_summary_grouped_by_class_with_counts)
+    raise AssertionError(f"expected exactly one line starting {prefix!r}, found {len(hits)}:\n" + "\n".join(lines))
+AssertionError: expected exactly one line starting '  project-owned: ', found 0:
+Ran 1 test in 0.023s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.021s
+OK
+exit 0

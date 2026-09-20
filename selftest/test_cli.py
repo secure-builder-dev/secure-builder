@@ -1,10 +1,11 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The single check command (spec 01 REQ-3.1.1–3.1.2) and its summary."""
 import json
 import pathlib
 import unittest
 
-from engine import checks
+from engine import checks, distribute
 from .helpers import cli, cli_sub, find_line, tree, write, write_config
 
 
@@ -82,6 +83,7 @@ class SelfTestWiring(unittest.TestCase):
             write_config(t)
             write(t, "selftest/__init__.py", "")
             write(t, "selftest/test_fx.py", FAILING_SUITE)
+            distribute.update(t)
             code, lines = cli_sub(t, "check")
             find_line(lines, "[selftest] 0 passed, 1 failed, 0 skipped")
             find_line(lines, "[selftest] FAIL: selftest.test_fx.T.test_bad")
@@ -92,6 +94,7 @@ class SelfTestWiring(unittest.TestCase):
             write_config(t)
             write(t, "selftest/__init__.py", "")
             write(t, "selftest/test_fx.py", SKIPPING_SUITE)
+            distribute.update(t)
             code, lines = cli_sub(t, "check")
             find_line(lines, "[selftest] 1 passed, 0 failed, 1 skipped (skipped: test_dev)")
             self.assertEqual(code, 0)

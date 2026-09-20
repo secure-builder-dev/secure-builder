@@ -1,0 +1,16 @@
+REQ:        REQ-6.5
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made the update stage its own changes in version control
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_no_version_control_action_and_dirty_tree_ok
+--- output with the property broken (must show failure) ---
+FAIL: test_no_version_control_action_and_dirty_tree_ok (selftest.test_distribute.Update.test_no_version_control_action_and_dirty_tree_ok)
+AssertionError: '?? dirty.txt' not found in 'A  .engine/CHANGES.md\nA  .engine/agents/.placed\nA  .engine/agents/README.md\nA  .engine/control-manifest.json\nA  .engine/control-manifest.json.engine-reference\nA  .engine/harness/engine/__init__.py\nA  .engine/harness/engine/__main__.py\nA  .engine/harness/engine/checks/__init__.py\nA  .engine/harness/engine/checks/divergence.py\nA  .engine/harness/engine/checks/no_network.py\nA  .engine/harness/engine/config.py\nA  .engine/harness/engine/degradation.py\nA  .engine/harness/engine/distribute.py\nA  .engine/harness/engine/net.py\nA  .engine/harness/engine/outcome.py\nA  .engine/harness/engine/ownership.py\nA  .engine/harness/run.py\nA  .engine/harness/selftest/__init__.py\nA  .engine/harness/selftest/helpers.py\nA  .engine/harness/selftest/test_cli.py\nA  .engine/harness/selftest/test_config.py\nA  .engine/harness/selftest/test_degradation.py\nA  .engine/harness/selftest/test_distribute.py\nA  .engine/harness/selftest/test_net.py\nA  .engine/harness/selftest/test_outcome.py\nA  .engine/harness/selftest/test_version.py\nA  .engine/hooks/README.md\nA  .engine/records/README.md\nA  .engine/records/findings-register.md\nA  .engine/records/gate-log.md\nA  .engine/records/gate-log.md.engine-reference\nA  .engine/records/governance-changelog.md\nA  .engine/rules/RULES.md\nA  AGENTS.md\nA  AGENTS.md.engine-reference\nA  dirty.txt\n?? .engine/VERSION\n?? .engine/placed.json\n'
+Ran 1 test in 0.268s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.144s
+OK
+exit 0

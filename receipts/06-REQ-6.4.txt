@@ -1,0 +1,16 @@
+REQ:        REQ-6.4
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made each update write a different tree by stamping the time of day
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Update.test_idempotent
+--- output with the property broken (must show failure) ---
+FAIL: test_idempotent (selftest.test_distribute.Update.test_idempotent)
+AssertionError: {Wind[6835 chars]:31.703229\n', WindowsPath('C:/Users/cjhou/App[100277 chars]s\n'} != {Wind[6835 chars]:31.712230\n', WindowsPath('C:/Users/cjhou/App[100277 chars]s\n'}
+Ran 1 test in 0.090s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.034s
+OK
+exit 0

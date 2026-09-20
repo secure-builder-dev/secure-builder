@@ -1,4 +1,5 @@
 # © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
 """The command line. `python -m engine <command>`.
 
   check [--json]      run every mechanical check and the self-test suite — the
@@ -8,6 +9,9 @@
   config              print the configuration and its problems
   degradation         print the honest-degradation statement (spec 04 §7)
   version             print the content-derived harness version
+  update --project P [--dry-run]   place or refresh the harness in a project (spec 06)
+  adopt --project P   adopt into an existing project and inventory pre-existing code
+  ownership           print the four ownership classes
 """
 import io
 import json
@@ -16,7 +20,7 @@ import sys
 import unittest
 
 from . import config as cfgmod
-from . import degradation, version
+from . import degradation, distribute, ownership, version
 from .checks import run_all
 from .outcome import Summary
 
@@ -136,12 +140,55 @@ def cmd_degradation(root, argv):
     return 0
 
 
+def _project(root, argv):
+    if "--project" in argv:
+        return pathlib.Path(argv[argv.index("--project") + 1]).resolve()
+    return root
+
+
+def cmd_update(root, argv):
+    project = _project(root, argv)
+    if not project.is_dir():
+        print(f"update: COULD NOT RUN — {project} is not a directory")
+        return 2
+    s = distribute.update(project, dry_run="--dry-run" in argv)
+    for line in s.lines():
+        print(line)
+    print(f"update: project {project} carries harness version {distribute.recorded_version(project) or '(report only)'}")
+    return 0
+
+
+def cmd_adopt(root, argv):
+    project = _project(root, argv)
+    if not project.is_dir():
+        print(f"adopt: COULD NOT RUN — {project} is not a directory")
+        return 2
+    s, n = distribute.adopt(project)
+    for line in s.lines():
+        print(line)
+    print(f"adopt: {n} pre-existing file(s) inventoried as never assessed in "
+          f"{ownership.ENGINE_DIR}/records/adoption-inventory.md; each needs a disposition")
+    return 0
+
+
+def cmd_ownership(root, argv):
+    for name, table in ownership.classes():
+        print(f"## {name}")
+        for k in (table if isinstance(table, list) else table):
+            print(f"  {k}")
+    return 0
+
+
 COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
-            "degradation": cmd_degradation, "version": lambda r, a: (print(version()), 0)[1]}
+            "degradation": cmd_degradation, "version": lambda r, a: (print(version()), 0)[1],
+            "update": cmd_update, "adopt": cmd_adopt, "ownership": cmd_ownership}
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     root = pathlib.Path(".").resolve()
     if "--root" in argv:
         i = argv.index("--root")

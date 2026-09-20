@@ -1,0 +1,16 @@
+REQ:        REQ-1.3
+SPEC:       06
+CHECK:      engine/distribute.py
+MUTATION:   made adoption inventory nothing from an existing project
+FILE:       engine/distribute.py
+TEST:       python -m unittest selftest.test_distribute.Adopt.test_adoption_inventories_preexisting_files_and_touches_no_source
+--- output with the property broken (must show failure) ---
+FAIL: test_adoption_inventories_preexisting_files_and_touches_no_source (selftest.test_distribute.Adopt.test_adoption_inventories_preexisting_files_and_touches_no_source)
+AssertionError: 0 != 2
+Ran 1 test in 0.205s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.169s
+OK
+exit 0

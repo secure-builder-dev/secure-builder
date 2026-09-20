@@ -1,0 +1,16 @@
+REQ:        REQ-1.1.4
+SPEC:       03
+CHECK:      engine/dist/rules/RULES.md
+MUTATION:   made the included rulebook reference a further file, which the runtime would not resolve
+FILE:       engine/dist/rules/RULES.md
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_rulebook_uses_no_references_of_its_own
+--- output with the property broken (must show failure) ---
+FAIL: test_rulebook_uses_no_references_of_its_own (selftest.test_distribute.InstructionFileSplit.test_rulebook_uses_no_references_of_its_own)
+AssertionError: True is not false : an included file must not reference further files: 'Read and follow: .engine/rules/MORE.md'
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

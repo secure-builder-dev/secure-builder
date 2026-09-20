@@ -1,0 +1,16 @@
+REQ:        REQ-4.3
+SPEC:       06
+CHECK:      engine/ownership.py
+MUTATION:   moved the rulebook so the path every project's instruction file imports no longer resolves to an engine-owned file
+FILE:       engine/ownership.py
+TEST:       python -m unittest selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path
+--- output with the property broken (must show failure) ---
+FAIL: test_instruction_file_imports_rules_by_stable_engine_owned_path (selftest.test_distribute.InstructionFileSplit.test_instruction_file_imports_rules_by_stable_engine_owned_path)
+AssertionError: None != 'engine-owned' : .engine/rules/RULES.md must be an engine-owned path
+Ran 1 test in 0.000s
+FAILED (failures=1)
+exit 1
+--- output with the property restored (must show success) ---
+Ran 1 test in 0.000s
+OK
+exit 0

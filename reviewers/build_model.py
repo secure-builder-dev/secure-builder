@@ -2,7 +2,7 @@
 # ENGINE-OWNED: local edits to this file are discarded on update
 """A construction session on a local open-weight model — the build role (CW1), never the gate.
 
-    python .engine/reviewers/build_model.py --model devstral:24b-small-2505-q4_K_M --item N-2
+    python .engine/harness/reviewers/build_model.py --model devstral:24b-small-2505-q4_K_M --item N-2
 
 The model is given the work item's definition of done, the design plan, the project
 rules, and the current source and tests, and asked for the files to write. It may
@@ -91,7 +91,7 @@ def main(argv=None):
         print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
         return 2
     try:
-        cfg = json.loads(read(root / ".engine" / "config.json"))
+        cfg = json.loads(read(root / ".engine" / "rules" / "config.json"))
     except ValueError:
         cfg = {}
     test_cmd = cfg.get("test_command") or [sys.executable, "-m", "unittest", "discover", "-s", a.tests, "-t", "."]

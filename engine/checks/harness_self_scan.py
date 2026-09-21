@@ -16,7 +16,7 @@ from .credential_scan import scan_text
 from .no_network import harness_tree
 
 NAME = "harness-self-scan"
-CATALOGUES = ".engine/catalogues"
+CATALOGUES = ".engine/rules/catalogues"
 
 
 def imports_of(path):

@@ -2,5 +2,6 @@
 # ENGINE-OWNED: local edits to this file are discarded on update
 # Per-clone runtime state and raw scan output stay out of version control (spec 02 REQ-2.2, REQ-2.3).
 # Records, the scan verdict stamp, catalogues and configuration are committed.
-local/
-scan/raw/
+# Four folders: rules/ (what you promised), harness/ (what checks it), records/ (what it found), work/ (scratch).
+work/
+records/scan/raw/

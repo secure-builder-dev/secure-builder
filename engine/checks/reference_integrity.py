@@ -14,7 +14,7 @@ import re
 from ..outcome import Outcome
 
 NAME = "reference-integrity"
-DEFAULT_GOVERNED = ["AGENTS.md", ".engine/rules/RULES.md", ".engine/agents/*.md", ".engine/reference/*.md", ".engine/records/*.md"]
+DEFAULT_GOVERNED = ["AGENTS.md", ".engine/rules/RULES.md", ".engine/rules/agents/*.md", ".engine/rules/reference/*.md", ".engine/records/*.md"]
 # a backtick-quoted token that looks like a repository path: has a slash or a file extension
 PATH_TOKEN = re.compile(r"`([A-Za-z0-9_./-]+(?:/[A-Za-z0-9_.*-]+)+|[A-Za-z0-9_.-]+\.(?:md|json|py|js|ts|yml|yaml|toml|tsv|txt|sh))`")
 NOT_A_PATH = re.compile(r"^(https?:|[A-Za-z]:)|^\.\.?$|^[0-9.]+$")

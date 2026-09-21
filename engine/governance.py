@@ -23,9 +23,9 @@ from . import gitutil
 from .outcome import Outcome
 from .records import changelog
 
-ZONES_FILE = ".engine/governance.json"
-DEFAULT_SET = ["AGENTS.md", ".engine/rules/", ".engine/agents/", ".engine/reference/", ".engine/control-manifest.json",
-               ".engine/config.json", ZONES_FILE]
+ZONES_FILE = ".engine/rules/governance.json"
+DEFAULT_SET = ["AGENTS.md", ".engine/rules/", ".engine/rules/agents/", ".engine/rules/reference/", ".engine/rules/control-manifest.json",
+               ".engine/rules/config.json", ZONES_FILE]
 SOURCE = re.compile(r"\[(source|decision|approved|finding|ticket|grounded):\s*[^\]]+\]", re.I)
 
 

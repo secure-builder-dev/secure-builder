@@ -27,7 +27,7 @@ from .records import findings as findings_mod
 from .records import gatelog, now, table
 from .records import schema as sch
 
-SNAPSHOT_DIR = ".engine/local/snapshots"
+SNAPSHOT_DIR = ".engine/work/snapshots"
 DELTAS = ".engine/records/standing-state-deltas.md"
 UNDECLARED = ".engine/records/undeclared-controls.md"
 INVENTORY = ".engine/records/coverage-inventory.md"

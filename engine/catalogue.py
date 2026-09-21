@@ -25,8 +25,8 @@ import tarfile
 
 from . import net
 
-DIR = ".engine/catalogues"
-CURRENCY_FILE = ".engine/currency-verified"
+DIR = ".engine/rules/catalogues"
+CURRENCY_FILE = ".engine/records/currency-verified"
 MARKINGS = re.compile(r"(?im)^\s*(CUI|FOUO|CONTROLLED UNCLASSIFIED INFORMATION|(?:TOP )?SECRET|CONFIDENTIAL)(//|\b)")
 STATUSES = ("active", "withdrawn")
 

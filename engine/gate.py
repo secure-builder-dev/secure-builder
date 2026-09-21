@@ -32,7 +32,7 @@ BARE = re.compile(r"(?i)^\s*(pass|ok|yes|no|n/a|none|done|fine|✓|✔|x|-|check
 
 
 def state_path(root, unit, run):
-    return pathlib.Path(root) / ".engine" / "local" / f"gate-{unit}-{run}.json"
+    return pathlib.Path(root) / ".engine" / "work" / f"gate-{unit}-{run}.json"
 
 
 # --- quality gate ---
@@ -182,7 +182,7 @@ def security_mechanical(root, cfg, base, head, unit):
     ctx["governance"] = is_gov
     if is_gov:
         ctx["rules_at_base"] = governance.rules_at_base(root, base, governance.governed_set(root, cfg),
-                                                        root / ".engine" / "local" / f"rules-at-base-{unit}")
+                                                        root / ".engine" / "work" / f"rules-at-base-{unit}")
     ctx["checklist"] = checklist.compose(cfg)
     ctx["checklist_version"] = checklist.version()
     return outs, ctx
@@ -315,7 +315,7 @@ def _dependency_lead_time(root, cfg, diff):
 
 
 def _dependency_policy(root):
-    p = pathlib.Path(root) / ".engine" / "dependency-policy.json"
+    p = pathlib.Path(root) / ".engine" / "rules" / "dependency-policy.json"
     if not p.is_file():
         return None
     try:
@@ -366,12 +366,12 @@ def _write_checklist(root, unit, run, ctx):
         L.append(f"- [{group}] {i}. {text}" + (f" — {detail}" if detail else "") + (f" (cites: {std})" if std else ""))
     if ctx.get("governance"):
         L += ["", "GOVERNANCE CHANGE: this range alters the rule set. Evaluate against the rules as they existed at the",
-              f"base commit, materialised under .engine/local/rules-at-base-{unit}/ ({len(ctx.get('rules_at_base', []))} file(s)).",
+              f"base commit, materialised under .engine/work/rules-at-base-{unit}/ ({len(ctx.get('rules_at_base', []))} file(s)).",
               "Your verdict is advisory; the accountable control is the human's line-by-line diff review."]
     if ctx["control_shaped"]:
         L += ["", "Completeness review (answer in prose per control touched; Q3 and Q4 produce a list):"]
         L += [f"- {q}: {t}" for q, t in checklist.COMPLETENESS]
-    (pathlib.Path(root) / ".engine" / "local" / f"gate-{unit}-{run}-checklist.md").write_text("\n".join(L) + "\n", encoding="utf-8", newline="\n")
+    (pathlib.Path(root) / ".engine" / "work" / f"gate-{unit}-{run}-checklist.md").write_text("\n".join(L) + "\n", encoding="utf-8", newline="\n")
 
 
 ONE_ITEM = re.compile(r"^\s*(?!.*[.!?]\s*$)[\w./:<>{}\[\]()-]+(?:\s+[\w./:<>{}\[\]()-]+){0,3}\s*$")

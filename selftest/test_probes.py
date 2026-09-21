@@ -72,7 +72,7 @@ class PerGate(unittest.TestCase):
         with tree() as t:
             base = gate_project(t)
             head = feature(t, files={"docs/x.md": "hi" + NL})
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {}}))
             gate.prepare(t, Config({"schema": 1, "track": "web", "tier": "IL4", "provider": "aws", "app_type": "n/a", "mode": "local",
                                     "protected_branch": "main", "side": "low", "timezone": "UTC", "test_command": ["python", "-c", "pass"]}),
                          "epic-7", "1", base, head)

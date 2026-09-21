@@ -103,7 +103,7 @@ def run(root, cfg):
     except catalogue.CatalogueError as e:
         return Outcome.could_not_run(NAME, str(e))
     if not cats:
-        return Outcome.could_not_run(NAME, "no vendored catalogues under .engine/catalogues — nothing to resolve against is not a pass")
+        return Outcome.could_not_run(NAME, "no vendored catalogues under .engine/rules/catalogues — nothing to resolve against is not a pass")
     docs = governed_documents(root, cfg)
     if not docs:
         return Outcome.could_not_run(NAME, "the governed document set resolved to zero documents")

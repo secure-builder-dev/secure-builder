@@ -25,7 +25,7 @@ NOT_ACHIEVED = "not achieved"
 
 
 def _catalogue_age(root):
-    p = pathlib.Path(root) / ".engine" / "currency-verified"
+    p = pathlib.Path(root) / ".engine" / "records" / "currency-verified"
     if not p.is_file():
         return None
     try:
@@ -36,7 +36,7 @@ def _catalogue_age(root):
 
 
 def _detection_age(root):
-    p = pathlib.Path(root) / ".engine" / "detection-data-date"
+    p = pathlib.Path(root) / ".engine" / "records" / "scan" / "detection-data-date"
     if not p.is_file():
         return None
     try:

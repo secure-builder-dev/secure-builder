@@ -4,7 +4,7 @@
 
 Launched by `engine review` as a fresh process whose only argument is the handoff path:
 
-    ENGINE_REVIEWER_CMD="python .engine/reviewers/local_model.py --model gemma4:31b-it-q4_K_M"
+    ENGINE_REVIEWER_CMD="python .engine/harness/reviewers/local_model.py --model gemma4:31b-it-q4_K_M"
     python .engine/harness/run.py review unit=U1 run=2
 
 Everything else the reviewer needs is read from version control and the placed
@@ -129,8 +129,8 @@ def ask(endpoint, model, system, user, num_ctx, raw_path=None):
 def build_prompt(root, facts, checklist_text, definition, controls):
     base, head = facts["base"], facts["head"]
     # the project's change: everything but the placed harness; the governed files under .engine/ are part of the change
-    diff = git(root, "diff", f"{base}..{head}", "--", ".", ":(exclude).engine", ":(exclude)AGENTS.md.engine-reference") \
-        + git(root, "diff", f"{base}..{head}", "--", ".engine/control-manifest.json", ".engine/config.json", ".engine/governance.json", ".engine/dependency-policy.json")
+    diff = git(root, "diff", f"{base}..{head}", "--", ".", ":(exclude).engine") \
+        + git(root, "diff", f"{base}..{head}", "--", ".engine/rules/control-manifest.json", ".engine/rules/config.json", ".engine/rules/governance.json", ".engine/rules/dependency-policy.json")
     if len(diff) > 120_000:
         diff = diff[:120_000] + "\n[diff truncated by the reviewer driver at 120000 characters; say so in the summary]\n"
     names = git(root, "diff", "--name-only", f"{base}..{head}")
@@ -140,7 +140,7 @@ def build_prompt(root, facts, checklist_text, definition, controls):
     parts = [f"Unit {facts['unit']} run {facts['run']}. Range {base}..{head}.",
              f"Scan line from the handoff: {facts.get('scan', 'not stated')}", "",
              "Files changed in the range:", names, "",
-             "Declared controls (from .engine/control-manifest.json):",
+             "Declared controls (from .engine/rules/control-manifest.json):",
              json.dumps(controls, indent=1), "",
              "Checklist prepared for this run:", checklist_text, "",
              "Project rules (AGENTS.md, section Project rules):", _section(read_at(root, head, "AGENTS.md"), "## Project rules"), "",
@@ -275,13 +275,13 @@ def main(argv=None):
     if a.no_think:
         THINK["think"] = False
     hp = pathlib.Path(a.handoff).resolve()
-    root = hp.parent.parent.parent          # .engine/local/handoff-U-R.md -> project root
+    root = hp.parent.parent.parent          # .engine/work/handoff-U-R.md -> project root
     facts = handoff_facts(read(hp))
     for k in ("unit", "run", "base", "head"):
         if k not in facts:
             print(f"local_model: COULD NOT RUN — handoff lacks {k}")
             return 2
-    state_p = root / ".engine" / "local" / f"gate-{facts['unit']}-{facts['run']}.json"
+    state_p = root / ".engine" / "work" / f"gate-{facts['unit']}-{facts['run']}.json"
     if not state_p.is_file():
         print(f"local_model: COULD NOT RUN — no prepared run at {state_p.name}; run `gate prepare` first")
         return 2
@@ -289,10 +289,10 @@ def main(argv=None):
     if not state.get("quality_passed"):
         print("local_model: STOP — the handoff's run did not pass the quality gate; the security gate does not run")
         return 1
-    checklist_text = read(root / ".engine" / "local" / f"gate-{facts['unit']}-{facts['run']}-checklist.md")
-    definition = read(root / ".engine" / "agents" / "security-gate.md")
+    checklist_text = read(root / ".engine" / "work" / f"gate-{facts['unit']}-{facts['run']}-checklist.md")
+    definition = read(root / ".engine" / "rules" / "agents" / "security-gate.md")
     try:
-        controls = json.loads(read_at(root, facts["head"], ".engine/control-manifest.json")).get("controls", [])
+        controls = json.loads(read_at(root, facts["head"], ".engine/rules/control-manifest.json")).get("controls", [])
     except ValueError:
         controls = []
     controls = [c for c in controls if not c.get("placeholder")]
@@ -316,7 +316,7 @@ def main(argv=None):
     slug = re.sub(r"[^A-Za-z0-9]+", "-", a.model).strip("-")
     try:
         judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx,
-                            raw_path=root / ".engine" / "local" / f"raw-{facts['unit']}-{facts['run']}-{slug}.json")
+                            raw_path=root / ".engine" / "work" / f"raw-{facts['unit']}-{facts['run']}-{slug}.json")
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         print(f"local_model: COULD NOT RUN — the model did not return a verdict ({e})")
         return 2
@@ -361,7 +361,7 @@ def main(argv=None):
                           "total_duration_s": round(raw.get("total_duration", 0) / 1e9, 1), "eval_count": raw.get("eval_count"),
                           "prompt_eval_count": raw.get("prompt_eval_count")},
     }
-    out = root / ".engine" / "local" / f"verdict-{facts['unit']}-{facts['run']}-{slug}.json"
+    out = root / ".engine" / "work" / f"verdict-{facts['unit']}-{facts['run']}-{slug}.json"
     out.write_text(json.dumps(block, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"local_model: {verdict.upper()} — {len(findings)} grounded finding(s), {len(blocking)} blocking; "
           f"{len(ungrounded)} ungrounded (quote not in the diff), {len(inconsistent)} inconsistent (item judged pass), "

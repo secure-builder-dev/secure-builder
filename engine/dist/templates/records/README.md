@@ -11,5 +11,5 @@ a time. Two concurrent branches will conflict on append; resolve by keeping both
 rows. A team that outgrows this moves to one file per gate run, assembled into
 the series on read (spec 02 §2.4).
 
-**Timestamps** are recorded in the timezone named in `.engine/config.json`
+**Timestamps** are recorded in the timezone named in `.engine/rules/config.json`
 (`timezone`) and come from the source named there (`clock`).

@@ -31,9 +31,9 @@ class Classes(unittest.TestCase):
 
     def test_class_of(self):
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/rules/RULES.md"), "engine-owned")
-        self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/agents/x.md"), "engine-owned")
+        self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/rules/agents/x.md"), "engine-owned")
         self.assertEqual(own.class_of("AGENTS.md"), "seed-if-absent")
-        self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/control-manifest.json"), "seed-if-absent",
+        self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/rules/control-manifest.json"), "seed-if-absent",
                          "the control manifest is seeded once and never overwritten by tooling")
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/records/gate-log.md"), "seed-if-absent")
         self.assertEqual(own.class_of("plans/x.md"), "project-owned")
@@ -58,7 +58,10 @@ class Update(unittest.TestCase):
             self.assertTrue((t / RULES).is_file())
             self.assertTrue((t / own.ENGINE_DIR / "harness/engine/outcome.py").is_file())
             self.assertTrue((t / "AGENTS.md").is_file())
-            self.assertTrue((t / ("AGENTS.md" + own.REFERENCE_SUFFIX)).is_file())
+            self.assertTrue((t / own.reference_path("AGENTS.md")).is_file())
+            self.assertEqual(own.reference_path("AGENTS.md"), ".engine/harness/seeds/AGENTS.md")
+            self.assertEqual(own.reference_path(".engine/rules/governance.json"), ".engine/harness/seeds/governance.json")
+            self.assertEqual(own.reference_path(".engine/records/gate-log.md"), ".engine/harness/seeds/records/gate-log.md")
             v = (t / own.VERSION_FILE).read_text().splitlines()
             self.assertRegex(v[0], r"^\d+\.\d+\.\d+\S*\+[0-9a-f]{12}$")
             self.assertRegex(v[1], r"^\d{4}-\d{2}-\d{2}$")
@@ -133,12 +136,53 @@ class Update(unittest.TestCase):
 
     def test_reference_copy_not_read_by_any_check(self):
         import re
-        pattern = re.compile(re.escape(own.REFERENCE_SUFFIX))
+        pattern = re.compile(re.escape(own.REFERENCE_DIR) + r"|harness/seeds|reference_path")
         for p in (ROOT / "engine").rglob("*.py"):
             if p.name in ("ownership.py", "distribute.py"):
                 continue
             self.assertIsNone(pattern.search(p.read_text(encoding="utf-8")),
-                              f"{p.name} references the engine-reference suffix")
+                              f"{p.name} references the seeds directory")
+
+
+class FourFolders(unittest.TestCase):
+    def test_every_placed_path_is_under_rules_harness_records_or_work(self):
+        # the layout rule: everything the engine places or writes sits in one of four folders
+        ok = (f"{own.ENGINE_DIR}/rules/", f"{own.ENGINE_DIR}/harness/", f"{own.ENGINE_DIR}/records/", f"{own.ENGINE_DIR}/work/")
+        for table in (own.ENGINE_OWNED, own.SEED_IF_ABSENT, own.ENGINE_REFERENCE):
+            for target in table:
+                if target == "AGENTS.md" or target == f"{own.ENGINE_DIR}/.gitignore":
+                    continue          # the project's instruction file, and the folder's own gitignore
+                self.assertTrue(target.startswith(ok), target)
+        for target in own.PROJECT_OWNED:
+            if target.startswith(own.ENGINE_DIR):
+                self.assertTrue(target.startswith(ok), target)
+        for const in (own.VERSION_FILE, own.PLACED_MANIFEST, own.TRACKING_RECORD, own.REFERENCE_DIR):
+            self.assertTrue(const.startswith(ok), const)
+
+    def test_a_project_on_the_old_layout_is_moved_not_duplicated(self):
+        from .helpers import commit, git, git_repo, write_config
+        NL = chr(10)
+        with tree() as t:
+            write_config(t)
+            git_repo(t)
+            # an old-layout project: config beside .engine, a record in local/, a reviewer definition in agents/
+            (t / ".engine" / "rules" / "config.json").rename(t / ".engine" / "config.json")
+            write(t, ".engine/local/handoff-U-1.md", "# GATE HANDOFF: U run 1" + NL)
+            write(t, ".engine/agents/mine.md", "project reviewer" + NL)
+            write(t, "AGENTS.md.engine-reference", "old reference copy" + NL)
+            git(t, "add", "-A"); commit(t)
+            s = distribute.update(t)
+            moved = dict(s.migrated)
+            self.assertEqual(moved[".engine/config.json"], ".engine/rules/config.json")
+            self.assertEqual(moved[".engine/local"], ".engine/work")
+            self.assertEqual(moved["AGENTS.md.engine-reference"], ".engine/harness/seeds/AGENTS.md")
+            self.assertTrue((t / ".engine/work/handoff-U-1.md").is_file())
+            self.assertTrue((t / ".engine/rules/agents/mine.md").is_file(), "a project's own definition moves with the folder")
+            self.assertFalse((t / ".engine/local").exists())
+            self.assertFalse((t / ".engine/config.json").exists())
+            status = git(t, "status", "--short").stdout
+            self.assertIn("R  .engine/local/handoff-U-1.md -> .engine/work/handoff-U-1.md", status, "version control sees a rename")
+            self.assertEqual(distribute.update(t).migrated, [], "a second update has nothing to move")
 
 
 class AgentTracking(unittest.TestCase):
@@ -152,15 +196,15 @@ class AgentTracking(unittest.TestCase):
     def test_retired_definition_removed_project_definition_kept(self):
         with tree() as t:
             distribute.update(t)
-            agents = t / own.ENGINE_DIR / "agents"
-            write(t, f"{own.ENGINE_DIR}/agents/retired.md", "old reviewer\n")
-            write(t, f"{own.ENGINE_DIR}/agents/mine.md", "project reviewer\n")
+            agents = t / own.ENGINE_DIR / "rules" / "agents"
+            write(t, f"{own.ENGINE_DIR}/rules/agents/retired.md", "old reviewer\n")
+            write(t, f"{own.ENGINE_DIR}/rules/agents/mine.md", "project reviewer\n")
             with (t / own.TRACKING_RECORD).open("a") as f:
                 f.write("retired.md\n")
             s = distribute.update(t)
             self.assertFalse((agents / "retired.md").exists(), "a retired engine-placed definition must be removed")
             self.assertTrue((agents / "mine.md").exists(), "a project's own definition must be left alone")
-            self.assertIn(f"{own.ENGINE_DIR}/agents/retired.md", s.removed)
+            self.assertIn(f"{own.ENGINE_DIR}/rules/agents/retired.md", s.removed)
 
     def test_tracking_entries_with_separators_ignored(self):
         self.assertEqual(distribute.valid_tracking_entries(
@@ -309,7 +353,7 @@ class InstructionFileSplit(unittest.TestCase):
     def test_changes_note_placed_engine_owned(self):
         with tree() as t:
             distribute.update(t)
-            p = t / own.ENGINE_DIR / "CHANGES.md"
+            p = t / own.ENGINE_DIR / "harness" / "CHANGES.md"
             self.assertTrue(p.is_file())
             self.assertIn("# Changes that newly fail", p.read_text(encoding="utf-8"))
 

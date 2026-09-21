@@ -10,7 +10,7 @@ from .. import coverage, gitutil
 from ..outcome import Outcome
 
 NAME = "coverage-range"
-DEFAULT_REPORT = ".engine/local/coverage.json"
+DEFAULT_REPORT = ".engine/work/coverage.json"
 
 
 def run(root, cfg, base=None, head=None):

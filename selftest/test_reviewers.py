@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-# the drivers sit beside engine/ in the build tree and at .engine/reviewers/ beside a placed harness
+# the drivers sit beside engine/ in the build tree and at .engine/harness/reviewers/ beside a placed harness
 REVIEWERS = ROOT / "reviewers" if (ROOT / "reviewers").is_dir() else ROOT.parent / "reviewers"
 
 

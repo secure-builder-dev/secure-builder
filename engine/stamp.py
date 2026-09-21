@@ -12,7 +12,7 @@ import json
 import pathlib
 import re
 
-FILE = ".engine/scan/stamp.json"
+FILE = ".engine/records/scan/stamp.json"
 VERDICTS = ("green", "red", "unverified")
 FORBIDDEN_KEYS = ("host", "hostname", "registry", "account", "account_id", "url", "path", "workstation")
 

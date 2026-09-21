@@ -22,7 +22,7 @@ import re
 from . import gitutil
 from .controlshape import SOURCE_EXT, TEST_PATH
 
-FILE = ".engine/control-manifest.json"
+FILE = ".engine/rules/control-manifest.json"
 SCOPE_STATEMENT = ("This manifest covers system-specific controls and the system-specific portion of hybrid controls. "
                    "Fully inherited controls are implemented by the hosting platform, are tracked in the platform's "
                    "system security plan, and are outside this harness's verification scope.")

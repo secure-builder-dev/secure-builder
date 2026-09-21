@@ -44,7 +44,7 @@ class PlacedHook(unittest.TestCase):
             write_config(t, protected_branch="main")
             git_repo(t); commit(t)
             distribute.update(t)
-            hook = t / ".engine" / "hooks" / "guard.py"
+            hook = t / ".engine" / "harness" / "hooks" / "guard.py"
             res = subprocess.run([sys.executable, str(hook), "check", "git push origin main"], capture_output=True, text=True)
             self.assertEqual(res.returncode, 1)
             self.assertTrue(res.stdout.startswith("guard: REFUSED"), res.stdout)

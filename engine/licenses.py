@@ -10,7 +10,7 @@ import pathlib
 import re
 
 RECORD = ".engine/records/licenses.tsv"
-POLICY = ".engine/license-policy.json"
+POLICY = ".engine/rules/license-policy.json"
 COLUMNS = ["component", "version", "license", "source"]
 
 

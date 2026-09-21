@@ -217,7 +217,7 @@ class Verification(unittest.TestCase):
 
     def test_harness_own_checklist_citations_resolve(self):
         with tree() as t:
-            shutil.copytree(ROOT / "engine" / "data" / "catalogues", t / ".engine" / "catalogues")
+            shutil.copytree(ROOT / "engine" / "data" / "catalogues", t / ".engine" / "rules" / "catalogues")
             shutil.copytree(ROOT / "engine" / "dist" / "agents", t / "agents")
             o = citations.run(t, Config({"governed_documents": ["agents/*.md"]}))
             self.assertIs(o.state, State.FINDINGS)

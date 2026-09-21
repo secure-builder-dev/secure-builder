@@ -140,7 +140,7 @@ class Collector:
         return {"files": files}
 
 
-def collect(root, run_suite, prefix="engine", out=".engine/local/coverage.json"):
+def collect(root, run_suite, prefix="engine", out=".engine/work/coverage.json"):
     """Run `run_suite()` under the collector and write the report. Returns the report."""
     c = Collector(root, prefix)
     c.start()

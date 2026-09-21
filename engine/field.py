@@ -27,10 +27,10 @@ from .outcome import Outcome, State
 from .records import gatelog, now, table
 from .records import schema as sch
 
-DECLARATION = ".engine/local/field-mode.json"
-LAST_CHECK = ".engine/local/last-check.json"
+DECLARATION = ".engine/work/field-mode.json"
+LAST_CHECK = ".engine/work/last-check.json"
 OBLIGATIONS = ".engine/records/reconciliation-obligations.md"
-MODELS_DIR = ".engine/models"
+MODELS_DIR = ".engine/rules/models"
 NO_MODEL = "none"
 
 # The explicit table of what field mode changes (REQ-4.1). Nothing degrades that is not here.
@@ -268,7 +268,7 @@ def run(root, cfg, unit, run_no, base, head, attested_by, model=NO_MODEL, review
            "reconciliation": "open" if deferred else "none owed", "budget_seconds": budget, "elapsed_seconds": round(total, 1),
            "completed_within_budget": not any(o.state is State.DEFERRED and o.reason == "budget" for o in outcomes),
            "boundary": boundary, "verdict": verdict, "obligation": ob_id if deferred else None}
-    p = pathlib.Path(root) / ".engine" / "local" / f"field-verdict-{unit}-{run_no}.md"
+    p = pathlib.Path(root) / ".engine" / "work" / f"field-verdict-{unit}-{run_no}.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(render(doc, outcomes), encoding="utf-8", newline="\n")
     return doc, line, outcomes

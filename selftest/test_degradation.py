@@ -47,7 +47,7 @@ class Statement(unittest.TestCase):
     def test_currency_quantified_when_recorded(self):
         with tree() as t:
             write_config(t, mode="disconnected")
-            write(t, ".engine/currency-verified", "2000-01-01\n")
+            write(t, ".engine/records/currency-verified", "2000-01-01\n")
             s = degradation.statement(t)
             self.assertRegex(s, r"- catalogue currency: currency not checked in this mode; last verified \d{4,} day\(s\) ago")
 

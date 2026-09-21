@@ -24,9 +24,9 @@ from .records import findings as findings_mod
 from .records import gatelog, table
 
 NL = chr(10)
-SCAN_RAW = ".engine/scan/raw"
-SCAN_SBOM = ".engine/scan/sbom"
-SCAN_FILES = (".engine/scan/actionable.md", ".engine/scan/carried.md", ".engine/scan/stamp.json")
+SCAN_RAW = ".engine/records/scan/raw"
+SCAN_SBOM = ".engine/records/scan/sbom"
+SCAN_FILES = (".engine/records/scan/actionable.md", ".engine/records/scan/carried.md", ".engine/records/scan/stamp.json")
 RECORD_FILES = [
     ("findings-register.md", ".engine/records/findings-register.md"),
     ("governance-changelog.md", ".engine/records/governance-changelog.md"),
@@ -305,7 +305,7 @@ def scan_bundle(root, out_dir, cfg, redacted=True, marking=None):
             sources += sorted(p for p in (root / d).rglob("*") if p.is_file())
     sources += [root / f for f in SCAN_FILES if (root / f).is_file()]
     for p in sources:
-        rel = p.relative_to(root / ".engine" / "scan").as_posix()
+        rel = p.relative_to(root / ".engine" / "records" / "scan").as_posix()
         dest = out / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         text = p.read_text(encoding="utf-8", errors="replace")
@@ -317,7 +317,7 @@ def scan_bundle(root, out_dir, cfg, redacted=True, marking=None):
         dest.write_text(mark(rel, text, marking), encoding="utf-8", newline="\n")
         entries.append({"path": rel, "sha256": _sha256(dest), "redacted": redacted})
     meta = {"kind": "scan-bundle", "date": _now(), "redacted": redacted, "marking": marking, "side": cfg.side if cfg else "unknown",
-            "detection_data_date": _read(root / ".engine/detection-data-date"), "files": entries}
+            "detection_data_date": _read(root / ".engine/records/scan/detection-data-date"), "files": entries}
     (out / "BUNDLE.json").write_text(mark("BUNDLE.json", json.dumps(meta, indent=2, sort_keys=True) + NL, marking), encoding="utf-8", newline=NL)
     return meta
 
@@ -378,7 +378,7 @@ def package(root, cfg, out_dir, marking=None):
         put(f"sbom/{p.name}", p.read_text(encoding="utf-8", errors="replace"), "composition inventory (SBOM)")
     if not sboms:
         problems.append("no composition inventory for any shipped image (spec 01 §4.9)")
-    if (root / ".engine" / "scan").is_dir():
+    if (root / ".engine" / "records" / "scan").is_dir():
         meta = scan_bundle(root, out / "scan", cfg, redacted=True, marking=marking)
         for f in meta["files"]:
             entries.append({"path": f"scan/{f['path']}", "kind": "scan artifact (redacted)", "sha256": f["sha256"]})

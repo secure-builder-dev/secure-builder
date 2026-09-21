@@ -22,7 +22,7 @@ RULES = "engine/dist/rules/RULES.md"
 # where the rulebook and the shipped hook live: in the harness source tree, and in a placed project
 LAYOUTS = [
     {"package": "engine", "rules": "engine/dist/rules/RULES.md", "pre_commit": "engine/dist/hooks/pre-commit.py"},
-    {"package": ".engine/harness/engine", "rules": ".engine/rules/RULES.md", "pre_commit": ".engine/hooks/pre-commit.py"},
+    {"package": ".engine/harness/engine", "rules": ".engine/rules/RULES.md", "pre_commit": ".engine/harness/hooks/pre-commit.py"},
 ]
 
 # rule number -> [(kind, where, how it is verified)]. A `platform:` point is enforced by the
@@ -30,7 +30,7 @@ LAYOUTS = [
 # listed, never counted, and every rule needs at least one point this module can verify.
 POINTS = {
     1: [("platform", "branch protection on the protected branch (spec 03 REQ-4.1; recorded 'not achieved' where absent)", "platform:branch-protection"),
-        ("guard-hook", "guard.blocks refuses a push to / merge on the protected branch (shipped as .engine/hooks/guard.py)", "guard:push"),
+        ("guard-hook", "guard.blocks refuses a push to / merge on the protected branch (shipped as .engine/harness/hooks/guard.py)", "guard:push"),
         ("mechanical-check", "run_attestation: a gate row exists for every range that reached the protected branch", "check:run_attestation")],
     2: [("mechanical-check", "gate._attribution on every gated range", "gate:_attribution"),
         ("mechanical-check", "harness_self_scan on the harness's own tree", "check:harness_self_scan")],

@@ -67,7 +67,7 @@ class RangeCheck(unittest.TestCase):
     def test_low_coverage_on_changed_file_is_blocking(self):
         with tree() as t:
             base, head = branch_with_change(t, {"src/new.py": "x = 1" + chr(10)})
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 1, "total": 10}}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 1, "total": 10}}}))
             o = coverage_range.run(t, cfg())
             self.assertIs(o.state, State.FINDINGS)
             self.assertTrue(o.blocking)
@@ -76,7 +76,7 @@ class RangeCheck(unittest.TestCase):
     def test_covered_change_is_clean(self):
         with tree() as t:
             base, head = branch_with_change(t, {"src/new.py": "x = 1" + chr(10)})
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
             o = coverage_range.run(t, cfg())
             self.assertIs(o.state, State.CLEAN)
             self.assertEqual(o.line(), f"[coverage-range] CLEAN: 1 changed source file(s) in {base[:7]}..{head[:7]} meet their layer thresholds")
@@ -86,7 +86,7 @@ class RangeCheck(unittest.TestCase):
         in the range, and the project's report could never cover them."""
         with tree() as t:
             base, head = branch_with_change(t, {"src/new.py": "x = 1" + chr(10), ".engine/harness/engine/gate.py": "# placed" + chr(10)})
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
             o = coverage_range.run(t, cfg())
             self.assertIs(o.state, State.CLEAN)
             self.assertIn("1 changed source file(s)", o.detail)
@@ -110,7 +110,7 @@ class RangeCheck(unittest.TestCase):
             base, head = branch_with_change(t, {"src/new.py": "x" + chr(10)})
             git(t, "update-ref", "refs/remotes/origin/main", base)
             git(t, "branch", "-f", "main", head)     # local main drifted to HEAD; remote says base
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {"src/new.py": {"covered": 9, "total": 10}}}))
             o = coverage_range.run(t, cfg())
             self.assertIs(o.state, State.CLEAN, o.line())
             self.assertIn(f"{base[:7]}..{head[:7]}", o.line())
@@ -135,7 +135,7 @@ class Collector(unittest.TestCase):
             spec.loader.exec_module(mod)
             rep = coverage.collect(t, lambda: mod.f(True))
             self.assertEqual(rep["files"]["engine/m.py"], {"covered": 2, "total": 3})
-            self.assertTrue((t / ".engine/local/coverage.json").is_file())
+            self.assertTrue((t / ".engine/work/coverage.json").is_file())
 
 
     def test_code_run_in_a_thread_started_under_the_collector_is_measured(self):
@@ -169,7 +169,7 @@ class ProjectCoverage(unittest.TestCase):
             write(t, "tests/test_calc.py", "import unittest" + NL + "from src.calc import add" + NL + NL + "class T(unittest.TestCase):" + NL + "    def test_add(self): self.assertEqual(add(1, 2), 3)" + NL)
             code, out = cli(t, "coverage", "project")
             self.assertEqual(code, 0, out)
-            rep = json.loads((t / ".engine/local/coverage.json").read_text(encoding="utf-8"))
+            rep = json.loads((t / ".engine/work/coverage.json").read_text(encoding="utf-8"))
             self.assertIn("src/calc.py", rep["files"])
             self.assertGreater(rep["files"]["src/calc.py"]["total"], rep["files"]["src/calc.py"]["covered"])
             self.assertGreater(rep["files"]["src/calc.py"]["covered"], 0)

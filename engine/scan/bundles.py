@@ -133,6 +133,7 @@ def ingest(root, bundle_dir, cfg, operator, filtered_understood="", invoke=None)
         dest.mkdir(parents=True, exist_ok=True)
         with tarfile.open(d / "detection-data.tar") as tf:
             tf.extractall(dest.parent, filter="data")
+        (pathlib.Path(root) / DATA_DATE).parent.mkdir(parents=True, exist_ok=True)
         (pathlib.Path(root) / DATA_DATE).write_text(data["produced"] + "\n", encoding="utf-8", newline="\n")
     else:
         raise RuntimeError(f"unknown bundle kind {data.get('kind')!r}")

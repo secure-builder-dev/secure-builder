@@ -266,7 +266,7 @@ class Export(unittest.TestCase):
             recv = commit(hi, "receive drop")
             c = cfg("high")
             topology.record_change(hi, c, commit=recv, what="x", why_not_low_side="y", authorized_by="Dana", backport_status="not yet ported")
-            write(hi, ".engine/control-manifest.json", json.dumps({"schema": 1, "scope_statement": __import__("engine.manifest", fromlist=["x"]).SCOPE_STATEMENT, "controls": []}))
+            write(hi, ".engine/rules/control-manifest.json", json.dumps({"schema": 1, "scope_statement": __import__("engine.manifest", fromlist=["x"]).SCOPE_STATEMENT, "controls": []}))
             out, m = export.package(hi, c, hi / "exports")
             paths = {e["path"] for e in m["files"]}
             for must in ("records/ingest-records.md", "records/high-side-changes.md", "records/received-drops.json", "04-record-authority.md", "records/coverage-inventory.md"):

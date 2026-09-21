@@ -54,6 +54,8 @@ class Summary:
         self.by_class = {name: {} for name, _ in own.classes()}
         self.diverged = []     # (path, backup)
         self.removed = []      # paths
+        self.migrated = []     # (old, new) moved into the four-folder layout
+        self.not_migrated = [] # (old, new) left alone because the new path already existed
         self.dry_run = False
 
     def bump(self, cls, outcome):
@@ -70,7 +72,87 @@ class Summary:
         if self.removed:
             out.append(f"  removed ({len(self.removed)}) — placed by an earlier version, no longer shipped:")
             out += [f"    - {p}" for p in self.removed]
+        if self.migrated:
+            out.append(f"  layout ({len(self.migrated)}) — moved into the four folders (rules/, harness/, records/, work/):")
+            out += [f"    - {a} -> {b}" for a, b in self.migrated]
+        if self.not_migrated:
+            out.append(f"  layout NOT moved ({len(self.not_migrated)}) — the new path already exists; reconcile by hand:")
+            out += [f"    - {a} (new: {b})" for a, b in self.not_migrated]
         return out
+
+
+# The layout before the four folders (rules/, harness/, records/, work/): old path -> new path.
+# A project placed under the old layout is moved, never duplicated; version control sees a rename.
+LEGACY_LAYOUT = [
+    (f"{own.ENGINE_DIR}/local", f"{own.ENGINE_DIR}/work"),
+    (f"{own.ENGINE_DIR}/agents", f"{own.ENGINE_DIR}/rules/agents"),
+    (f"{own.ENGINE_DIR}/reference", f"{own.ENGINE_DIR}/rules/reference"),
+    (f"{own.ENGINE_DIR}/catalogues", f"{own.ENGINE_DIR}/rules/catalogues"),
+    (f"{own.ENGINE_DIR}/models", f"{own.ENGINE_DIR}/rules/models"),
+    (f"{own.ENGINE_DIR}/config.json", f"{own.ENGINE_DIR}/rules/config.json"),
+    (f"{own.ENGINE_DIR}/control-manifest.json", f"{own.ENGINE_DIR}/rules/control-manifest.json"),
+    (f"{own.ENGINE_DIR}/governance.json", f"{own.ENGINE_DIR}/rules/governance.json"),
+    (f"{own.ENGINE_DIR}/dependency-policy.json", f"{own.ENGINE_DIR}/rules/dependency-policy.json"),
+    (f"{own.ENGINE_DIR}/license-policy.json", f"{own.ENGINE_DIR}/rules/license-policy.json"),
+    (f"{own.ENGINE_DIR}/reviewers", f"{own.ENGINE_DIR}/harness/reviewers"),
+    (f"{own.ENGINE_DIR}/hooks", f"{own.ENGINE_DIR}/harness/hooks"),
+    (f"{own.ENGINE_DIR}/VERSION", f"{own.ENGINE_DIR}/harness/VERSION"),
+    (f"{own.ENGINE_DIR}/placed.json", f"{own.ENGINE_DIR}/harness/placed.json"),
+    (f"{own.ENGINE_DIR}/CHANGES.md", f"{own.ENGINE_DIR}/harness/CHANGES.md"),
+    (f"{own.ENGINE_DIR}/DATA.md", f"{own.ENGINE_DIR}/harness/DATA.md"),
+    (f"{own.ENGINE_DIR}/scan", f"{own.ENGINE_DIR}/records/scan"),
+    (f"{own.ENGINE_DIR}/detection-data-date", f"{own.ENGINE_DIR}/records/scan/detection-data-date"),
+    (f"{own.ENGINE_DIR}/currency-verified", f"{own.ENGINE_DIR}/records/currency-verified"),
+    ("AGENTS.md.engine-reference", own.reference_path("AGENTS.md")),
+    (f"{own.ENGINE_DIR}/control-manifest.json.engine-reference", own.reference_path(f"{own.ENGINE_DIR}/rules/control-manifest.json")),
+    (f"{own.ENGINE_DIR}/governance.json.engine-reference", own.reference_path(f"{own.ENGINE_DIR}/rules/governance.json")),
+    (f"{own.ENGINE_DIR}/records/gate-log.md.engine-reference", own.reference_path(f"{own.ENGINE_DIR}/records/gate-log.md")),
+]
+
+
+def migrate_layout(project, dry_run=False):
+    """Move a project placed under the old layout into the four folders. Returns the (old, new)
+    pairs moved. Tracked paths are moved with `git mv` so history follows them; an old path whose
+    new path already exists is left alone and reported, never merged silently."""
+    project = pathlib.Path(project)
+    moved, kept = [], []
+    tracked = set()
+    if (project / ".git").exists():
+        res = subprocess.run(["git", "-C", str(project), "ls-files"], capture_output=True, text=True, encoding="utf-8")
+        tracked = set(res.stdout.splitlines())
+    for old, new in LEGACY_LAYOUT:
+        src, dst = project / old, project / new
+        if not src.exists():
+            continue
+        if dst.exists():
+            kept.append((old, new))
+            continue
+        moved.append((old, new))
+        if dry_run:
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if old in tracked or any(t.startswith(old + "/") for t in tracked):
+            subprocess.run(["git", "-C", str(project), "mv", "-k", old, new], capture_output=True, text=True)
+            if src.exists():        # untracked leftovers (caches, ignored files) under a moved directory
+                _merge_move(src, dst)
+        else:
+            src.rename(dst)
+    return moved, kept
+
+
+def _merge_move(src, dst):
+    if src.is_file():
+        if not dst.exists():
+            src.rename(dst)
+        else:
+            src.unlink()
+        return
+    for child in list(src.iterdir()):
+        _merge_move(child, dst / child.name)
+    try:
+        src.rmdir()
+    except OSError:
+        pass
 
 
 def read_placed(project):
@@ -104,6 +186,7 @@ def update(project, source_root=SOURCE_ROOT, dry_run=False):
     source_root = pathlib.Path(source_root).resolve()
     s = Summary()
     s.dry_run = dry_run
+    s.migrated, s.not_migrated = migrate_layout(project, dry_run=dry_run)
     placed_before = read_placed(project)
     placed_now = {}
 
@@ -140,14 +223,14 @@ def update(project, source_root=SOURCE_ROOT, dry_run=False):
                 (project / old_path).unlink()
 
     # agents tracking record (REQ-3.2–3.5): simple filenames, beside the definitions
-    agents_dir = project / own.ENGINE_DIR / "agents"
+    agents_dir = project / own.ENGINE_DIR / "rules" / "agents"
     shipped_agents = sorted(pathlib.PurePosixPath(p).name for p in placed_now
-                            if p.startswith(f"{own.ENGINE_DIR}/agents/"))
+                            if p.startswith(f"{own.ENGINE_DIR}/rules/agents/"))
     record = project / own.TRACKING_RECORD
     if record.is_file():
         for name in valid_tracking_entries(record.read_text(encoding="utf-8").splitlines()):
             if name not in shipped_agents and (agents_dir / name).is_file():
-                rel = f"{own.ENGINE_DIR}/agents/{name}"
+                rel = f"{own.ENGINE_DIR}/rules/agents/{name}"
                 if rel not in s.removed:
                     s.removed.append(rel)
                     s.bump("engine-owned", "removed")
@@ -172,7 +255,7 @@ def update(project, source_root=SOURCE_ROOT, dry_run=False):
 
     # 3. engine-reference
     for target, src_rel in own.ENGINE_REFERENCE.items():
-        ref = project / (target + own.REFERENCE_SUFFIX)
+        ref = project / own.reference_path(target)
         data = (source_root / src_rel).read_bytes()
         if ref.exists() and sha(ref.read_bytes()) == sha(data):
             s.bump("engine-reference", "unchanged")

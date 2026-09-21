@@ -86,7 +86,7 @@ class Structure(unittest.TestCase):
     def test_template_is_template_only(self):
         with tree() as t:
             import pathlib, shutil
-            (t / ".engine").mkdir()
+            (t / manifest.FILE).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(pathlib.Path(__file__).resolve().parent.parent / "engine/dist/templates/control-manifest.json", t / manifest.FILE)
             state, results, structural = manifest.verify(t)
             self.assertEqual((state, results, structural), ("template-only", [], []))
@@ -318,7 +318,7 @@ class StructureMore(unittest.TestCase):
     def test_check_reports_template_only_distinctly(self):
         with tree() as t:
             import pathlib, shutil
-            (t / ".engine").mkdir()
+            (t / manifest.FILE).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(pathlib.Path(__file__).resolve().parent.parent / "engine/dist/templates/control-manifest.json", t / manifest.FILE)
             o = control_manifest.run(t, CFG)
             self.assertIs(o.state, State.NOTHING_YET)

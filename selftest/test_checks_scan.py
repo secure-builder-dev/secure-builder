@@ -132,8 +132,8 @@ class HarnessSelfScan(unittest.TestCase):
     def test_vendored_data_hash_mismatch_is_blocking(self):
         with tree() as t:
             write(t, "engine/checks/__init__.py", "")
-            write(t, ".engine/catalogues/cat.json", "{}")
-            write(t, ".engine/catalogues/cat.provenance.json", '{"file": "cat.json", "sha256": "0000"}')
+            write(t, ".engine/rules/catalogues/cat.json", "{}")
+            write(t, ".engine/rules/catalogues/cat.provenance.json", '{"file": "cat.json", "sha256": "0000"}')
             o = harness_self_scan.run(t, WEB)
             self.assertIs(o.state, State.FINDINGS)
             self.assertEqual(o.findings, ["cat.json: content hash differs from its recorded provenance"])

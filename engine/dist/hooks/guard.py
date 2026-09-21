@@ -2,10 +2,10 @@
 # ENGINE-OWNED: local edits to this file are discarded on update
 """Pre-execution guard for a project. Two uses:
 
-  python .engine/hooks/guard.py check "git push origin main"
+  python .engine/harness/hooks/guard.py check "git push origin main"
       exit 1 with the reason when the command is one of the three refused ones;
       wire this into the agent runtime's pre-execution hook.
-  python .engine/hooks/guard.py pre-push <remote> <url>   (git pre-push hook; reads refs on stdin)
+  python .engine/harness/hooks/guard.py pre-push <remote> <url>   (git pre-push hook; reads refs on stdin)
       refuses a push that would update the protected branch.
 
 Blocks exactly: push to the protected branch, merge while on it, remote merge.
@@ -15,15 +15,15 @@ import pathlib
 import subprocess
 import sys
 
-HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+HERE = pathlib.Path(__file__).resolve().parent        # .engine/harness/hooks
+ROOT = HERE.parent.parent.parent
 sys.path.insert(0, str(ROOT / ".engine" / "harness"))
 from engine import guard  # noqa: E402
 
 
 def protected():
     try:
-        return json.loads((ROOT / ".engine" / "config.json").read_text(encoding="utf-8")).get("protected_branch", "main")
+        return json.loads((ROOT / ".engine" / "rules" / "config.json").read_text(encoding="utf-8")).get("protected_branch", "main")
     except (OSError, ValueError):
         return "main"
 

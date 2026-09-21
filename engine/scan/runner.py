@@ -19,13 +19,13 @@ from ..records import now, table
 from ..records import schema as sch
 from . import images
 
-RAW_DIR = ".engine/scan/raw"
-SBOM_DIR = ".engine/scan/sbom"
-ACTIONABLE = ".engine/scan/actionable.md"
-CARRIED_DOC = ".engine/scan/carried.md"
+RAW_DIR = ".engine/records/scan/raw"
+SBOM_DIR = ".engine/records/scan/sbom"
+ACTIONABLE = ".engine/records/scan/actionable.md"
+CARRIED_DOC = ".engine/records/scan/carried.md"
 CARRIED_RECORD = ".engine/records/carried-findings.md"
-DB_VOLUME = ".engine/local/clamav-db"
-DATA_DATE = ".engine/detection-data-date"
+DB_VOLUME = ".engine/work/clamav-db"
+DATA_DATE = ".engine/records/scan/detection-data-date"
 ENGINES = ("containers", "host", "auto")
 HIGH = ("HIGH", "CRITICAL")
 

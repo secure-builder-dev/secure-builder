@@ -17,7 +17,7 @@ import pathlib
 
 from .outcome import Outcome
 
-CONFIG_PATH = ".engine/config.json"          # the fixed, well-known path (REQ-2.1.1)
+CONFIG_PATH = ".engine/rules/config.json"          # the fixed, well-known path (REQ-2.1.1)
 UNSET = "unset"                              # the not-yet-chosen sentinel (REQ-2.1.3)
 SCHEMA = 1
 

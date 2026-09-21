@@ -11,10 +11,10 @@ from .helpers import tree, write, write_config
 
 class Axes(unittest.TestCase):
     def test_stored_at_fixed_path(self):
-        self.assertEqual(cfgmod.CONFIG_PATH, ".engine/config.json")
+        self.assertEqual(cfgmod.CONFIG_PATH, ".engine/rules/config.json")
         with tree() as t:
             cfgmod.init(t, track="web", mode="local", tier="IL4", provider="aws")
-            self.assertTrue((t / ".engine" / "config.json").is_file())
+            self.assertTrue((t / ".engine" / "rules" / "config.json").is_file())
 
     def test_sentinel_blocks_gate(self):
         with tree() as t:
@@ -33,7 +33,7 @@ class Axes(unittest.TestCase):
 
     def test_malformed_config_could_not_run(self):
         with tree() as t:
-            write(t, ".engine/config.json", "{not json")
+            write(t, ".engine/rules/config.json", "{not json")
             o = cfgmod.check(t)
             self.assertIs(o.state, State.COULD_NOT_RUN)
 
@@ -48,7 +48,7 @@ class Axes(unittest.TestCase):
         with tree() as t:
             cfg = cfgmod.init(t, track="android", mode="disconnected", app_type="atak")
             self.assertEqual((cfg.tier, cfg.provider), ("IL6", "tactical"))
-            data = json.loads((t / ".engine/config.json").read_text())
+            data = json.loads((t / ".engine/rules/config.json").read_text())
             self.assertEqual(data["provider"], "tactical")
 
     def test_android_contradiction_is_a_problem(self):

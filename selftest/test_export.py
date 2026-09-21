@@ -35,10 +35,10 @@ def project(t, **over):
     table.append(t, ".engine/records/carried-findings.md", sch.CARRIED, {
         "id": "CF-9", "component": "xz-utils", "version": "5.6.0", "severity": "critical", "reason_no_fix": "no upstream fix; affects AC-3.1 path",
         "owner": "Casey", "milestone": "M2", "milestone_date": "2026-12-01", "review_by": "2026-10-15", "status": "open", "status_history": "2026-09-01 opened", "side": "low"})
-    write(t, ".engine/scan/raw/grype-app.json", RAW)
-    write(t, ".engine/scan/sbom/app.cdx.json", '{"bomFormat":"CycloneDX","components":[{"name":"xz-utils","version":"5.6.0"}]}')
-    write(t, ".engine/scan/actionable.md", "# Actionable" + NL + "- CVE-2024-3094 xz-utils 5.6.0 (image " + DIGEST + ")" + NL)
-    write(t, ".engine/detection-data-date", "2026-09-10")
+    write(t, ".engine/records/scan/raw/grype-app.json", RAW)
+    write(t, ".engine/records/scan/sbom/app.cdx.json", '{"bomFormat":"CycloneDX","components":[{"name":"xz-utils","version":"5.6.0"}]}')
+    write(t, ".engine/records/scan/actionable.md", "# Actionable" + NL + "- CVE-2024-3094 xz-utils 5.6.0 (image " + DIGEST + ")" + NL)
+    write(t, ".engine/records/scan/detection-data-date", "2026-09-10")
     return base, head, commit(t, "records")
 
 
@@ -237,7 +237,7 @@ class Package(unittest.TestCase):
         with tree() as t:
             project(t)
             import shutil
-            shutil.rmtree(t / ".engine/scan/sbom")
+            shutil.rmtree(t / ".engine/records/scan/sbom")
             out, m = export.package(t, cfg(), t / "exports")
             self.assertTrue(any("no composition inventory" in x for x in m["incomplete"]))
             self.assertTrue(any("retention period not configured" in x for x in m["incomplete"]))

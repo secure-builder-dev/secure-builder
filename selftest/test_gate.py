@@ -109,7 +109,7 @@ class Handoff(unittest.TestCase):
                 os.environ.clear(); os.environ.update(old)
             self.assertEqual(code, 0, lines)
             inv = invocations(t / "bin")
-            self.assertEqual(inv, ["reviewer-stub --fresh " + str(t / ".engine" / "local" / "handoff-epic-7-1.md")])
+            self.assertEqual(inv, ["reviewer-stub --fresh " + str(t / ".engine" / "work" / "handoff-epic-7-1.md")])
 
     def test_override_for_impossible_scan_announces_itself(self):
         with tree() as t:
@@ -134,7 +134,7 @@ class Handoff(unittest.TestCase):
             self.assertEqual(len([l for l in lines if l.startswith("This handoff carries no free-text field")]), 1)
             self.assertFalse(any("notes" in l.lower() for l in lines))
             self.assertTrue((t / doc["started_marker"]).is_file(), "the started marker is written before any verdict exists")
-            self.assertTrue((t / ".engine/local/handoff-epic-7-1.md").is_file() or handoff.write(t, doc))
+            self.assertTrue((t / ".engine/work/handoff-epic-7-1.md").is_file() or handoff.write(t, doc))
 
     def test_generator_takes_no_free_text_parameter(self):
         import inspect
@@ -413,7 +413,7 @@ class SecurityMechanical(unittest.TestCase):
     def test_dependency_needs_approval_on_target(self):
         with tree() as t:
             base = project(t)
-            write(t, ".engine/dependency-policy.json", json.dumps({"target_requires_approval": True, "lead_time": "10-15 working days", "dependencies": {}}))
+            write(t, ".engine/rules/dependency-policy.json", json.dumps({"target_requires_approval": True, "lead_time": "10-15 working days", "dependencies": {}}))
             write(t, "package.json", json.dumps({"dependencies": {"left-pad": "1.0.0"}}, indent=1))
             head = commit(t, "add dep")
             outs, _ = gate.security_mechanical(t, cfg(), base, head, "epic-7")
@@ -440,7 +440,7 @@ class Submit(unittest.TestCase):
             from engine.records import schema as sch
             table.append(t, ".engine/records/mutation-results.md", sch.MUTATION,
                          {"date": "y", "control": "C-1", "branch": "-", "mutation": "m", "baseline": "green", "result": "suite-failed", "side": "low"})
-        write(t, ".engine/local/coverage.json", json.dumps({"files": {"src/app.py": {"covered": 9, "total": 10}, "src/auth.py": {"covered": 9, "total": 10}}}))
+        write(t, ".engine/work/coverage.json", json.dumps({"files": {"src/app.py": {"covered": 9, "total": 10}, "src/auth.py": {"covered": 9, "total": 10}}}))
         gatelog.write_started(t, cfg(), "epic-7", "1", f"{base[:12]}..{head[:12]}", head)
         q, s, ctx = gate.prepare(t, cfg(), "epic-7", "1", base, head)
         return base, head, q, s, ctx
@@ -519,7 +519,7 @@ class Submit(unittest.TestCase):
         with tree() as t:
             base = project(t)
             head = feature(t, msg="x" + NL + NL + "Co-Authored" + "-By: Bot <b@x>", files={"docs/x.md": "hi" + NL})
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {}}))
             gate.prepare(t, cfg(), "epic-7", "1", base, head)
             line, probs = gate.submit(t, cfg(), "epic-7", "1", self.verdict(base, head), "Casey")
             self.assertIn("verdict cannot be pass: mechanical checks blocked (attribution)", probs)
@@ -548,7 +548,7 @@ class Submit(unittest.TestCase):
     def test_dependency_approved_but_not_yet_available_on_target_still_fails(self):
         with tree() as t:
             base = project(t)
-            write(t, ".engine/dependency-policy.json", json.dumps({"target_requires_approval": True, "lead_time": "3 weeks",
+            write(t, ".engine/rules/dependency-policy.json", json.dumps({"target_requires_approval": True, "lead_time": "3 weeks",
                   "dependencies": {"left-pad": {"approval": "approved", "approval_date": "2026-09-01", "available_on_target": ""}}}))
             write(t, "package.json", json.dumps({"dependencies": {"left-pad": "1.0.0"}}, indent=1))
             head = commit(t, "add dep")
@@ -620,7 +620,7 @@ class Lifecycle(unittest.TestCase):
         import inspect
         src = inspect.getsource(lifecycle.orient)
         self.assertNotIn("handoff-", src, "orient must not read a handoff file")
-        self.assertNotIn(".engine/local", src, "orient must not read state written by an earlier session")
+        self.assertNotIn(".engine/work", src, "orient must not read state written by an earlier session")
         self.assertNotIn("read_text", src.replace("read_header", ""))
 
 

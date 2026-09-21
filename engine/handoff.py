@@ -17,8 +17,8 @@ import re
 from . import lifecycle, gitutil, stamp
 from .records import gatelog
 
-READ_FIRST = ["AGENTS.md", ".engine/rules/RULES.md", ".engine/agents/security-gate.md",
-              ".engine/control-manifest.json", ".engine/records/findings-register.md"]
+READ_FIRST = ["AGENTS.md", ".engine/rules/RULES.md", ".engine/rules/agents/security-gate.md",
+              ".engine/rules/control-manifest.json", ".engine/records/findings-register.md"]
 WORK_ITEM = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b|(?<![\w/])#(\d+)\b")
 
 
@@ -122,7 +122,7 @@ def render(doc):
 
 
 def write(root, doc):
-    d = pathlib.Path(root) / ".engine" / "local"
+    d = pathlib.Path(root) / ".engine" / "work"
     d.mkdir(parents=True, exist_ok=True)
     p = d / f"handoff-{doc['unit']}-{doc['run']}.md"
     p.write_text(render(doc), encoding="utf-8", newline="\n")

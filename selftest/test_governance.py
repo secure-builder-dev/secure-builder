@@ -34,9 +34,9 @@ def project(t):
 class Set(unittest.TestCase):
     def test_governed_set_includes_rulebook_definitions_manifest_config_and_itself(self):
         g = governance.governed_set(None, cfg())
-        for p in ("AGENTS.md", ".engine/rules/", ".engine/agents/", ".engine/control-manifest.json", ".engine/config.json", governance.ZONES_FILE):
+        for p in ("AGENTS.md", ".engine/rules/", ".engine/rules/agents/", ".engine/rules/control-manifest.json", ".engine/rules/config.json", governance.ZONES_FILE):
             self.assertIn(p, g)
-        self.assertTrue(governance.is_governed(".engine/agents/security-gate.md", g))
+        self.assertTrue(governance.is_governed(".engine/rules/agents/security-gate.md", g))
         self.assertFalse(governance.is_governed("src/app.py", g))
 
     def test_zones_are_an_explicit_allowlist(self):
@@ -136,13 +136,13 @@ class RangeCheck(unittest.TestCase):
             find_advisory = next(o for o in outs if o.check == "governance-advisory")
             self.assertIn("advisory", find_advisory.detail)
             # surface violation: a second governed file not declared
-            write(t, ".engine/control-manifest.json", json.dumps({"scope_statement": "x", "controls": []}))
+            write(t, ".engine/rules/control-manifest.json", json.dumps({"scope_statement": "x", "controls": []}))
             head2 = commit(t, "governance: also manifest")
             outs, _ = governance.check_range(t, cfg(), base, head2, "epic-9")
             s = next(o for o in outs if o.check == "governance-surface")
             self.assertIs(s.state, State.FINDINGS)
             self.assertTrue(s.blocking, "a change outside the declared surface is a blocking finding, not a note")
-            self.assertTrue(s.findings[0].startswith(".engine/control-manifest.json: not named in the changelog row(s)"))
+            self.assertTrue(s.findings[0].startswith(".engine/rules/control-manifest.json: not named in the changelog row(s)"))
 
     def test_governance_bundled_with_feature_work_blocks(self):
         with tree() as t:
@@ -173,12 +173,12 @@ class RangeCheck(unittest.TestCase):
                               shown_text="x", approved_by="Casey Houle")
             write(t, "AGENTS.md", (t / "AGENTS.md").read_text(encoding="utf-8") + "- rule [decision: D-1]" + NL)
             head = commit(t, "governance")
-            write(t, ".engine/local/coverage.json", json.dumps({"files": {}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {}}))
             gatelog.write_started(t, cfg(), "epic-9", "1", f"{base[:12]}..{head[:12]}", head)
             q, s, ctx = gate.prepare(t, cfg(), "epic-9", "1", base, head)
             self.assertTrue(ctx["governance"])
-            self.assertTrue((t / ".engine/local/rules-at-base-epic-9/AGENTS.md").is_file())
-            checklist_text = (t / ".engine/local/gate-epic-9-1-checklist.md").read_text(encoding="utf-8")
+            self.assertTrue((t / ".engine/work/rules-at-base-epic-9/AGENTS.md").is_file())
+            checklist_text = (t / ".engine/work/gate-epic-9-1-checklist.md").read_text(encoding="utf-8")
             self.assertIn("GOVERNANCE CHANGE", checklist_text)
             from engine import checklist as cl
             v = {"verdict": "pass", "tier": "IL4", "run": "1", "range": f"{base[:12]}..{head[:12]}", "control_shaped": "no",

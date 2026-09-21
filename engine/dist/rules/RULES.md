@@ -38,11 +38,11 @@ mechanical checks. No control whose failure matters rests on this paragraph.
 
 ## Where things live
 
-- `.engine/config.json` — the project's shape (track, tier, provider, app type), mode, topology.
-- `.engine/control-manifest.json` — the declared security controls. Project-owned.
+- `.engine/rules/config.json` — the project's shape (track, tier, provider, app type), mode, topology.
+- `.engine/rules/control-manifest.json` — the declared security controls. Project-owned.
 - `.engine/records/` — gate log, findings register, governance changelog. Append-only, plain text.
-- `.engine/scan/` — scan artifacts; the verdict stamp is committed, raw output is not.
-- `.engine/agents/` — reviewer definitions. Whole, self-contained, engine-owned.
+- `.engine/records/scan/` — scan artifacts; the verdict stamp is committed, raw output is not.
+- `.engine/rules/agents/` — reviewer definitions. Whole, self-contained, engine-owned.
 - `python .engine/harness/run.py check` — the single command. CI runs the same one.
 
 ## Lifecycle

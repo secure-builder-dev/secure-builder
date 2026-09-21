@@ -3,7 +3,7 @@
 """Model bake-off for the security gate: the same handoff, every candidate model, several
 repetitions, scored against defects known to be in the range.
 
-    python .engine/reviewers/bakeoff.py --handoff .engine/local/handoff-U-R.md --repeat 3 \
+    python .engine/harness/reviewers/bakeoff.py --handoff .engine/work/handoff-U-R.md --repeat 3 \
         --model gemma4:31b-it-q4_K_M --model llama3.1:8b-instruct-q8_0 \
         --truth "src/app.py|self.store.delete|delete route lacks the owner guard" \
         --truth "src/app.py|json.loads|malformed JSON body is an unhandled exception"
@@ -88,7 +88,7 @@ def main(argv=None):
     ap.add_argument("--no-think", action="store_true", help="pass --no-think to the driver for every model in this run")
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--num-ctx", type=int, default=16384)
-    ap.add_argument("--out", default=".engine/local/bakeoff")
+    ap.add_argument("--out", default=".engine/work/bakeoff")
     a = ap.parse_args(argv)
     handoff = pathlib.Path(a.handoff).resolve()
     root = handoff.parent.parent.parent
@@ -105,7 +105,7 @@ def main(argv=None):
         slug = re.sub(r"[^A-Za-z0-9]+", "-", model).strip("-")
         for i in range(1, a.repeat + 1):
             secs, code, log = run_one(driver, handoff, model, a.num_ctx, ("--no-think",) if a.no_think else ())
-            vf = root / ".engine" / "local" / f"verdict-{unit}-{run}-{slug}.json"
+            vf = root / ".engine" / "work" / f"verdict-{unit}-{run}-{slug}.json"
             row = {"model": model, "rep": i, "think": "off" if a.no_think else "model default", "seconds": round(secs, 1), "driver_exit": code, "valid": False, "verdict": "-",
                    "grounded": 0, "blocking": 0, "ungrounded": 0, "inconsistent": 0, "tok_s": None, "found": {}}
             if code == 0 and vf.is_file():

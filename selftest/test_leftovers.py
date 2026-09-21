@@ -169,8 +169,8 @@ class NoExemption(unittest.TestCase):
             self.assertEqual((t / ".engine/rules/RULES.md").read_bytes(), (ROOT / RULES).read_bytes())
             self.assertEqual(s.diverged, [(".engine/rules/RULES.md", ".engine/rules/RULES.md" + own.BACKUP_SUFFIX)])
             # and the same for a shipped hook and a reviewer definition
-            for rel in (".engine/hooks/guard.py", ".engine/agents/security-gate.md"):
+            for rel in (".engine/harness/hooks/guard.py", ".engine/rules/agents/security-gate.md"):
                 write(t, rel, "# kept locally  engine:keep" + NL)
             s = distribute.update(t)
             self.assertEqual(len(s.diverged), 2)
-            self.assertEqual((t / ".engine/hooks/guard.py").read_bytes(), (ROOT / "engine/dist/hooks/guard.py").read_bytes())
+            self.assertEqual((t / ".engine/harness/hooks/guard.py").read_bytes(), (ROOT / "engine/dist/hooks/guard.py").read_bytes())

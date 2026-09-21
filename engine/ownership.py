@@ -21,20 +21,20 @@ ENGINE_OWNED = {
     f"{ENGINE_DIR}/harness/selftest/": "selftest/",          # the self-test suite
     f"{ENGINE_DIR}/harness/run.py": "engine/dist/run.py",    # the entrypoint a project invokes
     f"{ENGINE_DIR}/rules/RULES.md": "engine/dist/rules/RULES.md",   # the rulebook (imported)
-    f"{ENGINE_DIR}/agents/": "engine/dist/agents/",          # reviewer definitions, whole, tracked
-    f"{ENGINE_DIR}/hooks/": "engine/dist/hooks/",            # pre-execution hooks
-    f"{ENGINE_DIR}/reviewers/": "reviewers/",                # reviewer drivers for local models (loopback only)
-    f"{ENGINE_DIR}/reference/": "engine/dist/reference/",    # reference documents (verdict block copy)
-    f"{ENGINE_DIR}/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
-    f"{ENGINE_DIR}/DATA.md": "engine/data/README.md",         # every vendored data set, its source and terms (spec 06 REQ-8.5)
+    f"{ENGINE_DIR}/rules/agents/": "engine/dist/agents/",          # reviewer definitions, whole, tracked
+    f"{ENGINE_DIR}/harness/hooks/": "engine/dist/hooks/",            # pre-execution hooks
+    f"{ENGINE_DIR}/harness/reviewers/": "reviewers/",                # reviewer drivers for local models (loopback only)
+    f"{ENGINE_DIR}/rules/reference/": "engine/dist/reference/",    # reference documents (verdict block copy)
+    f"{ENGINE_DIR}/harness/CHANGES.md": "engine/dist/CHANGES.md",    # what an update newly fails (REQ-6.6)
+    f"{ENGINE_DIR}/harness/DATA.md": "engine/data/README.md",         # every vendored data set, its source and terms (spec 06 REQ-8.5)
     f"{ENGINE_DIR}/.gitignore": "engine/dist/gitignore",      # what stays out of version control (spec 02 §2)
 }
 
 # Written only when missing; never touched again.
 SEED_IF_ABSENT = {
     "AGENTS.md": "engine/dist/templates/AGENTS.md",                    # project instruction file (import + project rules)
-    f"{ENGINE_DIR}/control-manifest.json": "engine/dist/templates/control-manifest.json",
-    f"{ENGINE_DIR}/governance.json": "engine/dist/templates/governance.json",
+    f"{ENGINE_DIR}/rules/control-manifest.json": "engine/dist/templates/control-manifest.json",
+    f"{ENGINE_DIR}/rules/governance.json": "engine/dist/templates/governance.json",
     f"{ENGINE_DIR}/records/gate-log.md": "engine/dist/templates/records/gate-log.md",
     f"{ENGINE_DIR}/records/findings-register.md": "engine/dist/templates/records/findings-register.md",
     f"{ENGINE_DIR}/records/governance-changelog.md": "engine/dist/templates/records/governance-changelog.md",
@@ -45,27 +45,27 @@ SEED_IF_ABSENT = {
     f"{ENGINE_DIR}/records/ingest-records.md": "engine/dist/templates/records/ingest-records.md",
     f"{ENGINE_DIR}/records/mutation-results.md": "engine/dist/templates/records/mutation-results.md",
     f"{ENGINE_DIR}/records/README.md": "engine/dist/templates/records/README.md",
-    f"{ENGINE_DIR}/catalogues/": "engine/data/catalogues/",   # vendored standards catalogues; adopted deliberately thereafter
+    f"{ENGINE_DIR}/rules/catalogues/": "engine/data/catalogues/",   # vendored standards catalogues; adopted deliberately thereafter
 }
 
-# Written beside the project's copy under REFERENCE_SUFFIX; never read by a check.
+# Written under REFERENCE_DIR (see reference_path); never read by a check.
 # Kept deliberately small: documents whose structure is the engine's and whose
 # content is the project's.
 ENGINE_REFERENCE = {
     "AGENTS.md": "engine/dist/templates/AGENTS.md",
-    f"{ENGINE_DIR}/control-manifest.json": "engine/dist/templates/control-manifest.json",
-    f"{ENGINE_DIR}/governance.json": "engine/dist/templates/governance.json",
+    f"{ENGINE_DIR}/rules/control-manifest.json": "engine/dist/templates/control-manifest.json",
+    f"{ENGINE_DIR}/rules/governance.json": "engine/dist/templates/governance.json",
     f"{ENGINE_DIR}/records/gate-log.md": "engine/dist/templates/records/gate-log.md",
 }
 
 # Never written, never deleted, under any circumstance.
 PROJECT_OWNED = [
-    f"{ENGINE_DIR}/config.json",          # project configuration (written once by init, never by update)
+    f"{ENGINE_DIR}/rules/config.json",          # project configuration (written once by init, never by update)
     f"{ENGINE_DIR}/records/",             # every record the project produces
-    f"{ENGINE_DIR}/local/",               # per-clone runtime state (snapshots)
-    f"{ENGINE_DIR}/scan/",                # scan artifacts
-    f"{ENGINE_DIR}/catalogues/",          # vendored standards catalogues and their pins
-    f"{ENGINE_DIR}/VERSION",              # written by the update itself, but it records the project's state
+    f"{ENGINE_DIR}/work/",               # per-clone runtime state (snapshots)
+    f"{ENGINE_DIR}/records/scan/",                # scan artifacts
+    f"{ENGINE_DIR}/rules/catalogues/",          # vendored standards catalogues and their pins
+    f"{ENGINE_DIR}/harness/VERSION",              # written by the update itself, but it records the project's state
     "plans/",
     "tickets/",
     "src/",
@@ -82,10 +82,22 @@ def marker_required(rel):
     rel = str(rel).replace(chr(92), "/")
     return not any(x in rel for x in MARKER_EXEMPT) and rel.endswith((".py", ".md", ".sh", ".txt"))
 BACKUP_SUFFIX = ".pre-update"
-REFERENCE_SUFFIX = ".engine-reference"
-TRACKING_RECORD = f"{ENGINE_DIR}/agents/.placed"
-VERSION_FILE = f"{ENGINE_DIR}/VERSION"
-PLACED_MANIFEST = f"{ENGINE_DIR}/placed.json"   # every engine-owned file placed, with its hash
+REFERENCE_DIR = f"{ENGINE_DIR}/harness/seeds"   # the engine's copy of every seeded document, for comparison; never read by a check
+
+
+def reference_path(target):
+    """Where the engine's reference copy of a seeded document lives: under harness/seeds/, named as
+    the document is named, so a user compares .engine/rules/governance.json with
+    .engine/harness/seeds/governance.json and AGENTS.md with .engine/harness/seeds/AGENTS.md."""
+    rel = target
+    for prefix in (f"{ENGINE_DIR}/rules/", f"{ENGINE_DIR}/"):
+        if rel.startswith(prefix):
+            rel = rel[len(prefix):]
+            break
+    return f"{REFERENCE_DIR}/{rel}"
+TRACKING_RECORD = f"{ENGINE_DIR}/rules/agents/.placed"
+VERSION_FILE = f"{ENGINE_DIR}/harness/VERSION"
+PLACED_MANIFEST = f"{ENGINE_DIR}/harness/placed.json"   # every engine-owned file placed, with its hash
 
 
 def classes():
@@ -102,6 +114,6 @@ def class_of(path):
         for k in keys:
             if path == k or (k.endswith("/") and path.startswith(k)):
                 if name == "engine-reference":
-                    continue      # reference copies live under a suffix; the bare path is seed/project
+                    continue      # reference copies live under harness/seeds/; the bare path is seed/project
                 return name
     return None

@@ -290,7 +290,7 @@ def cmd_coverage(root, argv):
         what = "harness modules"
     tot = sum(v["total"] for v in rep["files"].values())
     cov = sum(v["covered"] for v in rep["files"].values())
-    print(f"coverage: {cov}/{tot} executable lines ({(100.0 * cov / tot) if tot else 0:.1f}%) across {len(rep['files'])} {what} -> .engine/local/coverage.json")
+    print(f"coverage: {cov}/{tot} executable lines ({(100.0 * cov / tot) if tot else 0:.1f}%) across {len(rep['files'])} {what} -> .engine/work/coverage.json")
     return 0 if tot else 2
 
 
@@ -487,7 +487,7 @@ def cmd_gate(root, argv):
             for o in s_:
                 for line in o.lines():
                     print("  " + line)
-            print(f"gate: checklist for the reviewer written to .engine/local/gate-{unit}-{run}-checklist.md "
+            print(f"gate: checklist for the reviewer written to .engine/work/gate-{unit}-{run}-checklist.md "
                   f"(version {ctx['checklist_version']}; control-shaped: {'yes' if ctx['control_shaped'] else 'no'})")
             return 1 if any(o.failed for o in s_) else 0
         print("gate: quality gate FAILED; the security gate does not run on code whose tests do not pass (REQ-6.1.4)")
@@ -526,7 +526,7 @@ def cmd_review(root, argv):
     import shlex
     import subprocess
     kv = _kv(argv)
-    p = pathlib.Path(root) / ".engine" / "local" / f"handoff-{kv.get('unit', '')}-{kv.get('run', '')}.md"
+    p = pathlib.Path(root) / ".engine" / "work" / f"handoff-{kv.get('unit', '')}-{kv.get('run', '')}.md"
     if not p.is_file():
         print(f"review: COULD NOT RUN — no handoff at {p.relative_to(root).as_posix()}; generate it first")
         return 2
@@ -856,7 +856,7 @@ def cmd_export(root, argv):
         return 2
     try:
         if sub == "package":
-            out, m = export.package(root, cfg, kv.get("out", str(root / ".engine" / "local" / "export")), marking=kv.get("marking"))
+            out, m = export.package(root, cfg, kv.get("out", str(root / ".engine" / "work" / "export")), marking=kv.get("marking"))
             print(f"export: {out}")
             print(f"export: commit {m['commit']}; {len(m['files'])} artifact(s) hashed at export; marking: {m['marking'] or 'none'}")
             for pr in m["incomplete"]:

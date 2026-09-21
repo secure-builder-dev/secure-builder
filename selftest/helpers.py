@@ -37,7 +37,7 @@ def write_config(root, **over):
             "protected_branch": "main", "timezone": "UTC", "clock": "workstation clock",
             "not_applicable_threshold": 0.5}
     data.update(over)
-    return write(root, ".engine/config.json", json.dumps(data, indent=2) + "\n")
+    return write(root, ".engine/rules/config.json", json.dumps(data, indent=2) + "\n")
 
 
 def cli(root, *args):

@@ -20,7 +20,7 @@ KEY = "AKIA" + "ABCDEFGHIJKLMNOP"   # assembled so this file does not itself tri
 def project(t, **over):
     """The gate fixture plus the vendored catalogues the floor's citation check resolves against."""
     base = gate_project(t, **over)
-    shutil.copytree(ROOT / "engine" / "data" / "catalogues", t / ".engine" / "catalogues")
+    shutil.copytree(ROOT / "engine" / "data" / "catalogues", t / ".engine" / "rules" / "catalogues")
     return base
 
 
@@ -198,7 +198,7 @@ class Verdict(unittest.TestCase):
             base = project(t); head = feature(t)
             declare(t, budget_seconds=0)
             doc, line, outs = field.run(t, cfg(), "U1", 1, base, head, "Casey", clock=fake_clock([0, 1]))
-            text = (t / ".engine/local/field-verdict-U1-1.md").read_text(encoding="utf-8")
+            text = (t / ".engine/work/field-verdict-U1-1.md").read_text(encoding="utf-8")
             self.assertEqual(text.splitlines()[2], doc["boundary"])
             self.assertIn("This is a FIELD verdict, not an ordinary gate pass", doc["boundary"])
             self.assertIn("separation of duties was not achieved", doc["boundary"])

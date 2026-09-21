@@ -456,10 +456,10 @@ class Statements(unittest.TestCase):
         with tree() as t:
             distribute.update(t)
             lines = (t / ".engine/.gitignore").read_text(encoding="utf-8").splitlines()
-            self.assertIn("local/", lines)
-            self.assertIn("scan/raw/", lines)
-            self.assertFalse(any(l.strip().startswith("records") for l in lines))
-            self.assertFalse(any(l.strip() in ("scan/", "scan") for l in lines), "the verdict stamp under scan/ is committed")
+            self.assertIn("work/", lines)
+            self.assertIn("records/scan/raw/", lines)
+            self.assertFalse(any(l.strip() in ("records/", "records") for l in lines))
+            self.assertFalse(any(l.strip() in ("records/scan/", "records/scan") for l in lines), "the verdict stamp under records/scan/ is committed")
 
 
 class Cli(unittest.TestCase):

@@ -114,7 +114,7 @@ def source_drop(root, out_dir, cfg, operator, revision="HEAD", include_records=T
         raise TopologyError(f"git archive failed: {res.stderr.strip()}")
     files = {}
     for f in gitutil.tracked_files(root):
-        if f.startswith(".engine/records/") or f.startswith(".engine/local/"):
+        if f.startswith(".engine/records/") or f.startswith(".engine/work/"):
             continue
         show = gitutil.git(root, "show", f"{rev}:{f}")
         if show.returncode == 0:
@@ -180,7 +180,7 @@ def receive_drop(root, drop_dir, cfg, operator, filtered_understood=""):
         _ingest(root, cfg, data, "verified", "no", operator)
     d = pathlib.Path(drop_dir)
     with tarfile.open(d / "source.tar") as tf:
-        members = [m for m in tf.getmembers() if not m.name.startswith(".engine/records/") and not m.name.startswith(".engine/local/")]
+        members = [m for m in tf.getmembers() if not m.name.startswith(".engine/records/") and not m.name.startswith(".engine/work/")]
         tf.extractall(root, members=members, filter="data")
     imported = 0
     if data.get("records_transferred"):

@@ -122,7 +122,10 @@ def definition_line(text, symbol):
 def call_sites(root, symbol, definition_file):
     """Production call sites of `symbol`, recomputed: every non-comment mention in
     a non-test source file, excluding the definition line. Indirect invocation —
-    the symbol passed by reference, used as a decorator, or registered — counts."""
+    the symbol passed by reference, used as a decorator, or registered — counts. A
+    handler registered by a decorator directly above its definition (`@app.route(...)`
+    then `def handler`) is mentioned nowhere else: the decorator line is its
+    registration and counts as its production site."""
     root = pathlib.Path(root)
     mention = re.compile(r"(?<![\w.])" + re.escape(symbol) + r"(?![\w])")
     out = []
@@ -133,8 +136,14 @@ def call_sites(root, symbol, definition_file):
         if not p.is_file():
             continue
         text = p.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
         def_line = definition_line(text, symbol) if rel == definition_file else None
-        for n, line in enumerate(text.splitlines(), 1):
+        if def_line:
+            n = def_line - 1
+            while n >= 1 and lines[n - 1].strip().startswith("@"):
+                out.append(f"{rel}:{n}")
+                n -= 1
+        for n, line in enumerate(lines, 1):
             if n == def_line or COMMENT.match(line):
                 continue
             stripped = re.sub(r"(#|//).*$", "", line)

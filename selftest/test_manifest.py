@@ -115,6 +115,19 @@ class Recomputation(unittest.TestCase):
             self.assertEqual(manifest.call_sites(t, "require_auth", "src/auth.py"), ["src/app.py:2"])
 
 
+    def test_a_handler_registered_by_the_decorator_above_its_definition_has_that_line_as_its_site(self):
+        # NOTES-2 of the notes-api demo: a route handler declared as a control was "never called" because
+        # its only registration is the decorator directly above the def
+        with tree() as t:
+            project(t)
+            write(t, "src/app.py", "from auth import require_auth" + NL + "class App:" + NL + "    def reg(self):" + NL
+                  + "        @self.route(\"PUT\", \"/notes/<id>\")" + NL + "        def update_note(request):" + NL
+                  + "            return require_auth(request)" + NL)
+            git(t, "add", "-A")
+            self.assertEqual(manifest.call_sites(t, "update_note", "src/app.py"), ["src/app.py:4"])
+            self.assertEqual(manifest.call_sites(t, "reg", "src/app.py"), [], "a plain method with no decorator and no caller is still uncalled")
+
+
 class Verify(unittest.TestCase):
     def test_all_resolve(self):
         with tree() as t:

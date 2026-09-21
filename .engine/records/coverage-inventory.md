@@ -6,7 +6,7 @@ it is not a clean bill of health. *Assessed elsewhere, evidence not available* i
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 121 (100%)
+- never assessed: 122 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -118,6 +118,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | selftest/test_outcome.py | never assessed |  |
 | selftest/test_probes.py | never assessed |  |
 | selftest/test_records.py | never assessed |  |
+| selftest/test_reviewers.py | never assessed |  |
 | selftest/test_scan.py | never assessed |  |
 | selftest/test_sequence.py | never assessed |  |
 | selftest/test_tools.py | never assessed |  |

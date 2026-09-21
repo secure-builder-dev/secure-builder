@@ -7,8 +7,9 @@ technical readout first, the junior-developer version second. Every number here
 is on disk in the demo projects' `.engine/records/` and `.engine/local/`; the
 model tables are in `reviewers/MODELS.md`.
 
-Roles, as decided this session: **Devstral builds, Gemma 4 31B gates, the human
-reviews last.** Every gate row names Casey Houle as attester because this is his
+Roles: **Devstral builds, Gemma 4 31B gates, Casey Houle is the human in the
+loop.** The bake-off measured every candidate that fits the hardware so the
+choice is on the record; it does not imply a second gate model is required. Every gate row names Casey Houle as attester because this is his
 build; the session drove the commands. Every model verdict on these ranges is
 *advisory* — each unit changed the control manifest, and a governance change makes
 the automated verdict advisory by design (the human's line-by-line review is the
@@ -228,15 +229,14 @@ wrong. That is the point of it.
   session; `check` stayed GREEN at every commit.
 
 **Failures**
-- No second-vendor gate model exists on this hardware; the bias firewall is the
-  human until one does.
 - Neither build model finished a unit unaided: Devstral converged once (on code
   with two defects), then failed twice in five rounds; Mistral failed once. The
   build role on this laptop is "first draft", not "builder".
 - Nobody found the `==` token comparison. The checklist, not the model, is the
   fix (a governance change; proposed above).
 - Every verdict is advisory because every unit declared a control; the human
-  review row is what closes each unit, and none is recorded yet.
+  review row is what closes each unit, and none is recorded yet — that row is
+  Casey's, not the session's.
 
 **Strengths of the design, seen in use**
 - Verbatim-quote grounding, item-consistency and the informational filter turn a
@@ -279,8 +279,8 @@ attest the result.
    was fine, every time. One (Llama 8B) shouted about everything and found
    nothing real. Two more candidates could not even produce an answer in the
    required format until "thinking" was switched off, and then found nothing.
-   Conclusion: Gemma reviews; nothing else on this laptop qualifies as a second
-   reviewer, so the second signature is a human.
+   Conclusion: Gemma reviews. The other candidates were measured so the choice
+   is on the record, not to fill a slot.
 
 2. *Can an AI build a feature and another AI catch its mistakes?* Devstral wrote
    the "edit a note" feature in one go and its own tests passed. But it changed

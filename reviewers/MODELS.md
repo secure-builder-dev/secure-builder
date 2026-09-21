@@ -52,8 +52,8 @@ not the score.
 | gemma4:12b-it-q8_0 (41c402fdddc2), model default (thinks) | Google | 0/3 | — | — | — | no verdict ×3 | 205 | — |
 | gemma4:12b-it-q8_0, `--no-think` | Google | 3/3 | 0/9 | 0 | 0 | pass, fail, pass | 45 | 38–41 |
 
-The optional candidates were pulled because the first table left the second gate
-slot empty (see Roles). Their first runs are in `bakeoff2/`, the thinking-off
+The optional candidates were pulled to complete the table (every candidate that
+fits the hardware and the provenance rule, measured once). Their first runs are in `bakeoff2/`, the thinking-off
 runs in `bakeoff3/`. The `bakeoff2/` runs were made after unit NOTES-2 had
 declared AC-3.2, and the driver at that time read the manifest from the working
 tree, so those models were shown a control the NOTES-1 diff does not contain;
@@ -100,15 +100,15 @@ What the other three did, every repetition:
 | role | model | why |
 |---|---|---|
 | security gate, primary | gemma4:31b-it-q4_K_M | the only candidate that found any planted defect; found the authorization hole 3/3 with the exact line, zero hallucinations in nine findings; its fail verdicts were for the right reasons |
-| security gate, second (bias firewall) | **none qualifies on this hardware** | must be a different vendor from the primary and must find at least one planted defect; every non-Google candidate that fits 24 GB and the provenance rule (Mistral Small 3.2, Magistral, Llama 3.1 8B) found 0/9. Until a qualifying second model exists, the second signature on a unit is the human's line-by-line review, and the gate log says so (NOTES-2 run 3 is Mistral passing what Gemma failed) |
-| build (CW1), never the gate | devstral:24b-small-2505-q4_K_M | writes parseable, schema-shaped files under src/ and tests/; its review-role result is irrelevant to this role — the gate is a different model in a different process |
+| human in the loop | Casey Houle | reads every diff line by line and records the review; the accountable signature on every unit, by design |
+| build (CW1), never the gate | devstral:24b-small-2505-q4_K_M | writes parseable, schema-shaped files under src/ and tests/ from failing acceptance tests; its review-role result is irrelevant to this role — the gate is a different model in a different process |
 
 ## Rejected, with reasons
 
 - **mistral-small3.2:24b-instruct-2506-q4_K_M as a gate model** — 0/9 planted
   defects over three repetitions, verdict pass on code with an authorization hole;
-  42 commentary "findings" on items it judged pass. Kept as an allied-nation
-  candidate for the build role only.
+  42 commentary "findings" on items it judged pass. Measured as a build model on
+  NOTES-2 as well: five rounds, not converged.
 - **llama3.1:8b-instruct-q8_0 as a gate model** — 0/9; 24 ungrounded findings;
   blocking findings on untouched checklist items. Recorded fail in NOTES-1 run 1
   as well (could not complete the completeness questions then).

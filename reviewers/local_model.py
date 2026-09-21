@@ -220,6 +220,13 @@ def repair_completeness(endpoint, model, system, user, answers, controls, num_ct
     return fixed
 
 
+def substantive(quote):
+    """A quote grounds a finding only if it could only have come from this diff: at least eight
+    non-space characters including a word of three letters or more. A lone `]`, `}` or `return`
+    is in every diff and proves nothing (seen from Gemma 4 on NOTES-3: a manifest finding quoting `]`)."""
+    return len(re.sub(r"\s", "", quote)) >= 8 and re.search(r"[A-Za-z_]{3,}", quote) is not None
+
+
 def item_of(entry, item_ids, *fields):
     """The checklist item an entry refers to: the leading token of the first named field that is an item id
     (`B3` from `B3. Authorization ...`, or a field holding the bare id such as `ELEVATED1`). A model that puts
@@ -323,8 +330,8 @@ def main(argv=None):
     for f in judgment.get("findings") or []:
         item = item_of(f, item_ids, "checklist_item", "id")
         q = re.sub(r"\s+", " ", str(f.get("quote", ""))).strip().lstrip("+").strip()
-        if not q or q not in normalized:
-            ungrounded.append(f)
+        if not q or q not in normalized or not substantive(q):
+            ungrounded.append(f)          # not in the diff, or a bracket / brace / keyword that is in every diff
             continue
         if item in informational:
             notes.append(f)                       # informational for this tier: recorded, never a finding

@@ -83,6 +83,15 @@ class ItemResolution(unittest.TestCase):
                          "an unresolvable item falls back to the leading token, as before")
 
 
+class Grounding(unittest.TestCase):
+    def test_a_quote_grounds_a_finding_only_when_it_has_substance(self):
+        local_model = load("local_model")
+        self.assertTrue(local_model.substantive('return [n for n in self._notes.values() if term in n["text"]]'))
+        self.assertTrue(local_model.substantive("note = self.store.update(note[\"id\"], text)"))
+        for trivial in ("]", "}", "return", "pass", "else:", "def f():"):
+            self.assertFalse(local_model.substantive(trivial), trivial)
+
+
 class GovernedInputsAtHead(unittest.TestCase):
     def test_the_manifest_is_read_as_committed_at_the_range_head_not_from_the_working_tree(self):
         # a bake-off replaying an old handoff after a later unit declared a control must not see that control

@@ -102,7 +102,14 @@ def main(argv=None):
               "yourself. Every route must reject a missing credential and, where a record belongs to a principal, another "
               "principal. Tests must cover the rejection cases, not only success. Answer only with the JSON the schema describes: "
               "the complete content of each file you create or change.\n\n" + rules)
-    feedback = ""
+    code, output = run_tests(root, test_cmd)
+    if code == 0:
+        # a green suite is not a definition of done: the model would rewrite what exists and be told it passed
+        # (seen on the to-do demo: 120 tokens, the empty skeleton, "tests pass"). Construction starts red.
+        print("build_model: REFUSED — the test suite already passes; write the failing acceptance tests that express "
+              f"the definition of done under {a.tests}/ first, then build (a run that changes nothing would 'converge')")
+        return 2
+    feedback = output
     last_written = {}
     temperature = 0.1
     for rnd in range(1, a.rounds + 1):
@@ -111,7 +118,7 @@ def main(argv=None):
                 f"Project rules (AGENTS.md):\n{read(root / 'AGENTS.md')[-3000:]}\n\n"
                 f"Current source and tests:\n{tree_text(root, [a.source, a.tests])}\n\n"
                 f"Standard library only. Write files under {a.source}/ and {a.tests}/ only; give each file's full content.\n"
-                + (f"\nThe previous round's tests FAILED. Fix them:\n{feedback}\n" if feedback else ""))
+                + (f"\nThe test suite currently FAILS; make it pass:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {a.model}; prompt {len(user)} chars")
         try:
             out, raw = ask(a.endpoint, a.model, system, user, a.num_ctx, temperature)

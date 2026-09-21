@@ -54,7 +54,7 @@ def tree_text(root, dirs):
 
 
 def ask(endpoint, model, system, user, num_ctx, temperature=0.1):
-    body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": temperature, "num_ctx": num_ctx},
+    body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": 8192},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=3600) as r:

@@ -94,7 +94,7 @@ def model_identity(endpoint, model):
 
 
 def ask(endpoint, model, system, user, num_ctx):
-    body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": 0, "num_ctx": num_ctx},
+    body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": 0, "num_ctx": num_ctx, "num_predict": 8192},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
@@ -184,7 +184,7 @@ def repair_completeness(endpoint, model, system, user, answers, controls, num_ct
                 + "Answer the completeness questions again for every control, as JSON keyed by control id. Q3 and Q4 are LISTS "
                 + "in exactly this shape, one item per line, each item a route, symbol or condition, never a sentence:" + NL
                 + "- GET /notes" + NL + "- token expiry" + NL + "If nothing is uncovered, list what you examined: '- GET /notes (covered)'.")
-    body = {"model": model, "stream": False, "format": schema, "options": {"temperature": 0, "num_ctx": num_ctx},
+    body = {"model": model, "stream": False, "format": schema, "options": {"temperature": 0, "num_ctx": num_ctx, "num_predict": 8192},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": ask_text}]}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
     try:

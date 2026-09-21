@@ -85,12 +85,21 @@ def lives_in_resolves(root, pointer):
     return True
 
 
+def current(rows):
+    """The rows that stand: the register is append-only, so a row is corrected or retired by appending a
+    later row with the same id, and the latest row per id is the one a gate reads (spec 02 §12)."""
+    latest = {}
+    for r in rows:
+        latest[r["id"]] = r
+    return list(latest.values())
+
+
 def problems(root):
     """What a gate reads at start (REQ-4.1.4, REQ-4.2.2): regressed mechanisms
     (blocking) and unsatisfied proofs (reported every run)."""
     a, b, parse_problems = read(root)
     blocking, reported = [], []
-    for r in a:
+    for r in current(a):
         if r["status"] != "active":
             continue
         if not lives_in_resolves(root, r["lives_in"]):

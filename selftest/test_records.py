@@ -2,6 +2,7 @@
 # ENGINE-OWNED: local edits to this file are discarded on update
 """The record set (spec 02 §2–5, §10.3, §11; spec 01 §12)."""
 import json
+import pathlib
 import unittest
 
 from engine import distribute
@@ -395,6 +396,23 @@ class Checks(unittest.TestCase):
             o = findings_register.run(t, CFG)
             self.assertIs(o.state, State.FINDINGS)
             self.assertTrue(o.blocking)
+
+    def test_a_later_row_with_the_same_id_corrects_or_retires_a_register_row_without_editing_history(self):
+        # NOTES-2 of the notes-api demo: two Table A rows were written with a lives_in the check could not
+        # resolve; the register is append-only, so the correction is a later row, and the latest row stands
+        with tree() as t:
+            seeded(t)
+            findings.add_check(t, CFG, id="F-1", finding_class="c", mechanism="m", lives_in="engine/gone.py", decided_by="Casey")
+            findings.add_check(t, CFG, id="F-2", finding_class="c", mechanism="m", lives_in="engine/gone.py", decided_by="Casey")
+            (pathlib.Path(t) / "guard.py").write_text("def check(): pass", encoding="utf-8")
+            findings.add_check(t, CFG, id="F-1", finding_class="c", mechanism="m", lives_in="guard.py#check", decided_by="Casey")
+            findings.add_check(t, CFG, id="F-2", finding_class="c", mechanism="m", lives_in="engine/gone.py", decided_by="Casey",
+                               status="retired")
+            blocking, _, _ = findings.problems(t)
+            self.assertEqual(blocking, [])
+            a, _, _ = findings.read(t)
+            self.assertEqual(len(a), 4, "nothing was rewritten; the four rows are all there")
+            self.assertEqual([r["status"] for r in findings.current(a)], ["active", "retired"])
 
     def test_findings_register_check_reports_unproven_risk_without_blocking(self):
         with tree() as t:

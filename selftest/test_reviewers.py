@@ -10,10 +10,12 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# the drivers sit beside engine/ in the build tree and at .engine/reviewers/ beside a placed harness
+REVIEWERS = ROOT / "reviewers" if (ROOT / "reviewers").is_dir() else ROOT.parent / "reviewers"
 
 
 def load(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "reviewers" / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, REVIEWERS / f"{name}.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

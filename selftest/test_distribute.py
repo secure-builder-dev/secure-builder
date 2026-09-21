@@ -22,9 +22,12 @@ class Classes(unittest.TestCase):
         self.assertIn(f"{own.ENGINE_DIR}/records/", own.PROJECT_OWNED)
 
     def test_every_source_exists(self):
+        # in the build tree every source exists beside engine/; in a placed copy (.engine/harness/) a source
+        # outside the package, such as reviewers/, exists only as its placed target under .engine/
         for table in (own.ENGINE_OWNED, own.SEED_IF_ABSENT, own.ENGINE_REFERENCE):
             for target, src in table.items():
-                self.assertTrue((ROOT / src).exists(), f"{target} -> {src} does not exist in the harness tree")
+                self.assertTrue((ROOT / src).exists() or (ROOT.parent.parent / target).exists(),
+                                f"{target} -> {src} does not exist in the harness tree")
 
     def test_class_of(self):
         self.assertEqual(own.class_of(f"{own.ENGINE_DIR}/rules/RULES.md"), "engine-owned")

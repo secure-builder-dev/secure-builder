@@ -197,6 +197,18 @@ def repair_completeness(endpoint, model, system, user, answers, controls, num_ct
     return fixed
 
 
+def item_of(entry, item_ids, *fields):
+    """The checklist item an entry refers to: the leading token of the first named field that is an item id
+    (`B3` from `B3. Authorization ...`, or a field holding the bare id such as `ELEVATED1`). A model that puts
+    the id in `id` and the item's prose in `checklist_item` is still held to the item's informational status
+    and to its own pass/fail on that item."""
+    for k in fields:
+        head = str(entry.get(k, "")).split(".")[0].split(" ")[0]
+        if head in item_ids:
+            return head
+    return str(entry.get(fields[0], "")).split(".")[0].split(" ")[0]
+
+
 def _line_of(root, head, file, quote):
     """The line number of a quoted line in the file at head, from version control, not from the model."""
     text = git(root, "show", f"{head}:{file}") if file else ""
@@ -276,11 +288,12 @@ def main(argv=None):
     diff_lines = [l[1:] if l[:1] in "+ " else l for l in git(root, "diff", f"{facts['base']}..{facts['head']}").splitlines()]
     normalized = {re.sub(r"\s+", " ", l).strip() for l in diff_lines if l.strip()}
     informational = set(re.findall(r"^- \[[^\]]*informational\] (\w+)\.", checklist_text, re.M))
-    judged = {str(c.get("item", "")).split(".")[0].split(" ")[0]: c.get("result") for c in (judgment.get("checklist") or [])}
+    item_ids = set(re.findall(r"^- \[[^\]]*\] (\w+)\.", checklist_text, re.M))
+    judged = {item_of(c, item_ids, "item", "id"): c.get("result") for c in (judgment.get("checklist") or [])}
     judgment["completeness"] = repair_completeness(a.endpoint, a.model, system, user, judgment.get("completeness") or {}, controls, a.num_ctx)
     findings, ungrounded, inconsistent, notes = [], [], [], []
     for f in judgment.get("findings") or []:
-        item = str(f.get("checklist_item", "")).split(".")[0].split(" ")[0]
+        item = item_of(f, item_ids, "checklist_item", "id")
         q = re.sub(r"\s+", " ", str(f.get("quote", ""))).strip().lstrip("+").strip()
         if not q or q not in normalized:
             ungrounded.append(f)

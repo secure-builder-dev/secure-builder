@@ -34,20 +34,57 @@ def run_one(driver, handoff, model, num_ctx):
 
 
 def score(block, truths):
+    """A truth is found when a grounded finding names its file and any one of its fragments (separated by
+    `;`) appears in the quoted line or, case-insensitively, in the description. A reviewer that quotes a
+    neighbouring line of the same defect and names it in prose has still found it."""
     grounded = block.get("findings_detail") or []
     found = []
-    for file, frag, label in truths:
-        hit = any(f.get("file", "").endswith(file) and (frag in str(f.get("quote", "")) or frag.lower() in str(f.get("description", "")).lower())
-                  for f in grounded)
+    for file, frags, label in truths:
+        hit = False
+        for frag in [x.strip() for x in frags.split(";") if x.strip()]:
+            hit = hit or any(f.get("file", "").endswith(file)
+                             and (frag in str(f.get("quote", "")) or frag.lower() in str(f.get("description", "")).lower())
+                             for f in grounded)
         found.append((label, hit))
     return found
+
+
+def table(rows, models, truths):
+    lines = ["| model | valid | truths found | ungrounded | inconsistent | mean s |", "|---|---|---|---|---|---|"]
+    for model in models:
+        mine = [r for r in rows if r["model"] == model]
+        n = len(mine) or 1
+        valid = sum(1 for r in mine if r["valid"])
+        found = sum(sum(1 for v in r["found"].values() if v) for r in mine)
+        lines.append(f"| {model} | {valid}/{len(mine)} | {found}/{len(mine) * len(truths)} | {sum(r['ungrounded'] for r in mine)} | "
+                     f"{sum(r['inconsistent'] for r in mine)} | {sum(r['seconds'] for r in mine) / n:.0f} |")
+    return "\n".join(lines)
+
+
+def rescore(out, truths):
+    """Re-score the saved verdict copies against a new truth list; nothing is re-run."""
+    rp = out / "results.json"
+    rows = json.loads(rp.read_text(encoding="utf-8"))
+    for row in rows:
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", row["model"]).strip("-")
+        vf = out / f"{slug}-rep{row['rep']}.json"
+        if vf.is_file():
+            row["found"] = {label: hit for label, hit in score(json.loads(vf.read_text(encoding="utf-8")), truths)}
+    rp.write_text(json.dumps(rows, indent=1), encoding="utf-8", newline="\n")
+    models = list(dict.fromkeys(r["model"] for r in rows))
+    for r in rows:
+        print(f"{r['model']} rep {r['rep']}: found={[k for k, v in r['found'].items() if v]}")
+    print()
+    print(table(rows, models, truths))
+    return 0
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--handoff", required=True)
     ap.add_argument("--model", action="append", required=True)
-    ap.add_argument("--truth", action="append", default=[], help="file|quote-fragment|label")
+    ap.add_argument("--truth", action="append", default=[], help="file|fragment[;fragment...]|label")
+    ap.add_argument("--rescore", action="store_true", help="re-score the saved verdict copies against --truth; run nothing")
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--num-ctx", type=int, default=16384)
     ap.add_argument("--out", default=".engine/local/bakeoff")
@@ -60,6 +97,8 @@ def main(argv=None):
     unit, run = m.group(1), m.group(2)
     out = root / a.out
     out.mkdir(parents=True, exist_ok=True)
+    if a.rescore:
+        return rescore(out, truths)
     rows = []
     for model in a.model:
         slug = re.sub(r"[^A-Za-z0-9]+", "-", model).strip("-")
@@ -87,15 +126,7 @@ def main(argv=None):
                   f"{row['seconds']}s {row['tok_s']} tok/s" + (f" ERROR {row['error']}" if row.get("error") else ""), flush=True)
     (out / "results.json").write_text(json.dumps(rows, indent=1), encoding="utf-8", newline="\n")
     print()
-    print("| model | valid | truths found | ungrounded | inconsistent | mean s |")
-    print("|---|---|---|---|---|---|")
-    for model in a.model:
-        mine = [r for r in rows if r["model"] == model]
-        n = len(mine)
-        valid = sum(1 for r in mine if r["valid"])
-        found = sum(sum(1 for v in r["found"].values() if v) for r in mine)
-        print(f"| {model} | {valid}/{n} | {found}/{n * len(truths)} | {sum(r['ungrounded'] for r in mine)} | "
-              f"{sum(r['inconsistent'] for r in mine)} | {sum(r['seconds'] for r in mine) / n:.0f} |")
+    print(table(rows, a.model, truths))
     print(f"\nresults: {out / 'results.json'}")
     return 0
 

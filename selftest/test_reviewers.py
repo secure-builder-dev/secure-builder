@@ -81,5 +81,25 @@ class ItemResolution(unittest.TestCase):
                          "an unresolvable item falls back to the leading token, as before")
 
 
+class GovernedInputsAtHead(unittest.TestCase):
+    def test_the_manifest_is_read_as_committed_at_the_range_head_not_from_the_working_tree(self):
+        # a bake-off replaying an old handoff after a later unit declared a control must not see that control
+        import subprocess
+        local_model = load("local_model")
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            subprocess.run(["git", "-C", d, "init", "-q"], check=True)
+            subprocess.run(["git", "-C", d, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "base"], check=True)
+            (root / "m.json").write_text('{"controls": ["old"]}', encoding="utf-8")
+            subprocess.run(["git", "-C", d, "add", "m.json"], check=True)
+            subprocess.run(["git", "-C", d, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "head"], check=True)
+            head = subprocess.run(["git", "-C", d, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+            (root / "m.json").write_text('{"controls": ["old", "declared later"]}', encoding="utf-8")
+            self.assertEqual(json.loads(local_model.read_at(root, head, "m.json")), {"controls": ["old"]})
+            (root / "untracked.md").write_text("working tree only", encoding="utf-8")
+            self.assertEqual(local_model.read_at(root, head, "untracked.md"), "working tree only",
+                             "a file version control does not hold at head falls back to the working tree")
+
+
 if __name__ == "__main__":
     unittest.main()

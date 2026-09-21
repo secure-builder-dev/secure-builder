@@ -26,9 +26,9 @@ import sys
 import time
 
 
-def run_one(driver, handoff, model, num_ctx):
+def run_one(driver, handoff, model, num_ctx, extra=()):
     t0 = time.time()
-    res = subprocess.run([sys.executable, str(driver), "--model", model, "--num-ctx", str(num_ctx), str(handoff)],
+    res = subprocess.run([sys.executable, str(driver), "--model", model, "--num-ctx", str(num_ctx), *extra, str(handoff)],
                          capture_output=True, text=True, encoding="utf-8", errors="replace")
     return time.time() - t0, res.returncode, res.stdout + res.stderr
 
@@ -85,6 +85,7 @@ def main(argv=None):
     ap.add_argument("--model", action="append", required=True)
     ap.add_argument("--truth", action="append", default=[], help="file|fragment[;fragment...]|label")
     ap.add_argument("--rescore", action="store_true", help="re-score the saved verdict copies against --truth; run nothing")
+    ap.add_argument("--no-think", action="store_true", help="pass --no-think to the driver for every model in this run")
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--num-ctx", type=int, default=16384)
     ap.add_argument("--out", default=".engine/local/bakeoff")
@@ -103,9 +104,9 @@ def main(argv=None):
     for model in a.model:
         slug = re.sub(r"[^A-Za-z0-9]+", "-", model).strip("-")
         for i in range(1, a.repeat + 1):
-            secs, code, log = run_one(driver, handoff, model, a.num_ctx)
+            secs, code, log = run_one(driver, handoff, model, a.num_ctx, ("--no-think",) if a.no_think else ())
             vf = root / ".engine" / "local" / f"verdict-{unit}-{run}-{slug}.json"
-            row = {"model": model, "rep": i, "seconds": round(secs, 1), "driver_exit": code, "valid": False, "verdict": "-",
+            row = {"model": model, "rep": i, "think": "off" if a.no_think else "model default", "seconds": round(secs, 1), "driver_exit": code, "valid": False, "verdict": "-",
                    "grounded": 0, "blocking": 0, "ungrounded": 0, "inconsistent": 0, "tok_s": None, "found": {}}
             if code == 0 and vf.is_file():
                 b = json.loads(vf.read_text(encoding="utf-8"))

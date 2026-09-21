@@ -27,6 +27,7 @@ import urllib.error
 import urllib.request
 
 LOOPBACK = ("http://127.0.0.1", "http://localhost", "http://[::1]")
+THINK = {}          # {"think": False} when --no-think: a model's hidden reasoning is not spent from the answer's budget
 QUESTIONS = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"]
 
 SCHEMA = {
@@ -58,6 +59,15 @@ def git(root, *args):
 def read(p):
     p = pathlib.Path(p)
     return p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+
+
+def read_at(root, head, rel):
+    """A file as version control holds it at the range head — the manifest, the project rules and the
+    register the reviewer judges against are the ones the code under review was committed with, not
+    whatever the working tree holds when the review happens to run (a bake-off replays old handoffs)."""
+    res = subprocess.run(["git", "-C", str(root), "show", f"{head}:{rel}"], capture_output=True, text=True,
+                         encoding="utf-8", errors="replace")
+    return res.stdout if res.returncode == 0 else read(pathlib.Path(root) / rel)
 
 
 def handoff_facts(text):
@@ -93,14 +103,27 @@ def model_identity(endpoint, model):
     return f"{model} ({d.get('family', '?')}; {d.get('parameter_size', '?')}; {d.get('quantization_level', '?')}; ollama digest {digest or '?'})"
 
 
-def ask(endpoint, model, system, user, num_ctx):
+class NoVerdict(ValueError):
+    """The model answered but not with the JSON object the schema describes; the raw answer is kept."""
+
+
+def ask(endpoint, model, system, user, num_ctx, raw_path=None):
     body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": 0, "num_ctx": num_ctx, "num_predict": 8192},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], **THINK}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=3600) as r:
         out = json.loads(r.read().decode("utf-8"))
-    return json.loads(out["message"]["content"]), out
+    msg = out.get("message") or {}
+    try:
+        return json.loads(msg["content"]), out
+    except (ValueError, KeyError) as e:
+        if raw_path:
+            # the raw answer is the only evidence of what went wrong: kept beside the verdicts, never parsed leniently
+            raw_path.write_text(json.dumps({k: v for k, v in out.items() if k != "context"}, indent=1), encoding="utf-8", newline="\n")
+        raise NoVerdict(f"{e}; done_reason={out.get('done_reason')!r}, eval_count={out.get('eval_count')}, "
+                        f"content={len(str(msg.get('content', '')))} chars, thinking={len(str(msg.get('thinking', '')))} chars"
+                        + (f"; raw answer kept at {raw_path.name}" if raw_path else ""))
 
 
 def build_prompt(root, facts, checklist_text, definition, controls):
@@ -111,7 +134,7 @@ def build_prompt(root, facts, checklist_text, definition, controls):
     if len(diff) > 120_000:
         diff = diff[:120_000] + "\n[diff truncated by the reviewer driver at 120000 characters; say so in the summary]\n"
     names = git(root, "diff", "--name-only", f"{base}..{head}")
-    register = read(root / ".engine/records/findings-register.md")
+    register = read_at(root, head, ".engine/records/findings-register.md")
     register = register if re.search(r"^\| (F|R|AUD)-", register, re.M) else ""     # a template-only register says nothing
     controls = [{k: c.get(k) for k in ("id", "description", "location", "test_pattern", "status")} for c in controls]
     parts = [f"Unit {facts['unit']} run {facts['run']}. Range {base}..{head}.",
@@ -120,7 +143,7 @@ def build_prompt(root, facts, checklist_text, definition, controls):
              "Declared controls (from .engine/control-manifest.json):",
              json.dumps(controls, indent=1), "",
              "Checklist prepared for this run:", checklist_text, "",
-             "Project rules (AGENTS.md, section Project rules):", _section(read(root / "AGENTS.md"), "## Project rules"), "",
+             "Project rules (AGENTS.md, section Project rules):", _section(read_at(root, head, "AGENTS.md"), "## Project rules"), "",
              *(["Findings register (Table A rows are checks that must still exist):", register[-4000:], ""] if register else []),
              "THE DIFF, read from version control at the range above:", "", diff, "",
              "Produce the verdict as JSON matching the schema. Rules:",
@@ -185,7 +208,7 @@ def repair_completeness(endpoint, model, system, user, answers, controls, num_ct
                 + "in exactly this shape, one item per line, each item a route, symbol or condition, never a sentence:" + NL
                 + "- GET /notes" + NL + "- token expiry" + NL + "If nothing is uncovered, list what you examined: '- GET /notes (covered)'.")
     body = {"model": model, "stream": False, "format": schema, "options": {"temperature": 0, "num_ctx": num_ctx, "num_predict": 8192},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": ask_text}]}
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": ask_text}], **THINK}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=3600) as r:
@@ -234,6 +257,7 @@ def main(argv=None):
     ap.add_argument("--model", required=True)
     ap.add_argument("--endpoint", default="http://127.0.0.1:11434")
     ap.add_argument("--num-ctx", type=int, default=16384)
+    ap.add_argument("--no-think", action="store_true", help="ask a reasoning model not to think aloud; recorded in the verdict")
     NL = chr(10)
     ap.add_argument("--reviewer-class", default="automated", choices=["automated", "automated-with-human-review"])
     ap.add_argument("handoff")
@@ -241,6 +265,8 @@ def main(argv=None):
     if not a.endpoint.startswith(LOOPBACK):
         print(f"local_model: REFUSED — endpoint {a.endpoint} is not the loopback interface; a local reviewer never leaves the box")
         return 2
+    if a.no_think:
+        THINK["think"] = False
     hp = pathlib.Path(a.handoff).resolve()
     root = hp.parent.parent.parent          # .engine/local/handoff-U-R.md -> project root
     facts = handoff_facts(read(hp))
@@ -259,7 +285,7 @@ def main(argv=None):
     checklist_text = read(root / ".engine" / "local" / f"gate-{facts['unit']}-{facts['run']}-checklist.md")
     definition = read(root / ".engine" / "agents" / "security-gate.md")
     try:
-        controls = json.loads(read(root / ".engine" / "control-manifest.json")).get("controls", [])
+        controls = json.loads(read_at(root, facts["head"], ".engine/control-manifest.json")).get("controls", [])
     except ValueError:
         controls = []
     controls = [c for c in controls if not c.get("placeholder")]
@@ -280,8 +306,10 @@ def main(argv=None):
               "a truncated diff is reviewed blind, and a blind review is not a review. Raise --num-ctx or split the range.")
         return 2
     print(f"local_model: reviewing {facts['unit']} run {facts['run']} with {identity}; prompt {len(user)} chars (~{est} tokens of {a.num_ctx})")
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", a.model).strip("-")
     try:
-        judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx)
+        judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx,
+                            raw_path=root / ".engine" / "local" / f"raw-{facts['unit']}-{facts['run']}-{slug}.json")
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         print(f"local_model: COULD NOT RUN — the model did not return a verdict ({e})")
         return 2
@@ -322,10 +350,10 @@ def main(argv=None):
         "completeness": judgment.get("completeness") or {}, "checklist": judgment.get("checklist") or [],
         "findings_detail": findings, "ungrounded_findings": ungrounded, "inconsistent_findings": inconsistent,
         "informational_notes": notes, "summary": judgment.get("summary", ""),
-        "model_runtime": {"total_duration_s": round(raw.get("total_duration", 0) / 1e9, 1), "eval_count": raw.get("eval_count"),
+        "model_runtime": {"think": "off" if a.no_think else "model default", "thinking_chars": len(str((raw.get("message") or {}).get("thinking") or "")),
+                          "total_duration_s": round(raw.get("total_duration", 0) / 1e9, 1), "eval_count": raw.get("eval_count"),
                           "prompt_eval_count": raw.get("prompt_eval_count")},
     }
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", a.model).strip("-")
     out = root / ".engine" / "local" / f"verdict-{facts['unit']}-{facts['run']}-{slug}.json"
     out.write_text(json.dumps(block, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"local_model: {verdict.upper()} — {len(findings)} grounded finding(s), {len(blocking)} blocking; "

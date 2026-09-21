@@ -8,6 +8,6 @@ GENERATED from the code by the harness — never hand-edited; regenerate with `e
 
 ## Data structures
 
-- NoVerdict [py-class] (reviewers/local_model.py:104)
+(none)
 
-content: sha256:0185a2dfc0a485bb
+content: sha256:69575adb39638046

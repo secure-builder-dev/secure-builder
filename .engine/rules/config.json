@@ -13,15 +13,15 @@
   "clock": "workstation clock (Windows 11, NTP-synced)",
   "not_applicable_threshold": 0.5,
   "governed_documents": [
-    "v1.0.md",
-    "GOVERNANCE-SET.md",
-    "PROVENANCE.md",
-    "AMENDMENTS.md",
-    "hooks/README.md",
-    "LIFECYCLE-EXERCISE.md",
-    "RELEASE-RECORD.md",
-    "engine/dist/agents/*.md",
-    "engine/dist/reference/*.md"
+    "rules/v1.0.md",
+    "rules/GOVERNANCE-SET.md",
+    "rules/PROVENANCE.md",
+    "rules/AMENDMENTS.md",
+    "work/hooks/README.md",
+    "records/LIFECYCLE-EXERCISE.md",
+    "records/RELEASE-RECORD.md",
+    "harness/engine/dist/agents/*.md",
+    "harness/engine/dist/reference/*.md"
   ],
   "lint_command": [
     "python",

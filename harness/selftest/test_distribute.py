@@ -144,6 +144,27 @@ class Update(unittest.TestCase):
                               f"{p.name} references the seeds directory")
 
 
+class Upgrade(unittest.TestCase):
+    def test_a_file_changed_by_a_new_harness_version_is_overwritten_without_a_backup(self):
+        # updating todo-app to the four-folder layout left 59 .pre-update copies: every file the new
+        # version changed was called "diverged", although none had been edited in the project
+        with tree() as t:
+            write_config(t)
+            distribute.update(t)
+            src = ROOT / "engine" / "outcome.py"
+            original = src.read_bytes()
+            try:
+                src.write_bytes(original + b"# a new harness version" + chr(10).encode())
+                s = distribute.update(t)
+            finally:
+                src.write_bytes(original)
+            self.assertEqual(s.diverged, [], "an upgrade is not a divergence")
+            self.assertFalse((t / ".engine/harness/engine/outcome.py.pre-update").exists())
+            self.assertEqual(s.by_class["engine-owned"].get("overwritten"), 1)
+            distribute.update(t)         # back to the original content: still no backup
+            self.assertFalse((t / ".engine/harness/engine/outcome.py.pre-update").exists())
+
+
 class FourFolders(unittest.TestCase):
     def test_every_placed_path_is_under_rules_harness_records_or_work(self):
         # the layout rule: everything the engine places or writes sits in one of four folders

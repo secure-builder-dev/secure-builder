@@ -112,10 +112,12 @@ LEGACY_LAYOUT = [
 
 def migrate_layout(project, dry_run=False):
     """Move a project placed under the old layout into the four folders. Returns the (old, new)
-    pairs moved. Tracked paths are moved with `git mv` so history follows them; an old path whose
-    new path already exists is left alone and reported, never merged silently."""
+    pairs moved and the pairs left alone: an old path whose new path already exists, or a file
+    another process holds open. Tracked paths are moved with `git mv` so history follows them;
+    nothing is merged silently."""
     project = pathlib.Path(project)
     moved, kept = [], []
+    stuck = []
     tracked = set()
     if (project / ".git").exists():
         res = subprocess.run(["git", "-C", str(project), "ls-files"], capture_output=True, text=True, encoding="utf-8")
@@ -133,22 +135,29 @@ def migrate_layout(project, dry_run=False):
         dst.parent.mkdir(parents=True, exist_ok=True)
         if old in tracked or any(t.startswith(old + "/") for t in tracked):
             subprocess.run(["git", "-C", str(project), "mv", "-k", old, new], capture_output=True, text=True)
-            if src.exists():        # untracked leftovers (caches, ignored files) under a moved directory
-                _merge_move(src, dst)
-        else:
-            src.rename(dst)
-    return moved, kept
+        if src.exists():            # untracked content, or a whole untracked path: file by file
+            try:
+                src.rename(dst) if not dst.exists() else _merge_move(src, dst, stuck)
+            except OSError:
+                _merge_move(src, dst, stuck)
+    return moved, kept + [(str(pathlib.Path(x).relative_to(project)).replace("\\", "/"), "held open by another process; move it by hand") for x in stuck]
 
 
-def _merge_move(src, dst):
+def _merge_move(src, dst, stuck):
+    """Move src's content into dst one file at a time; a file that cannot be moved is left where it
+    is and listed, never lost."""
     if src.is_file():
-        if not dst.exists():
-            src.rename(dst)
-        else:
-            src.unlink()
+        try:
+            if not dst.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                src.rename(dst)
+            else:
+                src.unlink()
+        except OSError:
+            stuck.append(src)
         return
     for child in list(src.iterdir()):
-        _merge_move(child, dst / child.name)
+        _merge_move(child, dst / child.name, stuck)
     try:
         src.rmdir()
     except OSError:
@@ -198,7 +207,11 @@ def update(project, source_root=SOURCE_ROOT, dry_run=False):
             if sha(old) == sha(data):
                 s.bump(cls, "unchanged")
                 return
-            if cls == "engine-owned":
+            # diverged means edited in place since it was placed: the placed manifest holds the hash of
+            # what was written last time. A file that merely changed between harness versions is an
+            # upgrade, not a divergence, and leaves no .pre-update copy behind. A file the manifest
+            # never recorded is treated as diverged, because nothing proves otherwise.
+            if cls == "engine-owned" and placed_before.get(target) != sha(old):
                 backup = target + own.BACKUP_SUFFIX
                 s.diverged.append((target, backup))
                 if not dry_run:

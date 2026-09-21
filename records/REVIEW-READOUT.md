@@ -4,7 +4,7 @@
 
 Date: 2026-09-20/21. Written for the human review that closes the session: the
 technical readout first, the junior-developer version second. Every number here
-is on disk in the demo projects' `.engine/records/` and `.engine/local/`; the
+is on disk in the demo projects' `.engine/records/` and `.engine/work/`; the
 model tables are in `reviewers/MODELS.md`.
 
 Roles: **Devstral builds, Gemma 4 31B gates, Casey Houle is the human in the
@@ -32,8 +32,8 @@ and it is the row that turns "never assessed" into "assessed" in the coverage in
 | `~/engine` (branch `engine`, pushed) | the harness: 27 checks, 512 self-tests, `check` GREEN | v1.0 reached; 12 commits this session, all authored and SSH-signed by Casey Houle |
 | `C:/dev/notes-api` (`main`) | notes API: bearer auth, owner-scoped notes, PUT, search | NOTES-1, NOTES-2, NOTES-3 merged; `check` GREEN; 14 gate rows |
 | `C:/dev/todo-app` (`main`) | to-do list, dark-mode page over a JSON API | TODO-1 merged; `check` GREEN; running at http://127.0.0.1:8765/ |
-| `~/engine/reviewers/MODELS.md` | bake-off tables, roles, rejections | committed |
-| `~/engine/STRUCTURE-PROPOSAL.md` | the four-folder layout | proposal only, nothing moved |
+| `~/engine/harness/reviewers/MODELS.md` | bake-off tables, roles, rejections | committed |
+| `~/engine/records/STRUCTURE.md` | the four-folder layout | implemented in both trees and both demos |
 
 ### 1.2 The bake-off (Task 1) — the numbers
 
@@ -54,7 +54,7 @@ in the diff (else *ungrounded*) and the reviewer did not itself judge the item p
 | gemma4:12b-it-q8_0 (thinking) | 0/3 | — | — | — | no verdict | 205 |
 | gemma4:12b, `--no-think` | 3/3 | 0/9 | 0 | 0 | pass, fail, pass | 45 |
 
-Raw material: `C:/dev/notes-api/.engine/local/bakeoff/` (first four models),
+Raw material: `C:/dev/notes-api/.engine/work/bakeoff/` (first four models),
 `bakeoff2/` (optional candidates, thinking on), `bakeoff3/` (thinking off): one
 verdict copy and one driver log per model and repetition, `results.json`, and the
 smoke run in `bakeoff/smoke/`.
@@ -193,7 +193,7 @@ Known and not fixed: the harness's own coverage-range check cannot see
 `reviewers/` (its collector measures `engine/` only), so two unpushed commits
 touching the drivers turn `check` red; moving the drivers under `engine/` trips
 the no-network scan (they import `urllib`, loopback only). See
-STRUCTURE-PROPOSAL.md item 4.
+records/STRUCTURE.md ("what did not move").
 
 ### 1.8 Process errors by the session, and what the harness did about them
 
@@ -253,7 +253,7 @@ wrong. That is the point of it.
 3. Give the reviewer driver a per-file context budget so a page-sized HTML diff
    does not force the whole review to a bigger context.
 4. Measure `reviewers/` in the harness's own coverage or exempt it explicitly
-   (STRUCTURE-PROPOSAL item 4) so two stacked driver commits stop turning
+   (records/STRUCTURE.md) so two stacked driver commits stop turning
    `check` red.
 5. Run the bake-off on every checklist revision; the truths list is the
    regression suite for the gate model.

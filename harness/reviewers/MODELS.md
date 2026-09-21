@@ -7,7 +7,7 @@ Which open-weight models are up to which job on the 24 GB laptop, decided by
 measurement, not by reputation. Everything here was produced by
 `reviewers/bakeoff.py` driving `reviewers/local_model.py` against a range with
 known defects, and by `reviewers/build_model.py` on a claimed work item. The raw
-material is on disk in the demo project (C:/dev/notes-api/.engine/local/bakeoff/:
+material is on disk in the demo project (C:/dev/notes-api/.engine/work/bakeoff/:
 one verdict copy and one driver log per model and repetition, `results.json`,
 `bakeoff-stdout.txt`) and in that project's gate log.
 

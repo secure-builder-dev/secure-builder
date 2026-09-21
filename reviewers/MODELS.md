@@ -140,6 +140,43 @@ What the other three did, every repetition:
   deterministic models (Mistral, Devstral and Llama repeated themselves almost to
   the token); they are for Gemma, whose three answers differed. Nine findings, nine
   grounded, is the number that carries weight.
-- One benchmark range, three planted defects. Unit NOTES-3 of the demo adds three
-  subtler ones (timing-unsafe comparison, echoed exception text, client-side-only
-  scoping); its results are appended below when they exist.
+- Two benchmark ranges now: NOTES-1 run 2 above, and NOTES-3 run 2 below.
+
+## Second benchmark: NOTES-3 run 2 — three subtler defects, by class
+
+Planted by hand on the demo's `unit/NOTES-3` (range `efde0bc667ad..24f02db60100`),
+each invisible to the mechanical checks: **D1 cryptographic hygiene** —
+`Principals.principal_for` compares tokens with `==` instead of
+`hmac.compare_digest`; **D2 information leak** — `dispatch` answers an unexpected
+exception with `repr(e)` and `traceback.format_exc()`; **D3 authorization in the
+wrong layer** — `GET /notes/search/<term>` returns every owner's matches and the
+owner filter lives only in `src/client.py`, which the tests go through (so the
+negative-tests check saw a cross-principal test and was satisfied). Two
+repetitions each, results in `bakeoff-notes3/`.
+
+| model | valid | D1 timing | D2 leak | D3 client-only scoping | ungrounded | inconsistent | verdict | mean s |
+|---|---|---|---|---|---|---|---|---|
+| gemma4:31b-it-q4_K_M | 2/2 | — | **2/2 blocking**, exact line | **2/2 blocking**, exact line, names src/client.py | 0 | 0 | fail, fail | 342 |
+| mistral-small3.2:24b-instruct-2506-q4_K_M | 2/2 | — | 2/2 but **non-blocking** | — | 0 | 0 | pass, pass | 81 |
+| llama3.1:8b-instruct-q8_0 | 1/2 | — | — | — | 0 | 25 | fail (four "may not" hypotheticals against `def` lines), invalid | 55 |
+| devstral:24b-small-2505-q4_K_M | 0/2 | — | — | — | 0 | 5 | invalid ×2 (completeness not repairable) | 75 |
+
+What the classes say:
+
+- **Authorization and leakage** are where Gemma is reliable: four for four across
+  the two units on "who can see what" (DELETE guard, write-before-guard,
+  client-only scoping) and two for two on "what leaks" (unguarded decode, traceback
+  in the body), every one at the exact line, none invented.
+- **Cryptographic hygiene** nobody found. The `==` comparison sits next to a
+  removed `hmac` import in the diff; the checklist item that names cryptography
+  (ELEVATED1) is informational at this tier, and B2 asks about completeness of
+  authentication, not its constant-timeness. A checklist line is the fix, not a
+  bigger model — and it is a governance change, so it is proposed, not made, here:
+  "B2a. Credential comparison — secrets and tokens are compared in constant time
+  (`hmac.compare_digest` or equivalent); `==` on a secret is a finding."
+- **Mistral's one catch** was rated non-blocking, so its verdict stayed pass; a
+  reviewer that sees the traceback leak and does not block on it is not a gate.
+- Gemma's rep 1 carried a third finding (a manifest gap) whose quote was a lone `]`
+  — present in every diff, so it grounded trivially. The driver now requires a
+  quote with substance (eight non-space characters and a word); that finding would
+  be discarded as ungrounded today.

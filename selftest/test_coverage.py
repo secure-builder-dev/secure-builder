@@ -138,6 +138,24 @@ class Collector(unittest.TestCase):
             self.assertTrue((t / ".engine/local/coverage.json").is_file())
 
 
+    def test_code_run_in_a_thread_started_under_the_collector_is_measured(self):
+        # the to-do demo: http.server handlers ran in a server thread and src/server.py read 38% covered
+        with tree() as t:
+            write(t, "engine/__init__.py", "")
+            write(t, "engine/m.py", "def f(a):" + chr(10) + "    if a:" + chr(10) + "        return 1" + chr(10) + "    return 2" + chr(10))
+            import importlib.util, threading
+            spec = importlib.util.spec_from_file_location("fx_m2", t / "engine" / "m.py")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+
+            def in_thread():
+                th = threading.Thread(target=mod.f, args=(False,))
+                th.start()
+                th.join()
+            rep = coverage.collect(t, in_thread)
+            self.assertEqual(rep["files"]["engine/m.py"], {"covered": 2, "total": 3})
+
+
 class ProjectCoverage(unittest.TestCase):
     def test_project_suite_measured_into_the_report_the_range_check_reads(self):
         """Found by the lifecycle exercise: a Python project had no way to produce the report."""

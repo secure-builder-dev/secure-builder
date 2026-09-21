@@ -17,6 +17,7 @@ import json
 import pathlib
 import re
 import sys
+import threading
 
 SOURCE_EXT = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".kt", ".java", ".go", ".rb", ".rs"}
 TEST_PATH = re.compile(r"(^|/)(tests?|spec|__tests__|selftest|fixtures?)/|[._-]test\.|_test\.py$|\.spec\.")
@@ -119,10 +120,14 @@ class Collector:
         return self._line
 
     def start(self):
+        # threads started under the collector are traced too: a handler that runs in a server
+        # thread (http.server under test) is exercised code, and unmeasured is not the same as uncovered
         sys.settrace(self._trace)
+        threading.settrace(self._trace)
 
     def stop(self):
         sys.settrace(None)
+        threading.settrace(None)
 
     def report(self):
         files = {}

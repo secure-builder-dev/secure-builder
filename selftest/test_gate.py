@@ -347,6 +347,18 @@ class SecurityMechanical(unittest.TestCase):
             self.assertIs(pe.state, State.FINDINGS)
             self.assertTrue(pe.blocking)
 
+    def test_one_item_enumeration_is_a_list(self):
+        """Found by the Gemma 4 gate run on notes-api: `DELETE /notes/<id>` is a correct one-item
+        enumeration of the entry point a guard does not cover, and was refused as a summary."""
+        self.assertTrue(gate.is_enumeration("DELETE /notes/<id>"))
+        self.assertTrue(gate.is_enumeration("- a" + chr(10) + "- b"))
+        self.assertTrue(gate.is_enumeration("token expiry, token revocation"))
+        self.assertFalse(gate.is_enumeration("Nothing is uncovered by this hook."))
+        self.assertFalse(gate.is_enumeration("all entry points are covered by the middleware"))
+        self.assertFalse(gate.is_enumeration("It covers everything."))
+        self.assertTrue(gate.is_enumeration("require_owner"))
+        self.assertTrue(gate.is_enumeration("src/app.py:75"))
+
     def test_cross_principal_wording_inside_a_test_name(self):
         """Found by the notes-api demo: test_other_user_cannot_read_... is the natural name."""
         self.assertTrue(gate.CROSS_PRINCIPAL.search("def test_other_user_cannot_read_a_note_403(self):"))

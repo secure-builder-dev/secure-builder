@@ -374,6 +374,20 @@ def _write_checklist(root, unit, run, ctx):
     (pathlib.Path(root) / ".engine" / "local" / f"gate-{unit}-{run}-checklist.md").write_text("\n".join(L) + "\n", encoding="utf-8", newline="\n")
 
 
+ONE_ITEM = re.compile(r"^\s*(?!.*[.!?]\s*$)[\w./:<>{}\[\]()-]+(?:\s+[\w./:<>{}\[\]()-]+){0,3}\s*$")
+
+
+def is_enumeration(answer):
+    """A list: several items with markers or commas, or a single bare item such as
+    `DELETE /notes/<id>` — an identifier phrase of at most four tokens that names a route,
+    symbol or path and does not end like a sentence. 'It covers everything.' is a summary
+    judgment, not a list."""
+    a = str(answer).strip()
+    if re.search(r"(^|\n)\s*[-*\d]|,", a):
+        return True
+    return bool(ONE_ITEM.match(a) and (len(a.split()) <= 2 or re.search(r"[/:<>{}\[\]()_]|\w\.\w", a)))
+
+
 def validate_verdict(state, v):
     """Problems with a submitted verdict block (spec 01 §6.5.1, §6.3.2–6.3.6)."""
     probs = []
@@ -405,7 +419,7 @@ def validate_verdict(state, v):
                     a = str(per_q.get(q, "")).strip()
                     if not a or BARE.match(a):
                         probs.append(f"completeness {control} {q}: unanswered or answered with a bare pass — blocking")
-                    elif q in checklist.ENUMERATE and not re.search(r"(^|\n)\s*[-*\d]|,", a):
+                    elif q in checklist.ENUMERATE and not is_enumeration(a):
                         probs.append(f"completeness {control} {q}: must produce a list, not a summary judgment")
         if v["verdict"] == "pass" and any("completeness" in p for p in probs):
             pass

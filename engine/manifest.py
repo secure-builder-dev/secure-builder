@@ -127,7 +127,9 @@ def call_sites(root, symbol, definition_file):
     then `def handler`) is mentioned nowhere else: the decorator line is its
     registration and counts as its production site."""
     root = pathlib.Path(root)
-    mention = re.compile(r"(?<![\w.])" + re.escape(symbol) + r"(?![\w])")
+    # a preceding dot is an attribute call (`principals.principal_for(...)`), the way every method is
+    # called; excluding it made a control that is a method uncallable in the verifier's eyes
+    mention = re.compile(r"(?<!\w)" + re.escape(symbol) + r"(?![\w])")
     out = []
     for rel in _source_files(root):
         if TEST_PATH.search(rel):

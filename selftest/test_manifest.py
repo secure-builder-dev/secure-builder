@@ -128,6 +128,17 @@ class Recomputation(unittest.TestCase):
             self.assertEqual(manifest.call_sites(t, "reg", "src/app.py"), [], "a plain method with no decorator and no caller is still uncalled")
 
 
+    def test_a_method_called_through_its_object_has_a_production_call_site(self):
+        # notes-api NOTES-3 and the to-do demo: `principals.principal_for(...)` is the only way a method is
+        # called, and the verifier reported the control "has no production call site"
+        with tree() as t:
+            project(t)
+            write(t, "src/auth.py", "class Principals:" + NL + "    def principal_for(self, token):" + NL + "        return None" + NL)
+            write(t, "src/app.py", "def guard(principals, token):" + NL + "    return principals.principal_for(token)" + NL)
+            git(t, "add", "-A")
+            self.assertEqual(manifest.call_sites(t, "principal_for", "src/auth.py"), ["src/app.py:2"])
+
+
 class Verify(unittest.TestCase):
     def test_all_resolve(self):
         with tree() as t:

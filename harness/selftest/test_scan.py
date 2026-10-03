@@ -4,6 +4,7 @@
 played by a recording fake; nothing here starts a container."""
 import datetime
 import json
+import pathlib
 import unittest
 
 from engine import stamp
@@ -364,6 +365,15 @@ class Run(unittest.TestCase):
         self.assertIn("useless-inner-function", [f.id for f in r["informational"]], "a maintainability rule does not gate")
         everything = [f.target for f in r["actionable"] + r["carried"] + r["informational"]]
         self.assertFalse([t for t in everything if t.startswith(("tests/", ".engine/", "engine/"))], "tests and the harness are not the project's code")
+
+    def test_the_engines_own_rules_run_with_every_sast_scan(self):
+        own = pathlib.Path(runner.__file__).resolve().parent.parent / "data" / "semgrep"
+        self.assertTrue((own / "http-server.yaml").is_file(), "the engine ships its own rules")
+        with tree() as t:
+            self.no_image_project(t)
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(ship_images={}))
+        semgrep = next(args for tool, args, _ in fake.calls if tool == "semgrep")
+        self.assertEqual(semgrep.count("--config"), 2, "the vendored registry rules and the engine's own")
 
     def test_sast_without_a_rule_set_fails_the_scan(self):
         with tree() as t:

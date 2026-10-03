@@ -444,8 +444,12 @@ class Scan:
             for d in SAST_EXCLUDES:
                 excludes += ["--exclude", d]
             cfg_path = "/rules" if self.engine == "containers" else rules
-            found = self.run_scanner("sast-a", ["scan", "--config", cfg_path, "--json", "--metrics", "off", "--disable-version-check",
-                                                "--quiet", *excludes, target], mounts + ((rules, "/rules"),),
+            # the engine's own rules run beside the registry's: each one is a defect the registry rules missed
+            own = pathlib.Path(__file__).resolve().parent.parent / "data" / "semgrep"
+            own_path = "/engine-rules" if self.engine == "containers" else str(own)
+            found = self.run_scanner("sast-a", ["scan", "--config", cfg_path, "--config", own_path, "--json", "--metrics", "off",
+                                                "--disable-version-check", "--quiet", *excludes, target],
+                                     mounts + ((rules, "/rules"), (str(own), "/engine-rules")),
                                      parse=self._parse_semgrep, ok_codes=(0,), finding_codes=(1,)) or []
             out += [f for f in found if f.severity != "LOW"]
             info += [f for f in found if f.severity == "LOW"]

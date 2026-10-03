@@ -78,6 +78,30 @@ class Reports(unittest.TestCase):
             self.assertEqual(coverage.read_report(t / "c.json"), {"engine/c.py": 75.0})
             self.assertIsNone(coverage.read_report(t / "missing.json"))
 
+    def test_unreadable_reports_are_none(self):
+        with tree() as t:
+            write(t, "bad.json", "{not json")
+            write(t, "list.json", "[1, 2]")
+            self.assertIsNone(coverage.read_report(t / "bad.json"))
+            self.assertIsNone(coverage.read_report(t / "list.json"))
+
+
+class ExecutableLines(unittest.TestCase):
+    def test_statements_counted_and_pragma_excludes(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "m.py", "x = 1" + NL + "def f():  # pragma: no cover" + NL + "    return 2" + NL + "y = 3  # pragma: no cover" + NL + "z = 4" + NL)
+            write(t, "broken.py", "def (" + NL)
+            self.assertEqual(coverage.executable_lines(t / "m.py"), {1, 5})
+            self.assertEqual(coverage.executable_lines(t / "broken.py"), set())
+
+    def test_dist_folders_are_not_reported(self):
+        with tree() as t:
+            write(t, "engine/a.py", "x = 1" + chr(10))
+            write(t, "engine/dist/b.py", "y = 2" + chr(10))
+            rep = coverage.Collector(t, "engine").report()
+            self.assertEqual(list(rep["files"]), ["engine/a.py"])
+
 
 class RangeCheck(unittest.TestCase):
     def test_low_coverage_on_changed_file_is_blocking(self):

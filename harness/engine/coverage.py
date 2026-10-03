@@ -92,14 +92,22 @@ def evaluate(changed_files, report, thresholds):
 
 def executable_lines(path):
     try:
-        tree = ast.parse(pathlib.Path(path).read_text(encoding="utf-8"))
+        text = pathlib.Path(path).read_text(encoding="utf-8")
+        tree = ast.parse(text)
     except SyntaxError:
         return set()
+    # `# pragma: no cover` (coverage.py's convention) on a def excludes the whole function, on a statement that line:
+    # only for code no line tracer can see, such as the trace callbacks below
+    marked = {i for i, line in enumerate(text.splitlines(), 1) if "pragma: no cover" in line}
+    excluded = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.lineno in marked:
+            excluded.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
     lines = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.stmt) and not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             lines.add(node.lineno)
-    return lines
+    return lines - excluded - marked
 
 
 class Collector:
@@ -108,7 +116,7 @@ class Collector:
         self.prefix = str(self.root / prefix)
         self.hit = {}
 
-    def _trace(self, frame, event, arg):
+    def _trace(self, frame, event, arg):  # pragma: no cover - a trace callback is never itself traced
         if event == "call":
             f = frame.f_code.co_filename
             if f.startswith(self.prefix):
@@ -116,7 +124,7 @@ class Collector:
             return None
         return None
 
-    def _line(self, frame, event, arg):
+    def _line(self, frame, event, arg):  # pragma: no cover - likewise
         if event == "line":
             self.hit.setdefault(frame.f_code.co_filename, set()).add(frame.f_lineno)
         return self._line

@@ -65,6 +65,21 @@ class Decode(unittest.TestCase):
         blank = pagecheck.decode_png(png([[(9, 9, 9)] * 3] * 5, [0] * 5))
         self.assertEqual(blank.colours(), 1)
 
+    def test_console_messages_keep_the_page_and_drop_extensions(self):
+        import pathlib
+        import tempfile
+        log = ('[1:2:1003/033253.578:INFO:CONSOLE:6] "Executing inline script violates the following Content Security Policy '
+               'directive", source: http://127.0.0.1:1/ (6)\n'
+               '[1:2:1003/033253.580:INFO:CONSOLE:5599] "handler constructed", source: chrome-extension://abc/bg.js (5599)\n'
+               '[1:2:1003/033253.581:INFO:other.cc] not a console line\n')
+        with tempfile.TemporaryDirectory() as d:
+            p = pathlib.Path(d) / "chrome_debug.log"
+            p.write_text(log, encoding="utf-8")
+            msgs = pagecheck.console_messages(p)
+            self.assertEqual(pagecheck.console_messages(pathlib.Path(d) / "missing.log"), [])
+        self.assertEqual(len(msgs), 1, msgs)
+        self.assertIn("Content Security Policy", msgs[0])
+
     def test_a_non_png_is_refused(self):
         with self.assertRaises(ValueError):
             pagecheck.decode_png(b"GIF89a")

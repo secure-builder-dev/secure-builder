@@ -48,8 +48,12 @@ def browser():
 class Shot:
     """A decoded screenshot: width, height and rows of (r, g, b) tuples."""
 
-    def __init__(self, width, height, rows):
+    def __init__(self, width, height, rows, console=()):
         self.width, self.height, self.rows = width, height, rows
+        # the page's console messages: script errors and Content-Security-Policy refusals, the reason a page
+        # draws nothing (daynight D-1: a policy with hex hashes refused every script, and the test said only
+        # '33 colours'); put them in a failing assertion's message so whoever builds sees why
+        self.console = list(console)
 
     def pixels(self):
         for row in self.rows:
@@ -112,6 +116,22 @@ def decode_png(data):
     return Shot(width, height, rows)
 
 
+def console_messages(log_path):
+    """The page's console lines from a Chromium debug log ('... INFO:CONSOLE:12] "message", source: ...'),
+    without the browser's own extensions. Empty when there is no log (a browser that writes none)."""
+    try:
+        text = pathlib.Path(log_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    out = []
+    for line in text.splitlines():
+        if ":CONSOLE" not in line or "chrome-extension://" in line or "extension://" in line:
+            continue
+        msg = line.split("] ", 1)[-1].strip()
+        out.append(msg[:400])
+    return out
+
+
 def screenshot(url, width=1280, height=800, wait_ms=10000, timeout=120):
     """Render `url` in a headless browser and return the decoded Shot, or None when no browser is
     installed (the caller skips, saying so). Raises RuntimeError when the browser runs but writes
@@ -123,14 +143,17 @@ def screenshot(url, width=1280, height=800, wait_ms=10000, timeout=120):
     # exits; the leftover profile is temporary and is not worth failing a test over
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         out = pathlib.Path(d) / "shot.png"
+        profile = pathlib.Path(d) / "profile"
         subprocess.run([exe, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--window-size={width},{height}",
-                        f"--virtual-time-budget={wait_ms}", f"--user-data-dir={pathlib.Path(d) / 'profile'}",
+                        f"--virtual-time-budget={wait_ms}", f"--user-data-dir={profile}", "--enable-logging", "--v=0",
                         f"--screenshot={out}", url], capture_output=True, timeout=timeout)
         # Edge's launcher on Windows returns at once and a child renders: wait for a complete PNG
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             data = out.read_bytes() if out.is_file() else b""
             if data.endswith(PNG_END):
-                return decode_png(data)
+                shot = decode_png(data)
+                shot.console = console_messages(profile / "chrome_debug.log")
+                return shot
             time.sleep(0.25)
         raise RuntimeError(f"{exe} wrote no screenshot for {url} within {timeout}s")

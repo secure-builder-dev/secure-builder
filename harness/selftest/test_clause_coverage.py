@@ -217,6 +217,20 @@ class DriverRobustness(unittest.TestCase):
         self.assertEqual(written, [])
         self.assertIn("It matches at line 1, line 3", refused[0])
 
+    def test_a_whole_file_rewrite_replaces_a_small_file_and_refuses_a_large_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "src").mkdir()
+            (root / "src" / "s.py").write_text("def f():\n    return 1\n\n\ndef f():\n    return 2\n", encoding="utf-8")
+            (root / "src" / "big.py").write_text("X = 1\n" * (self.bm.WHOLE_FILE_MAX_LINES + 5), encoding="utf-8")
+            written, refused = self.bm.apply_edits(root, [{"path": "src/s.py", "search": "<<WHOLE FILE>>", "replace": "def f():\n    return 2\n"}],
+                                                   ["src"], set())
+            self.assertEqual((written, refused), (["src/s.py"], []))
+            self.assertEqual((root / "src" / "s.py").read_text(encoding="utf-8"), "def f():\n    return 2\n")
+            written, refused = self.bm.apply_edits(root, [{"path": "src/big.py", "search": "<<WHOLE FILE>>", "replace": "X = 2\n"}],
+                                                   ["src"], set())
+            self.assertEqual((written, len(refused)), ([], 1))
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

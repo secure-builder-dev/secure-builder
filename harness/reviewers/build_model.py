@@ -35,6 +35,8 @@ import urllib.request
 LOOPBACK = ("http://127.0.0.1", "http://localhost", "http://[::1]")
 TEXT_EXT = (".py", ".html", ".htm", ".js", ".mjs", ".css", ".json", ".md", ".txt", ".toml", ".cfg", ".svg")
 MAX_CONTEXT_FILE = 40_000
+WHOLE_FILE = "<<WHOLE FILE>>"
+WHOLE_FILE_MAX_LINES = 300
 HINT_MAX = 1200      # larger files (vendored libraries, data) are listed by name, not shown
 SCHEMA = {"type": "object", "properties": {
     "edits": {"type": "array", "items": {"type": "object", "properties": {
@@ -48,8 +50,9 @@ EDIT_RULES = (
     "Answer ONLY with JSON: {\"edits\": [{\"path\", \"search\", \"replace\"}], \"notes\"}. Each edit replaces the exact text "
     "`search` in file `path` with `replace`. `search` must be copied character for character from the current file and must "
     "occur exactly once in it; include enough surrounding lines to make it unique. To create a new file give an empty "
-    "`search` and the whole file as `replace`. To change most of a small file, search for its whole content. Paths are "
-    "relative to the project root, with forward slashes.")
+    "`search` and the whole file as `replace`. To rewrite an existing file completely (to restructure it, or to delete a "
+    "duplicated function), give `search` exactly <<WHOLE FILE>> and the complete new file as `replace`; use it for files "
+    "under 300 lines. Paths are relative to the project root, with forward slashes.")
 
 
 def read(p):
@@ -213,6 +216,13 @@ def apply_edits(root, edits, writable, readonly):
             # (daynight D-1: eight rounds refused because both models wrote into the empty tests/__init__.py)
             if search.strip():
                 refused.append(f"{rel}: the file does not exist, so `search` must be empty to create it")
+                continue
+            new = replace
+        elif search.strip() == WHOLE_FILE:
+            # a whole-file rewrite: quoting 40 lines exactly to delete them is beyond a 24B model, rewriting a
+            # 170-line file is not (daynight D-1: csp_for was defined twice and no model could remove one)
+            if current.count("\n") > WHOLE_FILE_MAX_LINES:
+                refused.append(f"{rel}: <<WHOLE FILE>> is for files under {WHOLE_FILE_MAX_LINES} lines; edit this one by search/replace")
                 continue
             new = replace
         elif not search.strip():
@@ -459,6 +469,9 @@ def main(argv=None):
         hints = static_hints(root, sources)
         if hints:
             notes += "STATIC CHECK OF YOUR SOURCE (fix these first; no test reports them):\n" + "\n".join(hints) + "\n\n"
+            if any("is defined again" in h for h in hints):
+                notes += ("A duplicated definition is easiest to remove by rewriting the file whole: search <<WHOLE FILE>>, "
+                          "replace with the complete file containing each function once.\n\n")
             print(f"build_model: static check: {len(hints)} problem(s): {hints[0]}")
         if a.phase == "tests":
             new_tests = set(snapshot(root, tests)) - start_files

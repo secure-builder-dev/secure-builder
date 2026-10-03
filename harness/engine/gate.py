@@ -172,11 +172,45 @@ def quality_gate(root, cfg, base, head):
 
 # --- security gate, mechanical part ---
 
+def declared_controls_touched(root, base, head):
+    """Ids of declared controls whose Python symbol body has a changed line in base..head. A change inside a
+    control is control-shaped whatever words it uses (daynight probe: adding 'unsafe-inline' inside csp_for read
+    as not control-shaped, and the manifest-entry check never ran)."""
+    import ast
+    try:
+        entries = manifest.real_controls(manifest.load(root))
+    except manifest.ManifestError:
+        return []
+    out = []
+    for c in entries:
+        rel, sym = c["location"]["file"], c["location"]["symbol"]
+        if not rel.endswith(".py"):
+            continue
+        hunks = gitutil.git(root, "diff", "-U0", f"{base}..{head}", "--", rel).stdout
+        lines = set()
+        for m in re.finditer(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", hunks, re.M):
+            start, count = int(m.group(1)), int(m.group(2) or "1")
+            lines.update(range(start, start + max(count, 1)))
+        if not lines:
+            continue
+        try:
+            tree = ast.parse(gitutil.git(root, "show", f"{head}:{rel}").stdout)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name == sym:
+                if lines & set(range(node.lineno, (node.end_lineno or node.lineno) + 1)):
+                    out.append(c["id"])
+                    break
+    return out
+
+
 def security_mechanical(root, cfg, base, head, unit):
     root = pathlib.Path(root)
     diff = gitutil.diff_text(root, base, head)
     changed = gitutil.changed_files(root, base, head)
     families = controlshape.diff_is_control_shaped(diff)
+    families = sorted(set(families) | {f"declared control {i}" for i in declared_controls_touched(root, base, head)})
     outs, ctx = [], {"control_shaped": bool(families), "families": families}
 
     # REQ-7.4.1: control-shaped diff needs a manifest entry in the same change

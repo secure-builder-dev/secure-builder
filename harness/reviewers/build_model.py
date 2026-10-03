@@ -248,6 +248,12 @@ def score(code, output):
     return 10_000
 
 
+def first_error(output):
+    """The first exception line of a test run, e.g. 'AssertionError: 404 != 200'; empty when there is none."""
+    m = re.search(r"^\w*(?:Error|Exception):.*$", output, re.M)
+    return m.group(0)[:240] if m else ""
+
+
 def failing_tests(output):
     """The names of the failing tests in unittest output ('test_x (module.Class.test_x)' -> 'module.Class.test_x')."""
     return frozenset(m.group(2) or m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\S+)(?: \(([^)]*)\))?", output, re.M))
@@ -370,6 +376,7 @@ def main(argv=None):
         return 2
     watched = sources + tests
     best_snap, best, best_failing = snapshot(root, watched), score(code, output), failing_tests(output)
+    best_error = first_error(output)
     start_files = set(best_snap)
     first_hints = static_hints(root, sources)
     feedback = (("STATIC CHECK OF THE SOURCE (no test reports these):" + chr(10) + chr(10).join(first_hints) + chr(10) * 2)
@@ -459,15 +466,17 @@ def main(argv=None):
                 print("build_model: tests pass. Nothing is committed: read the diff, commit as yourself, then scan, hand off and gate.")
                 return 0
             if now < best:
-                best, best_snap, best_failing, stale = now, snapshot(root, watched), failing, 0
+                best, best_snap, best_failing, best_error, stale = now, snapshot(root, watched), failing, first_error(output), 0
                 feedback = notes + output
-            elif now == best and failing and failing != best_failing:
+            elif now == best and failing and (failing != best_failing or first_error(output) != best_error):
+                # the same tests can fail for a new reason: a 404 that became a decode error means the code moved
+                # (daynight D-1: static serving written in round 2 was discarded because the failing names matched)
                 # as many failures, but different ones: the round moved (antipode A-4: a round that fixed the
                 # country fill and broke the policy test tied 1-1 and was thrown away at the end of the run)
                 notes += (f"PROGRESS KEPT: the same number of tests fail, but different ones ({', '.join(sorted(failing))} "
                           f"instead of {', '.join(sorted(best_failing))}). Your change is kept; now fix what it broke "
                           "without undoing what it fixed.\n")
-                best_snap, best_failing = snapshot(root, watched), failing
+                best_snap, best_failing, best_error = snapshot(root, watched), failing, first_error(output)
                 stale += 1
                 feedback = notes + output
             else:

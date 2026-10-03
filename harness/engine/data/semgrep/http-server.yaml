@@ -37,6 +37,7 @@ rules:
       category: security
       cwe: "CWE-400: Uncontrolled Resource Consumption"
       found-in: "antipode and daynight, 2026-10-03"
-    pattern-either:
-      - pattern: http.server.HTTPServer(...)
-      - pattern: HTTPServer(...)
+    # the qualified pattern follows imports and aliases: `from http.server import HTTPServer` is caught, while
+    # `ThreadingHTTPServer as HTTPServer` (Devstral's first fix) is threaded and is not; a bare HTTPServer(...)
+    # matched the name, not the class
+    pattern: http.server.HTTPServer(...)

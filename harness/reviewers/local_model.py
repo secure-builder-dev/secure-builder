@@ -105,6 +105,7 @@ def model_identity(endpoint, model):
 
 class NoVerdict(ValueError):
     """The model answered but not with the JSON object the schema describes; the raw answer is kept."""
+    thought_out = False      # the whole answer budget went on hidden reasoning and no answer was written
 
 
 def ask(endpoint, model, system, user, num_ctx, raw_path=None):
@@ -121,9 +122,11 @@ def ask(endpoint, model, system, user, num_ctx, raw_path=None):
         if raw_path:
             # the raw answer is the only evidence of what went wrong: kept beside the verdicts, never parsed leniently
             raw_path.write_text(json.dumps({k: v for k, v in out.items() if k != "context"}, indent=1), encoding="utf-8", newline="\n")
-        raise NoVerdict(f"{e}; done_reason={out.get('done_reason')!r}, eval_count={out.get('eval_count')}, "
+        err = NoVerdict(f"{e}; done_reason={out.get('done_reason')!r}, eval_count={out.get('eval_count')}, "
                         f"content={len(str(msg.get('content', '')))} chars, thinking={len(str(msg.get('thinking', '')))} chars"
                         + (f"; raw answer kept at {raw_path.name}" if raw_path else ""))
+        err.thought_out = out.get("done_reason") == "length" and not str(msg.get("content") or "").strip() and bool(msg.get("thinking"))
+        raise err
 
 
 VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
@@ -366,9 +369,20 @@ def main(argv=None):
         return 2
     print(f"local_model: reviewing {facts['unit']} run {facts['run']} with {identity}; prompt {len(user)} chars (~{est} tokens of {a.num_ctx})")
     slug = re.sub(r"[^A-Za-z0-9]+", "-", a.model).strip("-")
+    think_note = "off" if a.no_think else "model default"
+    raw_path = root / ".engine" / "work" / f"raw-{facts['unit']}-{facts['run']}-{slug}.json"
     try:
-        judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx,
-                            raw_path=root / ".engine" / "work" / f"raw-{facts['unit']}-{facts['run']}-{slug}.json")
+        try:
+            judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx, raw_path=raw_path)
+        except NoVerdict as e:
+            # gemma4 on ANTI-5 thought for the whole 8192-token budget and wrote no answer: one retry without
+            # hidden reasoning, recorded in the verdict, rather than a run that cannot produce one
+            if not e.thought_out or THINK.get("think") is False:
+                raise
+            print(f"local_model: the model spent its whole answer budget thinking ({e}); retrying once with thinking off")
+            THINK["think"] = False
+            think_note = "off (retried: thinking used the whole answer budget)"
+            judgment, raw = ask(a.endpoint, a.model, system, user, a.num_ctx, raw_path=raw_path)
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         print(f"local_model: COULD NOT RUN — the model did not return a verdict ({e})")
         return 2
@@ -409,7 +423,7 @@ def main(argv=None):
         "completeness": judgment.get("completeness") or {}, "checklist": judgment.get("checklist") or [],
         "findings_detail": findings, "ungrounded_findings": ungrounded, "inconsistent_findings": inconsistent,
         "informational_notes": notes, "summary": judgment.get("summary", ""),
-        "model_runtime": {"think": "off" if a.no_think else "model default", "thinking_chars": len(str((raw.get("message") or {}).get("thinking") or "")),
+        "model_runtime": {"think": think_note, "thinking_chars": len(str((raw.get("message") or {}).get("thinking") or "")),
                           "total_duration_s": round(raw.get("total_duration", 0) / 1e9, 1), "eval_count": raw.get("eval_count"),
                           "prompt_eval_count": raw.get("prompt_eval_count")},
     }

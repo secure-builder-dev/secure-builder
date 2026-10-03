@@ -298,6 +298,15 @@ class ControlShape(unittest.TestCase):
         diff = "+++ b/src/auth/session.py" + NL + "+x = 1" + NL
         self.assertEqual(controlshape.diff_is_control_shaped(diff), ["authentication"])
 
+    def test_a_test_file_is_evidence_not_a_control(self):
+        # antipode A-6: a test asserting the Content-Security-Policy header read as authorization
+        diff = ("diff --git a/tests/test_server.py b/tests/test_server.py" + NL + "+++ b/tests/test_server.py" + NL +
+                "+        self.assertIn('Content-Security-Policy', r.headers)" + NL)
+        self.assertEqual(controlshape.diff_is_control_shaped(diff), [])
+        diff += ("diff --git a/src/server.py b/src/server.py" + NL + "+++ b/src/server.py" + NL +
+                 "+    if not can_edit(user): raise" + NL)
+        self.assertEqual(controlshape.diff_is_control_shaped(diff), ["authorization"], "the code beside it still counts")
+
     def test_control_symbols_in_file(self):
         syms = controlshape.control_symbols("src/auth.py", AUTH_PY)
         self.assertEqual([(s[0], s[2]) for s in syms], [("require_auth", ["authentication", "authorization"]), ("can_delete", ["authorization"]),

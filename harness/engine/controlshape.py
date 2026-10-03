@@ -70,8 +70,11 @@ def diff_is_control_shaped(diff_text):
         if line.startswith("diff --git "):
             path = line.rsplit(" b/", 1)[-1]
             # the placed harness is engine-owned (its own suite covers it), vendored code is not the
-            # project's, and prose (plans, tickets, attributes) describes controls without being one
-            skip = path.startswith(".engine/") or vendored(path) or path.endswith(PROSE_EXT) or path.rsplit("/", 1)[-1].startswith(".git")
+            # project's, and prose (plans, tickets, attributes) describes controls without being one; a test
+            # is evidence for a control, not a control (antipode A-6: asserting a Content-Security-Policy
+            # header read as authorization) — a test that weakens a control is what control-mutation catches
+            skip = (path.startswith(".engine/") or vendored(path) or path.endswith(PROSE_EXT)
+                    or path.rsplit("/", 1)[-1].startswith(".git") or bool(TEST_PATH.search(path)))
             continue
         if skip:
             continue

@@ -91,7 +91,9 @@ class ExecutableLines(unittest.TestCase):
         NL = chr(10)
         with tree() as t:
             write(t, "m.py", "x = 1" + NL + "def f():  # pragma: no cover" + NL + "    return 2" + NL + "y = 3  # pragma: no cover" + NL + "z = 4" + NL)
+            write(t, "doc.py", '"""Module."""' + NL + "def g():" + NL + '    """Doc."""' + NL + "    return 1" + NL)
             write(t, "broken.py", "def (" + NL)
+            self.assertEqual(coverage.executable_lines(t / "doc.py"), {4}, "docstrings are never reported as run")
             self.assertEqual(coverage.executable_lines(t / "m.py"), {1, 5})
             self.assertEqual(coverage.executable_lines(t / "broken.py"), set())
 

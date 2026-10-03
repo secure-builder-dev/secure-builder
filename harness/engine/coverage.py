@@ -103,11 +103,19 @@ def executable_lines(path):
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.lineno in marked:
             excluded.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+    # a docstring is a constant expression the interpreter never reports as a line run: counted, every documented
+    # function read as partly uncovered however thoroughly it was tested
+    docstrings = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+                docstrings.add(first.lineno)
     lines = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.stmt) and not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             lines.add(node.lineno)
-    return lines - excluded - marked
+    return lines - excluded - marked - docstrings
 
 
 class Collector:

@@ -251,7 +251,9 @@ def score(code, output):
 def first_error(output):
     """The first exception line of a test run, e.g. 'AssertionError: 404 != 200'; empty when there is none."""
     m = re.search(r"^\w*(?:Error|Exception):.*$", output, re.M)
-    return m.group(0)[:240] if m else ""
+    # numbers are dropped: a test server's port changes every run, and a changed port is not a changed error
+    # (daynight D-1: every round read as "progress kept" because 127.0.0.1:<port> differed)
+    return re.sub(r"\d+", "#", m.group(0))[:240] if m else ""
 
 
 def failing_tests(output):

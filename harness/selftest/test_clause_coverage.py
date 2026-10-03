@@ -126,6 +126,12 @@ class DriverRobustness(unittest.TestCase):
         ten_real = "FAIL: test_a (tests.t.C.test_a)\n\nFAILED (failures=10)\n"
         self.assertGreater(self.bm.score(1, uncollectable), self.bm.score(1, ten_real))
 
+    def test_a_changed_port_is_not_a_changed_error(self):
+        a = "AssertionError: blocked 'http://127.0.0.1:53437/x.css'\n"
+        b = "AssertionError: blocked 'http://127.0.0.1:60001/x.css'\n"
+        self.assertEqual(self.bm.first_error(a), self.bm.first_error(b))
+        self.assertNotEqual(self.bm.first_error(a), self.bm.first_error("AssertionError: 404 != 200\n"))
+
     def test_failing_test_names_are_read_from_unittest_output(self):
         out = "FAIL: test_a (tests.t.C.test_a)\nERROR: test_b (tests.t.C.test_b)\nok\n"
         self.assertEqual(self.bm.failing_tests(out), {"tests.t.C.test_a", "tests.t.C.test_b"})
@@ -185,13 +191,13 @@ class DriverRobustness(unittest.TestCase):
                 "import unittest\nfrom src import m\n\n\nclass T(unittest.TestCase):\n"
                 "    def test_one(self):\n        self.assertEqual(m.X, 1)\n", encoding="utf-8")
             (root / "task.md").write_text("make X one", encoding="utf-8")
-            moved = {"edits": [{"path": "src/m.py", "search": "X = 0", "replace": "X = 2"}], "notes": ""}
+            moved = {"edits": [{"path": "src/m.py", "search": "X = 0", "replace": "X = 'two'"}], "notes": ""}
             idle = {"edits": [], "notes": ""}
             with mock.patch.object(self.bm, "ask", side_effect=[(moved, {}), (idle, {})]), \
                     contextlib.redirect_stdout(io.StringIO()) as out:
                 self.bm.main(["--task", str(root / "task.md"), "--root", str(root), "--model", "m", "--rounds", "2",
                               "--test-cmd", f"\"{sys.executable}\" -m unittest discover -s tests -t ."])
-            self.assertIn("X = 2", (root / "src" / "m.py").read_text(encoding="utf-8"), out.getvalue())
+            self.assertIn("X = 'two'", (root / "src" / "m.py").read_text(encoding="utf-8"), out.getvalue())
 
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))

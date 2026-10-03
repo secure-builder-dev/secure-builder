@@ -37,6 +37,27 @@ def state_path(root, unit, run):
 
 # --- quality gate ---
 
+# a test that a public route never refuses: assertNotIn(status, (401, 403)), assertNotEqual(status, 401), ...
+PUBLIC_ASSERT = re.compile(r"assertNot(?:In|Equal)\([^\n]*\b40[13]\b")
+
+
+def asserts_rejection(text):
+    """A test asserts a rejection: a 401/403/unauthorized/forbidden/denied word on an assert line that is not
+    an assertNot..., comments removed. The word alone anywhere in the file used to pass the blocking check, so a
+    comment, or a test that the route never answers 401, read as a credential test (antipode)."""
+    for line in text.splitlines():
+        code = re.sub(r"#.*$", "", line)
+        if "assert" in code and "assertNot" not in code and NEG_ASSERT.search(code):
+            return True
+    return False
+
+
+def is_public(cfg, method, path):
+    """Whether the project declares `METHOD /path` public by design (config public_routes)."""
+    declared = (cfg.get("public_routes") if cfg else None) or []
+    return f"{method.upper()} {path}" in {d.strip() for d in declared}
+
+
 def negative_test_set(root, cfg, base, head):
     """REQ-5.2: for every route added or changed in the range, a test asserting
     rejection without credentials; for record-scoped routes, cross-principal
@@ -54,11 +75,19 @@ def negative_test_set(root, cfg, base, head):
                                    f"{len(inv)} route(s) exist; none is in the range — this section is empty, not passed")
     tests = _test_texts(root)
     findings = []
+    public = 0
     for r in touched:
         mentions = route_mention(r["path"])
-        hits = [t for t, text in tests.items() if mentions.search(text) and NEG_ASSERT.search(text)]
-        if not hits:
-            findings.append(f"{r['method']} {r['path']} ({r['file']}:{r['line']}): no test asserts rejection without credentials")
+        if is_public(cfg, r["method"], r["path"]):
+            # declared public by design (no account, no token): it must be shown never to refuse, so the
+            # declaration cannot hide a forgotten guard (antipode's route was public and the check had no word for it)
+            public += 1
+            if not any(mentions.search(text) and PUBLIC_ASSERT.search(text) for text in tests.values()):
+                findings.append(f"{r['method']} {r['path']} ({r['file']}:{r['line']}): declared public, and no test asserts it never answers 401 or 403")
+        else:
+            hits = [t for t, text in tests.items() if mentions.search(text) and asserts_rejection(text)]
+            if not hits:
+                findings.append(f"{r['method']} {r['path']} ({r['file']}:{r['line']}): no test asserts rejection without credentials")
         if r["record_scoped"]:
             cross = [t for t, text in tests.items() if mentions.search(text) and CROSS_PRINCIPAL.search(text)]
             if not cross:
@@ -69,7 +98,8 @@ def negative_test_set(root, cfg, base, head):
     if findings:
         return Outcome.found(name, f"{len(findings)} negative-test gap(s) on {len(touched)} route(s) and {len(ops)} privileged operation(s)",
                              findings, blocking=True)
-    return Outcome.clean(name, f"{len(touched)} route(s) and {len(ops)} privileged operation(s) in the range each have their rejection tests")
+    return Outcome.clean(name, f"{len(touched)} route(s) and {len(ops)} privileged operation(s) in the range each have their rejection tests"
+                         + (f"; {public} declared public, each shown never to refuse" if public else ""))
 
 
 def route_mention(path):

@@ -53,25 +53,6 @@
   "spec": "`init` cannot set the project's test_command or lint_command, so every project hand-edits config.json after initialization. Required: config.init accepts optional keyword arguments test_command and lint_command, each a string that is split with shlex.split into a list and stored under those keys when given; cmd_init passes test_command= and lint_command= through from the command line like the other key=value options (the existing loop already collects them; make sure init accepts them). Tests (new file harness/selftest/test_eng08_init_commands.py, first line '# © 2026 Casey Houle. All rights reserved.'): in a temporary directory call engine.config.init(root, track='web', mode='local', test_command='python -m unittest discover -s tests -t .', lint_command='python -m compileall -q src') and assert the written .engine/rules/config.json holds test_command == ['python','-m','unittest','discover','-s','tests','-t','.'] and lint_command == ['python','-m','compileall','-q','src']; and that omitting them writes neither key."
  },
  {
-  "id": "ENG-09",
-  "slug": "neg_assert_scope",
-  "source": "harness/engine/gate.py",
-  "context": [
-   "harness/engine/routes.py"
-  ],
-  "spec": "The blocking negative-tests check is satisfied by one word: any test FILE that mentions the route path and contains '401', 'reject', 'denied', 'forbidden' or 'permission' anywhere, comments included, counts as a rejection test. Required: the check splits each test file into test functions (each 'def test_...' with its indented body) after removing '#' comments, and a route counts as covered only when ONE test function both mentions the route and contains a rejection assertion: a 401 or 403 status number, or the words unauthorized/forbidden/denied, inside an assert call (a line containing 'assert'). The same per-function rule applies to the cross-principal check. Tests (new file harness/selftest/test_eng09_neg_assert_scope.py, first line '# © 2026 Casey Houle. All rights reserved.'): exercise the helper that decides coverage for one route and one test text (add a function engine.gate.covers_rejection(route_path, test_text) returning True/False); assert True for a function that calls the route and asserts 401; False when '401' appears only in a comment; False when the route is mentioned in one function and 401 asserted in another; True for a templated route /notes/<id> exercised as /notes/7 with assertEqual(status, 403)."
- },
- {
-  "id": "ENG-10",
-  "slug": "public_routes",
-  "source": "harness/engine/gate.py",
-  "context": [
-   "harness/engine/routes.py",
-   "harness/engine/config.py"
-  ],
-  "spec": "The engine has no way to declare a route public by design (no account, no token), so a public API is blocked by the negative-tests check for lacking a credential-rejection test. Required: the project configuration may hold 'public_routes', a list of strings 'METHOD /path' (as the route inventory prints them). In negative_test_set, a touched route listed there is not required to have a credential-rejection test; instead it is required to have a test function that mentions the route and asserts it does NOT answer 401 or 403 (assertNotIn/assertNotEqual with 401 or 403), proving it is public on purpose; a missing one is a blocking finding 'METHOD /path: declared public, and no test asserts it never answers 401 or 403'. The summary of a clean outcome names how many routes were declared public. Read the list with cfg.get('public_routes') or [] (cfg may be None). Tests (new file harness/selftest/test_eng10_public_routes.py, first line '# © 2026 Casey Houle. All rights reserved.'): unit-test a helper engine.gate.public_route_ok(route_path, test_text) -> bool: True for a test function that requests the route and does self.assertNotIn(status, (401, 403)); False for one that only asserts 200. And a helper engine.gate.is_public(cfg, method, path) -> bool reading cfg.get('public_routes')."
- },
- {
   "id": "ENG-12",
   "slug": "html_third_party",
   "source": "harness/engine/checks/license_policy.py",

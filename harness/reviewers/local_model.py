@@ -211,31 +211,40 @@ def completeness_problems(answers, controls):
     return probs
 
 
-def repair_completeness(endpoint, model, system, user, answers, controls, num_ctx):
-    """One structured second pass: the model is told exactly which answers the harness will refuse."""
-    probs = completeness_problems(answers, controls)
-    if not probs:
+def repair_completeness(endpoint, model, system, user, answers, controls, num_ctx, passes=3):
+    """Up to `passes` structured follow-ups: each time the model is told exactly which answers the
+    harness will refuse; the best set (fewest refusals) is kept. One pass was not enough on antipode
+    ANTI-2 run 4: a single bare answer kept a grounded FAIL out of the record."""
+    best, best_probs = answers, completeness_problems(answers, controls)
+    if not best_probs:
         return answers
-    print(f"local_model: completeness answers would be refused ({len(probs)}); one repair pass")
     schema = {"type": "object", "properties": {c["id"]: {"type": "object", "properties": {q: {"type": "string"} for q in QUESTIONS},
                                                            "required": QUESTIONS} for c in controls}, "required": [c["id"] for c in controls]}
     NL = chr(10)
-    ask_text = (user + NL + NL + "Your completeness answers were:" + NL + json.dumps(answers, indent=1) + NL + NL
-                + "The harness refuses them for these reasons:" + NL + "- " + (NL + "- ").join(probs) + NL + NL
-                + "Answer the completeness questions again for every control, as JSON keyed by control id. Q3 and Q4 are LISTS "
-                + "in exactly this shape, one item per line, each item a route, symbol or condition, never a sentence:" + NL
-                + "- GET /notes" + NL + "- token expiry" + NL + "If nothing is uncovered, list what you examined: '- GET /notes (covered)'.")
-    body = {"model": model, "stream": False, "format": schema, "options": {"temperature": 0, "num_ctx": num_ctx, "num_predict": 8192},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": ask_text}], **THINK}
-    req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=3600) as r:
-            fixed = json.loads(json.loads(r.read().decode("utf-8"))["message"]["content"])
-    except (urllib.error.URLError, OSError, ValueError, KeyError):
-        return answers
-    left = completeness_problems(fixed, controls)
-    print(f"local_model: after repair, {len(left)} completeness problem(s) remain" + (": " + "; ".join(left[:3]) if left else ""))
-    return fixed
+    for n in range(1, passes + 1):
+        print(f"local_model: completeness answers would be refused ({len(best_probs)}); repair pass {n} of {passes}")
+        ask_text = (user + NL + NL + "Your completeness answers were:" + NL + json.dumps(best, indent=1) + NL + NL
+                    + "The harness refuses them for these reasons:" + NL + "- " + (NL + "- ").join(best_probs) + NL + NL
+                    + "Answer the completeness questions again for every control, as JSON keyed by control id. Every answer says "
+                    + "what you examined in a full sentence or list; never a bare yes, no, pass or n/a. Q3 and Q4 are LISTS "
+                    + "in exactly this shape, one item per line, each item a route, symbol or condition, never a sentence:" + NL
+                    + "- GET /notes" + NL + "- token expiry" + NL + "If nothing is uncovered, list what you examined: '- GET /notes (covered)'.")
+        body = {"model": model, "stream": False, "format": schema,
+                "options": {"temperature": 0.0 if n == 1 else 0.2 * (n - 1), "num_ctx": num_ctx, "num_predict": 8192},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": ask_text}], **THINK}
+        req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=3600) as r:
+                fixed = json.loads(json.loads(r.read().decode("utf-8"))["message"]["content"])
+        except (urllib.error.URLError, OSError, ValueError, KeyError):
+            continue
+        left = completeness_problems(fixed, controls)
+        print(f"local_model: after repair pass {n}, {len(left)} completeness problem(s) remain" + (": " + "; ".join(left[:3]) if left else ""))
+        if len(left) < len(best_probs):
+            best, best_probs = fixed, left
+        if not best_probs:
+            break
+    return best
 
 
 def substantive(quote):

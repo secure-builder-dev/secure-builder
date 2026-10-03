@@ -120,6 +120,32 @@ class DriverRobustness(unittest.TestCase):
         self.assertEqual(len(hints), 1, hints)
         self.assertIn("src/s.py:3: dict key 'A' is repeated (first at line 1)", hints[0])
 
+    def test_failing_test_names_are_read_from_unittest_output(self):
+        out = "FAIL: test_a (tests.t.C.test_a)\nERROR: test_b (tests.t.C.test_b)\nok\n"
+        self.assertEqual(self.bm.failing_tests(out), {"tests.t.C.test_a", "tests.t.C.test_b"})
+
+    def test_a_tie_that_changes_which_test_fails_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "src").mkdir()
+            (root / "tests").mkdir()
+            (root / "src" / "__init__.py").write_text("", encoding="utf-8")
+            (root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+            (root / "src" / "m.py").write_text("X = 0\nY = 1\n", encoding="utf-8")
+            (root / "tests" / "test_m.py").write_text(
+                "import unittest\nfrom src import m\n\n\nclass T(unittest.TestCase):\n"
+                "    def test_one(self):\n        self.assertEqual(m.X, 1)\n\n"
+                "    def test_two(self):\n        self.assertEqual(m.Y, 1)\n", encoding="utf-8")
+            (root / "task.md").write_text("make X one", encoding="utf-8")
+            swap = {"edits": [{"path": "src/m.py", "search": "X = 0\nY = 1", "replace": "X = 1\nY = 0"}], "notes": ""}
+            idle = {"edits": [], "notes": ""}
+            with mock.patch.object(self.bm, "ask", side_effect=[(swap, {}), (idle, {})]), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.bm.main(["--task", str(root / "task.md"), "--root", str(root), "--model", "m", "--rounds", "2",
+                              "--test-cmd", f"\"{sys.executable}\" -m unittest discover -s tests -t ."])
+            self.assertIn("X = 1", (root / "src" / "m.py").read_text(encoding="utf-8"), out.getvalue())
+        self.assertIn("failing: tests.test_m.T.test_two", out.getvalue())
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

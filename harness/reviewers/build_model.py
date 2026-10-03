@@ -240,7 +240,7 @@ def main(argv=None):
             print(f"build_model: COULD NOT RUN — no ticket tickets/{a.item}.md; create the item first (`item new`)")
             return 2
         h = header(ticket)
-        if h.get("state") not in ("claimed", "open"):
+        if h.get("state") != "claimed":     # an open item is unowned: claim it first (A-2 was built while still open)
             print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
             return 2
         goal = f"Definition of done: {h.get('done_when', '(none)')}"

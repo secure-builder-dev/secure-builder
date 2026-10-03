@@ -214,6 +214,20 @@ class BuildEdits(unittest.TestCase):
         self.assertIn("closest passage", refused[0])
         self.assertIn("Y = 2", refused[0])
 
+    def test_construction_refuses_an_item_nobody_has_claimed(self):
+        (self.root / "tickets").mkdir()
+        (self.root / "tickets" / "X-1.md").write_text("id: X-1
+unit: U
+state: open
+done_when: d
+
+# X-1
+", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = self.bm.main(["--item", "X-1", "--root", str(self.root), "--model", "m"])
+        self.assertEqual(code, 2)
+        self.assertIn("claimed", out.getvalue())
+
     def test_restore_returns_the_tree_to_a_snapshot(self):
         snap = self.bm.snapshot(self.root, ["src"])
         self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 9"}, {"path": "src/new.py", "search": "", "replace": "N = 1\n"}])

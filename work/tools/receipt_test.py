@@ -39,7 +39,7 @@ class ReceiptTool(unittest.TestCase):
         msg = receipt.make("99", "REQ-1.1", "impl.py", "impl.py", "THRESHOLD = 7", "THRESHOLD = 700",
                            "raised the threshold", self.cmd())
         self.assertTrue(msg.startswith("wrote records/receipts"), msg)
-        text = (self.root / "receipts/99-REQ-1.1.txt").read_text(encoding="utf-8")
+        text = (self.root / "records/receipts/99-REQ-1.1.txt").read_text(encoding="utf-8")
         self.assertIn("FAIL: threshold changed", text.split("--- output with the property broken")[1].split("--- output with the property restored")[0])
         self.assertIn("exit 0", text.split("--- output with the property restored")[1])
         self.assertEqual((self.root / "impl.py").read_text(encoding="utf-8"), IMPL, "implementation must be restored")
@@ -49,7 +49,7 @@ class ReceiptTool(unittest.TestCase):
         msg = receipt.make("99", "REQ-1.2", "impl.py", "impl.py", "THRESHOLD = 7", "THRESHOLD = 700",
                            "raised the threshold", self.cmd())
         self.assertTrue(msg.startswith("NOT WRITTEN: broken run exited 0"), msg)
-        self.assertFalse((self.root / "receipts/99-REQ-1.2.txt").exists())
+        self.assertFalse((self.root / "records/receipts/99-REQ-1.2.txt").exists())
 
     def test_refuses_removal_mutation(self):
         msg = receipt.make("99", "REQ-1.3", "impl.py", "impl.py", "THRESHOLD = 7", "",

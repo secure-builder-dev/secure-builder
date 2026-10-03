@@ -187,7 +187,9 @@ def apply_edits(root, edits, writable, readonly):
         p = root / rel
         current = staged.get(rel, read(p).replace("\r\n", "\n") if p.is_file() else None)
         search, replace = search.replace("\r\n", "\n"), replace.replace("\r\n", "\n")
-        if current is None:
+        if current is None or (not current.strip() and not search.strip()):
+            # an empty existing file (a package's __init__.py) has no text to quote: writing it is a create
+            # (daynight D-1: eight rounds refused because both models wrote into the empty tests/__init__.py)
             if search.strip():
                 refused.append(f"{rel}: the file does not exist, so `search` must be empty to create it")
                 continue
@@ -337,7 +339,8 @@ def main(argv=None):
         role = ("You write acceptance tests. Express every clause of the definition of done as a unittest test that FAILS "
                 "against the current code and will pass once the behaviour exists. Cover rejection cases (bad input, missing "
                 "or wrong credentials where the design has credentials), not only success. Change only files under the test "
-                "directories. Python files start with the project's copyright header line when other files carry one.")
+                "directories, in files named tests/test_<topic>.py (unittest discovers only test*.py; tests written into "
+                "__init__.py never run). Python files start with the project's copyright header line when other files carry one.")
     else:
         writable = sources + tests
         readonly = {p.relative_to(root).as_posix() for p in files_under(root, tests)}

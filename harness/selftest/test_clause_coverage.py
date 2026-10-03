@@ -146,6 +146,17 @@ class DriverRobustness(unittest.TestCase):
             self.assertIn("X = 1", (root / "src" / "m.py").read_text(encoding="utf-8"), out.getvalue())
         self.assertIn("failing: tests.test_m.T.test_two", out.getvalue())
 
+    def test_an_empty_existing_file_can_be_written_with_an_empty_search(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "tests").mkdir()
+            (root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+            (root / "tests" / "full.py").write_text("X = 1\n", encoding="utf-8")
+            written, refused = self.bm.apply_edits(root, [{"path": "tests/__init__.py", "search": "", "replace": "# tests\n"}], ["tests"], set())
+            self.assertEqual((written, refused), (["tests/__init__.py"], []))
+            written, refused = self.bm.apply_edits(root, [{"path": "tests/full.py", "search": "", "replace": "Y = 2\n"}], ["tests"], set())
+            self.assertEqual((written, len(refused)), ([], 1), "a file with content still needs its text quoted")
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

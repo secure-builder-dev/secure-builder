@@ -168,8 +168,11 @@ def restore(root, snap, dirs):
         p.write_text(text, encoding="utf-8", newline="\n")
 
 
-def ask(endpoint, model, system, user, num_ctx, temperature=0.1):
-    body = {"model": model, "stream": False, "format": SCHEMA, "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": 8192},
+def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False):
+    # thinking is off unless asked for: a reasoning model's hidden thought is spent from the same output budget,
+    # and Gemma 4 31B spent all of it on A-2 and answered nothing
+    body = {"model": model, "stream": False, "format": SCHEMA, "think": think,
+            "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": 16384},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=3600) as r:
@@ -198,6 +201,7 @@ def main(argv=None):
     ap.add_argument("--test-cmd", help="the test command (default: the project's test_command)")
     ap.add_argument("--test-cwd", default=".")
     ap.add_argument("--root", default=".")
+    ap.add_argument("--think", action="store_true", help="let a reasoning model think aloud (spent from the output budget)")
     a = ap.parse_args(argv)
     if not a.endpoint.startswith(LOOPBACK):
         print(f"build_model: REFUSED — endpoint {a.endpoint} is not the loopback interface")
@@ -274,10 +278,18 @@ def main(argv=None):
                 + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
         try:
-            out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature)
-        except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
-            print(f"build_model: COULD NOT RUN — the model did not answer ({e})")
+            out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature, a.think)
+        except urllib.error.URLError as e:
+            print(f"build_model: COULD NOT RUN — the model endpoint did not answer ({e})")
             return 2
+        except (OSError, ValueError, KeyError) as e:
+            # an empty or malformed answer is a failed round, not the end of the run: the next model may do better
+            print(f"build_model: round {rnd}: {model} gave no usable answer ({type(e).__name__}: {str(e)[:120]})")
+            stale = a.patience
+            if mi + 1 < len(models):
+                mi, stale, temperature = mi + 1, 0, 0.1
+                print(f"build_model: handing over to {models[mi]}")
+            continue
         written, refused = apply_edits(root, out.get("edits") or [], writable, readonly)
         print(f"build_model: wrote {len(written)} file(s): {', '.join(written) or '-'}; refused {len(refused)}")
         print(f"build_model: model notes: {str(out.get('notes', ''))[:300]}")

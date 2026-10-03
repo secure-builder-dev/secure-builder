@@ -161,6 +161,25 @@ class BuildEdits(unittest.TestCase):
         self.assertEqual(self.bm.score(1, "Ran 9 tests\n\nFAILED (failures=2, errors=1)"), 3)
         self.assertEqual(self.bm.score(1, "SyntaxError: invalid syntax"), 10_000)
 
+    def test_the_request_turns_thinking_off_unless_asked_and_leaves_room_to_answer(self):
+        from unittest import mock
+        sent = {}
+
+        class Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake(req, timeout=None):
+            sent.update(json.loads(req.data.decode("utf-8")))
+            return Resp(json.dumps({"message": {"content": "{\"edits\": [], \"notes\": \"\"}"}}).encode("utf-8"))
+        with mock.patch.object(self.bm.urllib.request, "urlopen", fake):
+            self.bm.ask("http://127.0.0.1:1", "m", "s", "u", 1024)
+        self.assertIs(sent["think"], False)
+        self.assertGreaterEqual(sent["options"]["num_predict"], 16384)
+
     def test_restore_returns_the_tree_to_a_snapshot(self):
         snap = self.bm.snapshot(self.root, ["src"])
         self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 9"}, {"path": "src/new.py", "search": "", "replace": "N = 1\n"}])

@@ -69,7 +69,9 @@ def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
         cmd += [image, *args]
         return tools.run_tool(rt, cmd, cwd=str(root), timeout=timeout)
     exe, args = images.HOST_EXECUTABLES.get(tool, tool), list(args)
-    if args and args[0] in ("clamscan", "freshclam"):      # the container command names its program first
+    # the container command names its program first; on the host that word would be read as a file to scan
+    # (hadolint linted a file called "hadolint" and reported a clean Dockerfile that had three violations)
+    if args and args[0] in ("clamscan", "freshclam", "hadolint"):
         exe, args = args[0], args[1:]
     return tools.run_tool(exe, args, cwd=str(root), timeout=timeout)
 
@@ -536,12 +538,13 @@ class Scan:
             self.sbom(name)
         if not self.digests and self.ship_images():
             self.problems.append("no image could be scanned")
-        if not self.ship_images():
-            a, b = self.scan_project()
-            confirmed, single = self.correlate(a, b)
-            confirmed_all += confirmed
-            single_all += single
-            self.sbom_project()
+        # the project tree and its vendored components are always scanned, images or not: a Dockerfile whose
+        # build was impossible used to switch the tree scan off, and a vulnerable lodash and requests went unread
+        a, b = self.scan_project()
+        confirmed, single = self.correlate(a, b)
+        confirmed_all += confirmed
+        single_all += single
+        self.sbom_project()
         findings += self.secrets
         findings += confirmed_all
         gate, alarm_verdict, actionable, carried, complete = self.verdicts(findings)
@@ -557,8 +560,8 @@ class Scan:
         verdict = "unverified" if freshness == "unverified" and gate == "green" else gate
         if freshness in ("refused", "stale"):
             verdict = "red"
-        stamp.write(self.root, commit=head, verdict=verdict, timestamp=now(self.cfg), scanners=list(self.ran),
+        stamp.write(self.root, commit=head, verdict=verdict, timestamp=now(self.cfg), scanners=list(dict.fromkeys(self.ran)),
                     digests=self.digests, detection_data_date=self.data_date, mode=self.mode)
         return {"verdict": verdict, "alarm": alarm_verdict, "findings": findings, "actionable": actionable, "carried": carried,
-                "informational": single_all, "problems": self.problems + self.notes, "aged": aged, "ran": list(self.ran), "complete": complete,
+                "informational": single_all, "problems": self.problems + self.notes, "aged": aged, "ran": list(dict.fromkeys(self.ran)), "complete": complete,
                 "digests": dict(self.digests), "data_age": self.data_age, "head": head}

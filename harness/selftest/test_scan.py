@@ -66,6 +66,10 @@ def baseline(fresh=True, vulns=True):
         "image --format json": (0, TRIVY if vulns else json.dumps({"Results": []})),
         "app -o json": (0, GRYPE if vulns else json.dumps({"matches": []})),
         "app -o cyclonedx-json": (0, json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "libx"}]})),
+        # the project tree is scanned on every run, images or not
+        "fs --format json": (0, json.dumps({"Results": []})),
+        "grype dir:": (0, json.dumps({"matches": []})),
+        "syft dir:": (0, json.dumps({"bomFormat": "CycloneDX", "components": []})),
     }
 
 
@@ -329,7 +333,18 @@ class Run(unittest.TestCase):
             runner.real_invoke(".", "host", None, "clamav", "img", ["clamscan", "-r", "."])
             runner.real_invoke(".", "host", None, "clamav", "img", ["freshclam"])
             runner.real_invoke(".", "host", None, "trivy-config", "img", ["config", "."])
-        self.assertEqual(seen, [("clamscan", ["-r", "."]), ("freshclam", []), ("trivy", ["config", "."])])
+            runner.real_invoke(".", "host", None, "hadolint", "img", ["hadolint", "-f", "json", "Dockerfile"])
+        self.assertEqual(seen, [("clamscan", ["-r", "."]), ("freshclam", []), ("trivy", ["config", "."]),
+                                ("hadolint", ["-f", "json", "Dockerfile"])], "the program's own name is not a file to lint")
+
+    def test_an_unbuildable_image_does_not_switch_off_the_tree_scan(self):
+        # a Dockerfile whose build failed used to skip the tree: a vulnerable lodash and requests went unread
+        with tree() as t:
+            project(t)
+            script = dict(baseline(vulns=False), **{"docker build": (1, ""), "fs --format json": (0, TRIVY), "grype dir:": (0, GRYPE)})
+            sc, r, fake = self.scan(t, script)
+            self.assertTrue(any(args[:1] == ["fs"] for tool, args, _ in fake.calls), "the tree is scanned")
+            self.assertIn("CVE-1", [f.id for f in r["actionable"]])
 
     def test_a_clean_tree_is_green(self):
         with tree() as t:

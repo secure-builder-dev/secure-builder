@@ -51,5 +51,49 @@ class ClauseCoverage(unittest.TestCase):
         self.assertIn("1 of 2 clause(s) have no test yet: [2]", out.getvalue())
 
 
+class Resp(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class DriverRobustness(unittest.TestCase):
+    def setUp(self):
+        self.bm = load("build_model")
+
+    def test_the_tests_phase_requires_the_coverage_field(self):
+        import json
+        sent = {}
+
+        def fake(req, timeout=None):
+            sent.update(json.loads(req.data.decode("utf-8")))
+            return Resp(json.dumps({"message": {"content": "{\"edits\": [], \"notes\": \"\", \"coverage\": []}"}}).encode("utf-8"))
+        with mock.patch.object(self.bm.urllib.request, "urlopen", fake):
+            self.bm.ask("http://127.0.0.1:1", "m", "s", "u", 1024, require_coverage=True)
+        self.assertIn("coverage", sent["format"]["required"])
+        self.assertNotIn("coverage", self.bm.SCHEMA["required"], "the build phase does not need it")
+
+    def test_a_server_error_is_a_failed_round_not_the_end(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "tests").mkdir()
+            (root / "task.md").write_text("t", encoding="utf-8")
+            # the driver's own urllib: the hermetic tier imports no network library itself
+            err = self.bm.urllib.error.HTTPError("http://127.0.0.1:1/api/chat", 500, "Internal Server Error", {}, None)
+            with mock.patch.object(self.bm, "ask", side_effect=[err, ({"edits": [], "notes": ""}, {})]), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.bm.main(["--phase", "tests", "--task", str(root / "task.md"), "--root", str(root), "--model", "a,b",
+                              "--rounds", "2", "--test-cmd", f"\"{sys.executable}\" -c pass"])
+        self.assertIn("failed on the server", out.getvalue())
+        self.assertIn("round 2 with b", out.getvalue())
+
+    def test_the_closest_passage_hint_is_capped(self):
+        text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
+        hint = self.bm.closest(text, text.replace("line 5 ", "line five "))
+        self.assertLessEqual(len(hint), self.bm.HINT_MAX + 40)
+
+
 if __name__ == "__main__":
     unittest.main()

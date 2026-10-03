@@ -33,7 +33,8 @@ import urllib.request
 
 LOOPBACK = ("http://127.0.0.1", "http://localhost", "http://[::1]")
 TEXT_EXT = (".py", ".html", ".htm", ".js", ".mjs", ".css", ".json", ".md", ".txt", ".toml", ".cfg", ".svg")
-MAX_CONTEXT_FILE = 40_000      # larger files (vendored libraries, data) are listed by name, not shown
+MAX_CONTEXT_FILE = 40_000
+HINT_MAX = 1200      # larger files (vendored libraries, data) are listed by name, not shown
 SCHEMA = {"type": "object", "properties": {
     "edits": {"type": "array", "items": {"type": "object", "properties": {
         "path": {"type": "string"}, "search": {"type": "string"}, "replace": {"type": "string"}},
@@ -124,7 +125,10 @@ def closest(text, search):
         r = difflib.SequenceMatcher(None, window, "\n".join(want)).ratio()
         if r > best_ratio:
             best, best_ratio = window, r
-    return best if best_ratio >= 0.6 else ""
+    if best_ratio < 0.6:
+        return ""
+    # capped: a hint that quotes a whole class swells the next prompt (A-4 reached 65K characters)
+    return best if len(best) <= HINT_MAX else best[:HINT_MAX] + "\n[... passage truncated]"
 
 
 def apply_edits(root, edits, writable, readonly):
@@ -208,10 +212,11 @@ def restore(root, snap, dirs):
         p.write_text(text, encoding="utf-8", newline="\n")
 
 
-def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False):
+def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False, require_coverage=False):
     # thinking is off unless asked for: a reasoning model's hidden thought is spent from the same output budget,
     # and Gemma 4 31B spent all of it on A-2 and answered nothing
-    body = {"model": model, "stream": False, "format": SCHEMA, "think": think,
+    schema = dict(SCHEMA, required=SCHEMA["required"] + ["coverage"]) if require_coverage else SCHEMA
+    body = {"model": model, "stream": False, "format": schema, "think": think,
             "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": 16384},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{endpoint}/api/chat", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
@@ -326,10 +331,19 @@ def main(argv=None):
                 + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
         try:
-            out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature, a.think)
+            out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature, a.think,
+                           require_coverage=a.phase == "tests" and bool(clauses))
         except urllib.error.URLError as e:
-            print(f"build_model: COULD NOT RUN — the model endpoint did not answer ({e})")
-            return 2
+            if not isinstance(e, urllib.error.HTTPError):
+                print(f"build_model: COULD NOT RUN — the model endpoint did not answer ({e})")
+                return 2
+            # an HTTP error from a live endpoint (ollama answered 500 on a 65K-character A-4 prompt) is a failed round
+            print(f"build_model: round {rnd}: {model} failed on the server ({e})")
+            stale = a.patience
+            if mi + 1 < len(models):
+                mi, stale, temperature = mi + 1, 0, 0.1
+                print(f"build_model: handing over to {models[mi]}")
+            continue
         except (OSError, ValueError, KeyError) as e:
             # an empty or malformed answer is a failed round, not the end of the run: the next model may do better
             print(f"build_model: round {rnd}: {model} gave no usable answer ({type(e).__name__}: {str(e)[:120]})")

@@ -157,6 +157,16 @@ class DriverRobustness(unittest.TestCase):
             written, refused = self.bm.apply_edits(root, [{"path": "tests/full.py", "search": "", "replace": "Y = 2\n"}], ["tests"], set())
             self.assertEqual((written, len(refused)), ([], 1), "a file with content still needs its text quoted")
 
+    def test_a_bare_copyright_line_is_commented_not_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "tests").mkdir()
+            written, refused = self.bm.apply_edits(
+                root, [{"path": "tests/test_x.py", "search": "", "replace": "© 2026 Casey Houle. All rights reserved.\nX = 1\n"}],
+                ["tests"], set())
+            self.assertEqual((written, refused), (["tests/test_x.py"], []))
+            self.assertTrue((root / "tests" / "test_x.py").read_text(encoding="utf-8").startswith("# © 2026"))
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

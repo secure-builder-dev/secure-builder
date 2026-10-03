@@ -212,6 +212,11 @@ def apply_edits(root, edits, writable, readonly):
                     continue
             new = current.replace(search, replace, 1)
         if rel.endswith(".py"):
+            # a copyright or notice line written as bare text is a comment the model forgot to mark
+            # (daynight D-1: '© 2026 ...' as line 1 refused every round for eight rounds)
+            first, sep, rest = new.partition("\n")
+            if first.strip().startswith("©"):
+                new = "# " + first.strip() + sep + rest
             try:
                 compile(new, rel, "exec")
             except SyntaxError as err:
@@ -340,7 +345,7 @@ def main(argv=None):
                 "against the current code and will pass once the behaviour exists. Cover rejection cases (bad input, missing "
                 "or wrong credentials where the design has credentials), not only success. Change only files under the test "
                 "directories, in files named tests/test_<topic>.py (unittest discovers only test*.py; tests written into "
-                "__init__.py never run). Python files start with the project's copyright header line when other files carry one.")
+                "__init__.py never run).")
     else:
         writable = sources + tests
         readonly = {p.relative_to(root).as_posix() for p in files_under(root, tests)}
@@ -348,8 +353,7 @@ def main(argv=None):
                 "files are the specification and are read-only; you may add new test files. Follow the design plan and the "
                 "project rules exactly, including what the design says about credentials: a route the design declares public "
                 "needs no credential check, every other route rejects a missing credential and, where a record belongs to a "
-                "principal, another principal. Python files start with the project's copyright header line when other files "
-                "carry one. Standard library only unless the plan names a dependency.")
+                "principal, another principal. Standard library only unless the plan names a dependency.")
     system = (role + " You never touch the harness, the records, the manifest, the plan or the tickets, and you never attribute "
               "yourself.\n\n" + EDIT_RULES + ("\n\n" + rules if rules else ""))
     code, output = run_tests(test_cmd, test_cwd)

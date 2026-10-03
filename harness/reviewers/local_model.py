@@ -126,11 +126,29 @@ def ask(endpoint, model, system, user, num_ctx, raw_path=None):
                         + (f"; raw answer kept at {raw_path.name}" if raw_path else ""))
 
 
+VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
+MAX_FILE_DIFF = 40_000
+
+
+def vendored(path):
+    return any(part in VENDORED_DIRS for part in path.split("/")[:-1])
+
+
 def build_prompt(root, facts, checklist_text, definition, controls):
     base, head = facts["base"], facts["head"]
     # the project's change: everything but the placed harness; the governed files under .engine/ are part of the change
-    diff = git(root, "diff", f"{base}..{head}", "--", ".", ":(exclude).engine") \
+    # vendored third-party code and bulk data are listed, not pasted: minified Leaflet alone put the
+    # antipode A-2 review at 47K tokens; the reviewer judges the project's code, integrity is pinned elsewhere
+    held_back = []
+    for name in git(root, "diff", "--name-only", f"{base}..{head}", "--", ".", ":(exclude).engine").splitlines():
+        size = len(git(root, "diff", f"{base}..{head}", "--", name))
+        if vendored(name) or size > MAX_FILE_DIFF:
+            held_back.append((name, f"{name} ({size} chars of diff; {'vendored third-party' if vendored(name) else 'bulk data'}, not shown)"))
+    excludes = [f":(exclude){n}" for n, _ in held_back]
+    diff = git(root, "diff", f"{base}..{head}", "--", ".", ":(exclude).engine", *excludes) \
         + git(root, "diff", f"{base}..{head}", "--", ".engine/rules/control-manifest.json", ".engine/rules/config.json", ".engine/rules/governance.json", ".engine/rules/dependency-policy.json")
+    if held_back:
+        diff += "\nFiles in the range not shown in this diff:\n" + "\n".join(t for _, t in held_back) + "\n"
     if len(diff) > 120_000:
         diff = diff[:120_000] + "\n[diff truncated by the reviewer driver at 120000 characters; say so in the summary]\n"
     names = git(root, "diff", "--name-only", f"{base}..{head}")

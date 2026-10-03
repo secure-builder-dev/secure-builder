@@ -13,6 +13,7 @@ connection. Every output that differs by mode states the mode. §10: a project
 developed on one network and deployed on another is two instances, not a mode.
 """
 import json
+import shlex
 import pathlib
 
 from .outcome import Outcome
@@ -159,8 +160,10 @@ def apply_forced(values):
 
 def init(root, *, track, mode, tier=UNSET, provider=UNSET, app_type=UNSET,
          topology="single", side="local", operators=1, protected_branch="main",
-         timezone="UTC", clock="workstation clock"):
-    """Write the configuration once. Refuses to overwrite: the file is project-owned."""
+         timezone="UTC", clock="workstation clock", test_command=None, lint_command=None, public_routes=None):
+    """Write the configuration once. Refuses to overwrite: the file is project-owned. The test and lint
+    commands are shell-split strings; public_routes is a comma-separated list of 'METHOD /path' (every
+    demo so far hand-edited these in after init)."""
     p = path_for(root)
     if p.exists():
         raise ConfigError(f"{CONFIG_PATH} already exists; configuration is fixed at initialization")
@@ -174,6 +177,12 @@ def init(root, *, track, mode, tier=UNSET, provider=UNSET, app_type=UNSET,
         "consistency_blocks": ["verdict-block"],
         "obligation_ceiling": 5, "obligation_max_age_days": 30,        # spec 11 REQ-7.6, 7.7
     }
+    if test_command:
+        data["test_command"] = shlex.split(test_command)
+    if lint_command:
+        data["lint_command"] = shlex.split(lint_command)
+    if public_routes:
+        data["public_routes"] = [r.strip() for r in public_routes.split(",") if r.strip()]
     cfg = Config(data)
     probs = cfg.problems()
     if probs:

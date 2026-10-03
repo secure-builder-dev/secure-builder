@@ -46,13 +46,6 @@
   "spec": "The engine's own security-gate definition cites OWASP MASVS (a mobile standard). On a project whose track is 'web' every MASVS citation is reported as a finding ('platform not in the index'), so every fresh web project starts with a non-blocking finding it can do nothing about except a hand-written acceptance. Required: when the project's track is not 'android', MASVS citations are counted as not applicable to the track (like the accepted-unindexed ones) and not reported as findings; the outcome's summary says how many were set aside as 'not applicable to track web'. Android projects keep today's behaviour. Tests (new file harness/selftest/test_eng07_citations_track.py, first line '# © 2026 Casey Houle. All rights reserved.'): call engine.checks.citations.verify_text (or the smallest function that decides per citation) with a text citing 'OWASP MASVS-STORAGE' once with track 'web' and once with track 'android', and assert the web call reports no finding for it while the android call does. If verify_text has no track parameter, add a keyword parameter track=None and pass cfg.track from run()."
  },
  {
-  "id": "ENG-08",
-  "slug": "init_commands",
-  "source": "harness/engine/config.py,harness/engine/__main__.py",
-  "context": [],
-  "spec": "`init` cannot set the project's test_command or lint_command, so every project hand-edits config.json after initialization. Required: config.init accepts optional keyword arguments test_command and lint_command, each a string that is split with shlex.split into a list and stored under those keys when given; cmd_init passes test_command= and lint_command= through from the command line like the other key=value options (the existing loop already collects them; make sure init accepts them). Tests (new file harness/selftest/test_eng08_init_commands.py, first line '# © 2026 Casey Houle. All rights reserved.'): in a temporary directory call engine.config.init(root, track='web', mode='local', test_command='python -m unittest discover -s tests -t .', lint_command='python -m compileall -q src') and assert the written .engine/rules/config.json holds test_command == ['python','-m','unittest','discover','-s','tests','-t','.'] and lint_command == ['python','-m','compileall','-q','src']; and that omitting them writes neither key."
- },
- {
   "id": "ENG-12",
   "slug": "html_third_party",
   "source": "harness/engine/checks/license_policy.py",

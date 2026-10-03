@@ -301,7 +301,9 @@ def main(argv=None):
         notes = ("EDITS REFUSED (nothing of these was written):\n" + "\n".join(refused) + "\n\n") if refused else ""
         if a.phase == "tests":
             new_tests = set(snapshot(root, tests)) - start_files
-            if written and code != 0 and now < 10_000:
+            # every edit must land: a refused edit is a clause of the definition of done left unexpressed
+            # (A-2: the CSP assertion edit was refused and the phase still reported success)
+            if written and not refused and code != 0 and now < 10_000:
                 print(f"build_model: acceptance tests written and failing as they must ({now} failing; new files: {sorted(new_tests) or 'edits to existing files'}). "
                       "Read them before construction: they are the specification.")
                 return 0

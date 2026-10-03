@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 import pathlib
+import sys
 import tempfile
 import unittest
 
@@ -179,6 +180,19 @@ class BuildEdits(unittest.TestCase):
             self.bm.ask("http://127.0.0.1:1", "m", "s", "u", 1024)
         self.assertIs(sent["think"], False)
         self.assertGreaterEqual(sent["options"]["num_predict"], 16384)
+
+    def test_the_tests_phase_is_not_done_while_an_edit_was_refused(self):
+        from unittest import mock
+        (self.root / "tests" / "test_a.py").write_text("import unittest\n\nclass T(unittest.TestCase):\n    def test_x(self):\n        pass\n",
+                                                      encoding="utf-8")
+        answer = {"edits": [{"path": "tests/test_a.py", "search": "        pass", "replace": "        self.fail('red')"},
+                            {"path": "tests/test_a.py", "search": "NOT IN THE FILE", "replace": "x"}], "notes": ""}
+        (self.root / "task.md").write_text("write the tests", encoding="utf-8")
+        with mock.patch.object(self.bm, "ask", return_value=(answer, {})), contextlib.redirect_stdout(io.StringIO()) as out:
+            code = self.bm.main(["--phase", "tests", "--task", str(self.root / "task.md"), "--root", str(self.root), "--model", "m",
+                                 "--rounds", "1", "--test-cmd", f"\"{sys.executable}\" -m unittest discover -s tests -t ."])
+        self.assertEqual(code, 1, out.getvalue())
+        self.assertIn("REFUSED edit", out.getvalue())
 
     def test_restore_returns_the_tree_to_a_snapshot(self):
         snap = self.bm.snapshot(self.root, ["src"])

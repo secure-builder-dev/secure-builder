@@ -124,12 +124,16 @@ class Collector:
     def start(self):
         # threads started under the collector are traced too: a handler that runs in a server
         # thread (http.server under test) is exercised code, and unmeasured is not the same as uncovered
+        self._previous = (sys.gettrace(), threading.gettrace())
         sys.settrace(self._trace)
         threading.settrace(self._trace)
 
     def stop(self):
-        sys.settrace(None)
-        threading.settrace(None)
+        # restore, never clear: a collection nested inside another (the collector's own self-test runs one) used to
+        # switch the outer tracer off, and every module tested after it read as uncovered (runner.py at 4.8%)
+        prev_sys, prev_threads = getattr(self, "_previous", (None, None))
+        sys.settrace(prev_sys)
+        threading.settrace(prev_threads)
 
     def report(self):
         files = {}

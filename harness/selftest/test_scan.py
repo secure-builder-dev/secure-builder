@@ -337,14 +337,20 @@ class Run(unittest.TestCase):
     def test_sast_high_blocks_medium_is_carried_low_is_informational(self):
         semgrep = json.dumps({"errors": [], "results": [
             {"check_id": "python.lang.security.subprocess-shell-true", "path": "src/app.py", "start": {"line": 4},
-             "extra": {"severity": "ERROR", "message": "shell=True with user input"}},
+             "extra": {"severity": "ERROR", "message": "shell=True with user input", "metadata": {"category": "security"}}},
             {"check_id": "python.lang.audit.eval-detected", "path": "src/app.py", "start": {"line": 5},
-             "extra": {"severity": "WARNING", "message": "eval"}}]})
+             "extra": {"severity": "WARNING", "message": "eval", "metadata": {"category": "security"}}},
+            {"check_id": "python.lang.maintainability.useless-inner-function", "path": "src/app.py", "start": {"line": 9},
+             "extra": {"severity": "ERROR", "message": "never used", "metadata": {"category": "maintainability"}}}]})
         bandit = json.dumps({"results": [
             {"test_id": "B324", "test_name": "hashlib", "issue_severity": "HIGH", "issue_confidence": "LOW", "filename": "./src/app.py",
              "line_number": 7, "issue_text": "md5"},
             {"test_id": "B404", "test_name": "import_subprocess", "issue_severity": "LOW", "issue_confidence": "HIGH",
-             "filename": "./src/app.py", "line_number": 1, "issue_text": "subprocess"}]})
+             "filename": "./src/app.py", "line_number": 1, "issue_text": "subprocess"},
+            {"test_id": "B310", "test_name": "urllib_urlopen", "issue_severity": "HIGH", "issue_confidence": "HIGH",
+             "filename": ".\\tests\\test_app.py", "line_number": 3, "issue_text": "urlopen"},
+            {"test_id": "B310", "test_name": "urllib_urlopen", "issue_severity": "HIGH", "issue_confidence": "HIGH",
+             "filename": ".\\.engine\\harness\\net.py", "line_number": 3, "issue_text": "urlopen"}]})
         with tree() as t:
             self.no_image_project(t)
             sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"semgrep scan": (0, semgrep), "bandit -q": (1, bandit)}),
@@ -355,6 +361,9 @@ class Run(unittest.TestCase):
         self.assertIn("eval-detected", carried)
         self.assertIn("B324-hashlib", carried, "a HIGH the analyzer itself doubts is carried, not blocking")
         self.assertIn("B404-import_subprocess", [f.id for f in r["informational"]])
+        self.assertIn("useless-inner-function", [f.id for f in r["informational"]], "a maintainability rule does not gate")
+        everything = [f.target for f in r["actionable"] + r["carried"] + r["informational"]]
+        self.assertFalse([t for t in everything if t.startswith(("tests/", ".engine/", "engine/"))], "tests and the harness are not the project's code")
 
     def test_sast_without_a_rule_set_fails_the_scan(self):
         with tree() as t:

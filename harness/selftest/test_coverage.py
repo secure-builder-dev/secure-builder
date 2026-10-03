@@ -51,6 +51,22 @@ class Evaluate(unittest.TestCase):
         self.assertEqual((assessed, findings), (0, []))
 
 
+class Nesting(unittest.TestCase):
+    def test_a_nested_collection_restores_the_outer_tracer(self):
+        import sys
+        from engine import coverage as cov
+        sentinel = lambda *a: None
+        before = sys.gettrace()
+        sys.settrace(sentinel)
+        try:
+            c = cov.Collector(".", "nowhere")
+            c.start()
+            c.stop()
+            self.assertIs(sys.gettrace(), sentinel, "stopping must hand tracing back, not switch it off")
+        finally:
+            sys.settrace(before)
+
+
 class Reports(unittest.TestCase):
     def test_reads_three_shapes(self):
         with tree() as t:

@@ -449,8 +449,14 @@ class Scan:
                                      parse=self._parse_semgrep, ok_codes=(0,), finding_codes=(1,)) or []
             out += [f for f in found if f.severity != "LOW"]
             info += [f for f in found if f.severity == "LOW"]
-        found = self.run_scanner("sast-b", ["-q", "-f", "json", "-r", target, "-x", ",".join(SAST_EXCLUDES)], mounts,
-                                 parse=self._parse_bandit, ok_codes=(0,), finding_codes=(1,)) or []
+        # bandit's -x never matched on Windows (it reports .\\.engine\\... paths): name the project's own top-level
+        # entries as targets instead, and drop anything under an excluded folder when parsing
+        own = sorted(p.name for p in self.root.iterdir() if p.name not in SAST_EXCLUDES and not p.name.startswith("."))
+        targets = [f"{target}/{n}" if self.engine == "containers" else n for n in own]
+        found = self.run_scanner("sast-b", ["-q", "-f", "json", "-r", *targets], mounts,
+                                 parse=self._parse_bandit, ok_codes=(0,), finding_codes=(1,)) or [] if targets else []
+        if not targets:
+            self.ran.append("sast-b")
         out += [f for f in found if f.severity != "LOW"]
         info += [f for f in found if f.severity == "LOW"]
         self.sast_informational = info
@@ -465,9 +471,16 @@ class Scan:
         for e in data.get("errors", []) or []:
             if e.get("level") == "error":
                 self.notes.append(f"sast-a (semgrep): {str(e.get('message', ''))[:120]}")
-        return [self._sast_finding(x["check_id"].split(".")[-1], SAST_SEVERITY.get(x.get("extra", {}).get("severity", ""), "LOW"),
-                                   x.get("path", ""), x.get("start", {}).get("line", "?"), x.get("extra", {}).get("message", ""), "semgrep")
-                for x in data.get("results", []) or []]
+        out = []
+        for x in data.get("results", []) or []:
+            extra = x.get("extra", {})
+            # only a rule its authors file under security gates: maintainability and correctness rules are read,
+            # not enforced (useless-inner-function called a decorator-registered route handler unused)
+            security = str((extra.get("metadata") or {}).get("category", "")).lower() == "security"
+            sev = SAST_SEVERITY.get(extra.get("severity", ""), "LOW") if security else "LOW"
+            out.append(self._sast_finding(x["check_id"].split(".")[-1], sev, x.get("path", ""), x.get("start", {}).get("line", "?"),
+                                          extra.get("message", ""), "semgrep"))
+        return [f for f in out if f is not None]
 
     def _parse_bandit(self, res):
         try:
@@ -482,11 +495,15 @@ class Scan:
                 sev = "MEDIUM"          # a high-severity guess the analyzer itself doubts is carried, not blocking
             out.append(self._sast_finding(f"{x.get('test_id')}-{x.get('test_name')}", sev, x.get("filename", ""),
                                           x.get("line_number", "?"), x.get("issue_text", ""), "bandit"))
-        return out
+        return [f for f in out if f is not None]
 
     @staticmethod
     def _sast_finding(rule, severity, path, line, message, source):
-        path = str(path).replace("\\", "/").lstrip("./")
+        path = str(path).replace("\\", "/")
+        while path.startswith("./"):           # not lstrip: that would eat the dot of .engine
+            path = path[2:]
+        if set(path.split("/")[:-1]) & set(SAST_EXCLUDES):
+            return None                         # outside the project's own code, whatever the analyzer's exclusions did
         f = Finding("sast", rule, severity, package=path, target=f"{path}:{line}", source=source)
         if severity == "HIGH":
             f.fixed = "fix the code: " + " ".join(str(message).split())[:160]

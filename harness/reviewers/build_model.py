@@ -38,7 +38,10 @@ SCHEMA = {"type": "object", "properties": {
     "edits": {"type": "array", "items": {"type": "object", "properties": {
         "path": {"type": "string"}, "search": {"type": "string"}, "replace": {"type": "string"}},
         "required": ["path", "search", "replace"]}},
-    "notes": {"type": "string"}}, "required": ["edits", "notes"]}
+    "notes": {"type": "string"},
+    "coverage": {"type": "array", "items": {"type": "object", "properties": {
+        "clause": {"type": "integer"}, "test": {"type": "string"}}, "required": ["clause", "test"]}}},
+    "required": ["edits", "notes"]}
 EDIT_RULES = (
     "Answer ONLY with JSON: {\"edits\": [{\"path\", \"search\", \"replace\"}], \"notes\"}. Each edit replaces the exact text "
     "`search` in file `path` with `replace`. `search` must be copied character for character from the current file and must "
@@ -88,6 +91,26 @@ def tree_text(root, dirs):
     if listed:
         parts.append("Files present but not shown (too large to edit): " + ", ".join(listed))
     return "\n".join(parts) or "(no files yet)"
+
+
+def split_clauses(done_when):
+    """The clauses of a definition of done: its semicolon-separated parts, each one observable outcome."""
+    return [c.strip() for c in done_when.split(";") if c.strip()]
+
+
+def test_names(root, dirs):
+    """Every test function defined under the test directories."""
+    names = set()
+    for p in files_under(root, dirs):
+        if p.suffix == ".py":
+            names.update(re.findall(r"^\s*def (test_\w+)\s*\(", read(p), re.M))
+    return names
+
+
+def uncovered(clauses, covered, names):
+    """Clause numbers (1-based) with no mapping to an existing test function (antipode A-4: five string
+    checks were offered for an eight-clause definition of done and the phase reported success)."""
+    return [i for i in range(1, len(clauses) + 1) if covered.get(i) not in names]
 
 
 def closest(text, search):
@@ -231,6 +254,7 @@ def main(argv=None):
             print(f"build_model: COULD NOT RUN — task file {a.task} is empty or missing")
             return 2
         name = pathlib.Path(a.task).stem
+        clauses = []
     else:
         if not a.item:
             print("build_model: COULD NOT RUN — give --item or --task")
@@ -244,6 +268,7 @@ def main(argv=None):
             print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
             return 2
         goal = f"Definition of done: {h.get('done_when', '(none)')}"
+        clauses = split_clauses(h.get('done_when', ''))
         name = a.item
     try:
         cfg = json.loads(read(root / ".engine" / "rules" / "config.json"))
@@ -284,6 +309,7 @@ def main(argv=None):
     start_files = set(best_snap)
     feedback = output
     temperature, stale, mi = 0.1, 0, 0
+    covered = {}
     print(f"build_model: {a.phase} phase for {name}; models {models}; starting score {best} failing")
     for rnd in range(1, a.rounds + 1):
         model = models[mi]
@@ -294,6 +320,9 @@ def main(argv=None):
                 + f"Current files you may change (writable: {writable}):\n{tree_text(root, watched)}\n\n"
                 f"Test command: {' '.join(test_cmd)} (run in {a.test_cwd})\n"
                 + "".join(f"\nREVIEWER NOTE (from the human; act on it): {n}\n" for n in a.note)
+                + (("\nTHE CLAUSES OF THE DEFINITION OF DONE (each needs its own test; answer `coverage` with one "
+                    "{clause: <number>, test: <test function name>} per clause):\n"
+                    + "".join(f"{i}. {c}\n" for i, c in enumerate(clauses, 1))) if a.phase == "tests" and clauses else "")
                 + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
         try:
@@ -322,7 +351,17 @@ def main(argv=None):
             new_tests = set(snapshot(root, tests)) - start_files
             # every edit must land: a refused edit is a clause of the definition of done left unexpressed
             # (A-2: the CSP assertion edit was refused and the phase still reported success)
-            if written and not refused and code != 0 and now < 10_000:
+            for m in out.get("coverage") or []:
+                try:
+                    covered[int(m.get("clause"))] = str(m.get("test", "")).strip()
+                except (TypeError, ValueError):
+                    pass
+            missing = uncovered(clauses, covered, test_names(root, tests))
+            if missing:
+                notes += ("CLAUSES WITH NO TEST (name an existing test function for each in `coverage`, writing the test "
+                          "first if it does not exist):\n" + "\n".join(f"{i}. {clauses[i - 1]}" for i in missing) + "\n")
+                print(f"build_model: {len(missing)} of {len(clauses)} clause(s) have no test yet: {missing}")
+            if written and not refused and not missing and code != 0 and now < 10_000:
                 print(f"build_model: acceptance tests written and failing as they must ({now} failing; new files: {sorted(new_tests) or 'edits to existing files'}). "
                       "Read them before construction: they are the specification.")
                 return 0

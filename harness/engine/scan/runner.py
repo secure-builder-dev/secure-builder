@@ -28,6 +28,7 @@ DB_VOLUME = ".engine/work/clamav-db"
 DATA_DATE = ".engine/records/scan/detection-data-date"
 ENGINES = ("containers", "host", "auto")
 HIGH = ("HIGH", "CRITICAL")
+SKIP_DIRS = (".engine", ".git")
 
 
 class ScanError(Exception):
@@ -67,7 +68,10 @@ def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
             cmd += ["-v", f"{host_path}:{container_path}"]
         cmd += [image, *args]
         return tools.run_tool(rt, cmd, cwd=str(root), timeout=timeout)
-    return tools.run_tool(tool, list(args), cwd=str(root), timeout=timeout)
+    exe, args = images.HOST_EXECUTABLES.get(tool, tool), list(args)
+    if args and args[0] in ("clamscan", "freshclam"):      # the container command names its program first
+        exe, args = args[0], args[1:]
+    return tools.run_tool(exe, args, cwd=str(root), timeout=timeout)
 
 
 class Finding:
@@ -81,7 +85,7 @@ class Finding:
 
     @property
     def actionable(self):
-        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration")
+        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration", "secret")
 
     def line(self):
         fix = f"fix: {self.fixed}" if self.fixed else "no fix available"
@@ -103,6 +107,7 @@ class Scan:
         self.notes = []
         self.findings = []
         self.digests = {}
+        self.secrets = []
         self.data_age = None
         self.data_date = None
 
@@ -246,7 +251,8 @@ class Scan:
                         source="hadolint", fixed="follow the rule") for i in items if i.get("level") in ("error", "warning")]
 
     def scan_iac(self):
-        args = ["config", "--format", "json", "--exit-code", "1", "/src"] if self.engine == "containers" else ["config", "--format", "json", "--exit-code", "1", "."]
+        target = "/src" if self.engine == "containers" else "."
+        args = ["config", "--format", "json", "--exit-code", "1", *self._skips(target), target]
         return self.run_scanner("iac-misconfiguration", args, ((str(self.root), "/src"),), parse=self._parse_trivy_config) or []
 
     def _parse_trivy_config(self, res):
@@ -305,6 +311,56 @@ class Scan:
             fixed = ", ".join(v.get("fix", {}).get("versions", []) or []) or None
             out.append(Finding("vulnerabilities", v.get("id", "?"), v.get("severity", "UNKNOWN"), a.get("name", ""), a.get("version", ""), fixed, "", source))
         return out
+
+    def _skips(self, target):
+        """The placed harness (its own fixtures carry planted secrets) and git internals are not the project."""
+        out = []
+        for d in SKIP_DIRS:
+            out += ["--skip-dirs", f"{target}/{d}" if target != "." else d]
+        return out
+
+    def scan_project(self):
+        """A project that ships no image is still scanned: its own tree, for vulnerable components (two
+        independent scanners, correlated as for images) and committed secrets (antipode and daynight shipped
+        no image, so vulnerabilities, secrets and composition were never looked at)."""
+        target = "/src" if self.engine == "containers" else "."
+        mounts = ((str(self.root), "/src"),)
+        a = self.run_scanner("vulnerabilities-a", ["fs", "--format", "json", "--scanners", "vuln,secret", "--exit-code", "0",
+                                                   *self._skips(target), target], mounts, parse=self._parse_trivy_fs) or []
+        excludes = []
+        for d in SKIP_DIRS:
+            excludes += ["--exclude", f"./{d}/**"]
+        b = self.run_scanner("vulnerabilities-b", [f"dir:{target}", "-o", "json", *excludes], mounts,
+                             parse=lambda res: self._parse_grype(res, "grype")) or []
+        return a, b
+
+    def _parse_trivy_fs(self, res):
+        try:
+            data = json.loads(res.stdout or "{}")
+        except ValueError:
+            return []
+        for r in data.get("Results", []) or []:
+            for s in r.get("Secrets", []) or []:
+                self.secrets.append(Finding("secret", s.get("RuleID", "SECRET"), s.get("Severity", "HIGH"),
+                                            target=f"{r.get('Target', '')}:{s.get('StartLine', '?')}", source="trivy-secret",
+                                            fixed="remove the secret and rotate it"))
+        return self._parse_trivy(res, "trivy")
+
+    def sbom_project(self):
+        tool, image, _ = images.SCANNERS["composition"]
+        target = "/src" if self.engine == "containers" else "."
+        excludes = []
+        for d in SKIP_DIRS:
+            excludes += ["--exclude", f"./{d}/**"]
+        res = self.invoke(tool, image, [f"dir:{target}", "-o", "cyclonedx-json", *excludes], ((str(self.root), "/src"),))
+        if res.exit_code != 0 or not res.stdout.strip():
+            self.problems.append(f"composition inventory for the project tree not produced (exit {res.exit_code})")
+            return None
+        d = self.root / SBOM_DIR
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / "project.cdx.json"
+        p.write_text(res.stdout, encoding="utf-8", newline="\n")
+        return p
 
     def sbom(self, name):
         tool, image, _ = images.SCANNERS["composition"]
@@ -406,7 +462,7 @@ class Scan:
         if self.engine != "host":
             return None
         import shutil
-        present = [tool for tool, _, _ in images.SCANNERS.values() if shutil.which(tool)]
+        present = [tool for tool, _, _ in images.SCANNERS.values() if shutil.which(images.HOST_EXECUTABLES.get(tool, tool))]
         if present:
             return None
         return ("scan impossible here: no container runtime and no scanner on the search path. No stamp is written; "
@@ -435,8 +491,12 @@ class Scan:
         if not self.digests and self.ship_images():
             self.problems.append("no image could be scanned")
         if not self.ship_images():
-            self.ran += ["vulnerabilities-a", "vulnerabilities-b"]     # nothing ships; nothing to scan, and that is stated
-            self.raw["vulnerabilities"] = "no shipped images declared or detected"
+            a, b = self.scan_project()
+            confirmed, single = self.correlate(a, b)
+            confirmed_all += confirmed
+            single_all += single
+            self.sbom_project()
+        findings += self.secrets
         findings += confirmed_all
         gate, alarm_verdict, actionable, carried, complete = self.verdicts(findings)
         aged = self.aged_carried(confirmed_all + single_all)

@@ -15,12 +15,16 @@ import re
 # concern -> (tool name, image reference, detection data embedded in the image?)
 SCANNERS = {
     "container-hygiene": ("hadolint", "docker.io/hadolint/hadolint:v2.12.0", False),
-    "iac-misconfiguration": ("trivy-config", "docker.io/aquasec/trivy:0.58.1", False),
+    "iac-misconfiguration": ("trivy-config", "docker.io/aquasec/trivy:0.75.0", False),
     "malware": ("clamav", "docker.io/clamav/clamav:1.4", True),
-    "vulnerabilities-a": ("trivy", "docker.io/aquasec/trivy:0.58.1", False),
+    "vulnerabilities-a": ("trivy", "docker.io/aquasec/trivy:0.75.0", False),
     "vulnerabilities-b": ("grype", "docker.io/anchore/grype:v0.86.1", False),
     "composition": ("syft", "docker.io/anchore/syft:v1.18.1", False),
 }
+# the executable each concern runs under the host engine (no container runtime): the image's tool name is
+# not always a program on the path (trivy-config is trivy; the malware scanner is clamscan and freshclam)
+HOST_EXECUTABLES = {"hadolint": "hadolint", "trivy-config": "trivy", "clamav": "clamscan", "trivy": "trivy",
+                    "grype": "grype", "syft": "syft"}
 REQUIRED_CONCERNS = ("container-hygiene", "iac-misconfiguration", "malware", "vulnerabilities-a", "vulnerabilities-b")
 
 DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")

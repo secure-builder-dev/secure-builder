@@ -259,14 +259,50 @@ class Run(unittest.TestCase):
             self.assertEqual(r["data_age"], 2)
             self.assertEqual(stamp.read(t)["detection_data_date"], (TODAY - datetime.timedelta(days=2)).isoformat())
 
-    def test_no_shipped_images_is_stated(self):
+    def no_image_project(self, t):
+        project(t, ship_images={})
+        (t / "Dockerfile").unlink()
+        git_repo(t); commit(t, "no dockerfile")
+
+    def test_no_shipped_image_scans_the_project_tree(self):
+        # antipode and daynight ship no image; their trees were never scanned for components or secrets
         with tree() as t:
-            project(t, ship_images={})
-            (t / "Dockerfile").unlink()
-            git_repo(t); commit(t, "no dockerfile")
-            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(ship_images={}))
-            self.assertEqual(r["verdict"], "green")
-            self.assertIn("no shipped images declared or detected", sc.raw["vulnerabilities"])
+            self.no_image_project(t)
+            script = dict(baseline(vulns=False), **{"fs --format json": (0, TRIVY), "grype dir:": (0, GRYPE),
+                                                    "syft dir:": (0, json.dumps({"bomFormat": "CycloneDX"}))})
+            sc, r, fake = self.scan(t, script, c=cfg(ship_images={}))
+            self.assertEqual(r["verdict"], "red", "CVE-1 is confirmed by both scanners and has a fix")
+            self.assertIn("CVE-1", [f.id for f in r["actionable"]])
+            self.assertEqual([f.id for f in r["informational"]], ["CVE-9"], "one scanner only")
+            fs = next(args for tool, args, _ in fake.calls if args[:1] == ["fs"])
+            self.assertTrue(any(a.endswith(".engine") for a in fs), "the placed harness is not the project")
+            self.assertTrue((t / ".engine/records/scan/sbom/project.cdx.json").is_file())
+
+    def test_a_committed_secret_blocks(self):
+        with tree() as t:
+            self.no_image_project(t)
+            secret = json.dumps({"Results": [{"Target": "src/a.py", "Secrets": [
+                {"RuleID": "github-pat", "Severity": "CRITICAL", "Title": "GitHub token", "StartLine": 3}]}]})
+            sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"fs --format json": (0, secret), "syft dir:": (0, "{}")}),
+                                    c=cfg(ship_images={}))
+            self.assertEqual(r["verdict"], "red")
+            self.assertEqual([(f.concern, f.target) for f in r["actionable"]], [("secret", "src/a.py:3")])
+
+    def test_the_host_engine_runs_the_real_executables(self):
+        import unittest.mock as mock
+        seen = []
+        with mock.patch.object(runner.tools, "run_tool", side_effect=lambda exe, args, **k: seen.append((exe, list(args))) or Result(exe, args, 0, "", "", exe)):
+            runner.real_invoke(".", "host", None, "clamav", "img", ["clamscan", "-r", "."])
+            runner.real_invoke(".", "host", None, "clamav", "img", ["freshclam"])
+            runner.real_invoke(".", "host", None, "trivy-config", "img", ["config", "."])
+        self.assertEqual(seen, [("clamscan", ["-r", "."]), ("freshclam", []), ("trivy", ["config", "."])])
+
+    def test_a_clean_tree_is_green(self):
+        with tree() as t:
+            self.no_image_project(t)
+            sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"syft dir:": (0, json.dumps({"bomFormat": "CycloneDX"}))}),
+                                    c=cfg(ship_images={}))
+            self.assertEqual(r["verdict"], "green", r["problems"])
 
     def test_ship_images_from_pipeline_definition(self):
         with tree() as t:

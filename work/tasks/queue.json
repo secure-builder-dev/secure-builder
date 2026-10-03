@@ -18,16 +18,6 @@
   "spec": "When `gate prepare` finds the quality gate failed it prints 'gate: quality gate FAILED; the security gate does not run on code whose tests do not pass (REQ-6.1.4)' even when the test suite passed and the failure was something else (a negative-test gap, missing coverage report). Required: the message names the failing quality checks by their outcome names, e.g. 'gate: quality gate FAILED (negative-tests, coverage-range); the security gate does not run until the quality gate passes (REQ-6.1.4)'. The words 'tests do not pass' must not appear unless the failing outcome is test-suite. Tests (new file harness/selftest/test_eng03_quality_gate_message.py, first line '# © 2026 Casey Houle. All rights reserved.'): patch engine.gate.prepare to return ([an Outcome named negative-tests that failed, an Outcome named test-suite that is clean], [], {...}) and engine.config.load, call engine.__main__.cmd_gate with ['prepare','unit=U1','run=1','base=HEAD','head=HEAD'] while patching engine.gitutil.rev to return a fake sha, capture stdout, and assert 'negative-tests' is in the FAILED line and 'tests do not pass' is not. Build Outcomes with engine.outcome.Outcome.found(name, summary, findings, blocking=True) and Outcome.clean(name, summary)."
  },
  {
-  "id": "ENG-04",
-  "slug": "handoff_items",
-  "source": "harness/engine/handoff.py",
-  "context": [
-   "harness/engine/lifecycle.py",
-   "harness/selftest/helpers.py"
-  ],
-  "spec": "The handoff's 'work items' line is scraped from commit messages with a pattern that matches any LETTERS-NUMBER token, so control ids (SI-10, AU-3), governance ids (GOV-1) and the unit name are listed as work items while the real item (tickets/A-1.md, whose id has a single letter) is missed and 'work item files' says none. Required: the work items are the item files under tickets/ whose header names this unit (header line 'unit: <unit>'), read with engine.lifecycle.items(root); 'work_items' is the sorted list of their ids and 'work_item_files' their paths ('tickets/<id>.md'). Commit-message scraping is kept only as a fallback when no item file names the unit. Tests (new file harness/selftest/test_eng04_handoff_items.py, first line '# © 2026 Casey Houle. All rights reserved.'): test the function that computes the work items directly (extract it into a small function in handoff.py named unit_items(root, unit, messages) returning (items, files) if one does not exist); in a temporary directory write tickets/A-1.md with header lines 'id: A-1', 'unit: ANTI-1', 'state: done' and tickets/B-2.md for unit OTHER; call it with messages ['A-1 declare SI-10, AU-3.3 in the manifest; GOV-1']; assert items == ['A-1'] and files == ['tickets/A-1.md']; and with no tickets directory assert the fallback still finds ids from the messages."
- },
- {
   "id": "ENG-05",
   "slug": "review_stale_handoff",
   "source": "harness/engine/__main__.py",

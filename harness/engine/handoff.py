@@ -33,6 +33,17 @@ def next_run(root, unit):
     return max(runs + marks + [0]) + 1
 
 
+def unit_items(root, unit, messages):
+    """The work items of a unit: the item files whose header names it. Commit messages are scraped only when no
+    item file does (antipode and daynight handoffs listed control ids, governance rows and 'UTF-8' as work items
+    and missed the single-letter items A-1 and D-1)."""
+    named = sorted(k for k, v in lifecycle.items(root).items() if v.get("unit") == unit)
+    if named:
+        return named, [f"tickets/{i}.md" for i in named]
+    scraped = sorted({(m.group(1) or ("#" + m.group(2))) for s in messages for m in WORK_ITEM.finditer(s)})
+    return scraped, [f"tickets/{i}.md" for i in scraped if (pathlib.Path(root) / "tickets" / f"{i}.md").is_file()]
+
+
 def generate(root, cfg, *, checkpoint=False, scan_impossible=False, scan_impossible_reason=""):
     """Build the handoff. Raises HandoffRefused with the reason when preconditions fail."""
     root = pathlib.Path(root)
@@ -79,8 +90,7 @@ def generate(root, cfg, *, checkpoint=False, scan_impossible=False, scan_impossi
 
     unit = lifecycle.unit_from_branch(branch)
     run = next_run(root, unit)
-    items = sorted({(m.group(1) or ("#" + m.group(2))) for s in gitutil.log_subjects(root, merge_base, head) for m in WORK_ITEM.finditer(s)})
-    item_files = [f"tickets/{i}.md" for i in items if (root / "tickets" / f"{i}.md").is_file()]
+    items, item_files = unit_items(root, unit, gitutil.log_subjects(root, merge_base, head))
     marker = gatelog.write_started(root, cfg, unit, run, f"{merge_base[:12]}..{head[:12]}", head,
                                    extra={"checkpoint": checkpoint})
     doc = {

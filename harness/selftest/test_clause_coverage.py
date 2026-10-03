@@ -32,6 +32,10 @@ class ClauseCoverage(unittest.TestCase):
     def test_clauses_are_the_semicolon_separated_parts(self):
         self.assertEqual(self.bm.split_clauses("a works; b fails ;; c"), ["a works", "b fails", "c"])
 
+    def test_every_case_has_a_test_is_not_a_clause(self):
+        self.assertEqual(self.bm.split_clauses("a works; every case has a test"), ["a works"])
+        self.assertEqual(self.bm.split_clauses("a works; and every case has its own test."), ["a works"])
+
     def test_a_clause_is_covered_only_by_an_existing_test(self):
         self.assertEqual(self.bm.uncovered(["a", "b", "c"], {1: "test_a", 2: "test_gone"}, {"test_a"}), [2, 3])
 

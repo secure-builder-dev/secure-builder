@@ -105,7 +105,9 @@ def tree_text(root, dirs):
 
 def split_clauses(done_when):
     """The clauses of a definition of done: its semicolon-separated parts, each one observable outcome."""
-    return [c.strip() for c in done_when.split(";") if c.strip()]
+    # "every case has a test" is a rule about the tests, not an outcome a single test can express
+    meta = re.compile(r"^(and\s+)?every\s+(case|clause|one)\s+(of\s+these\s+)?has\s+(a|its\s+own)\s+test\.?$", re.I)
+    return [c.strip() for c in done_when.split(";") if c.strip() and not meta.match(c.strip())]
 
 
 def test_names(root, dirs):

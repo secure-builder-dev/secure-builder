@@ -89,6 +89,24 @@ class DriverRobustness(unittest.TestCase):
         self.assertIn("failed on the server", out.getvalue())
         self.assertIn("round 2 with b", out.getvalue())
 
+    def test_vendored_files_are_never_shown_written_or_rewritten(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            css = root / "src" / "static" / "vendor" / "lib" / "lib.css"
+            css.parent.mkdir(parents=True)
+            original = b"a{}\r\nb{}\r\n"
+            css.write_bytes(original)
+            (root / "src" / "app.py").write_text("X = 1\n", encoding="utf-8")
+            self.assertNotIn(css, self.bm.files_under(root, ["src"]))
+            written, refused = self.bm.apply_edits(root, [{"path": "src/static/vendor/lib/lib.css", "search": "a{}", "replace": "a{x:1}"}],
+                                                   ["src"], set())
+            self.assertEqual((written, len(refused)), ([], 1))
+            snap = self.bm.snapshot(root, ["src"])
+            (root / "src" / "app.py").write_text("X = 2\n", encoding="utf-8")
+            self.bm.restore(root, snap, ["src"])
+            self.assertEqual(css.read_bytes(), original, "a vendored file keeps its exact bytes")
+            self.assertEqual((root / "src" / "app.py").read_text(encoding="utf-8"), "X = 1\n")
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

@@ -67,6 +67,14 @@ def header(text):
     return out
 
 
+VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
+
+
+def vendored(path):
+    """Third-party code copied in byte-exact: never shown as editable, never written, never snapshotted."""
+    return any(part in VENDORED_DIRS for part in path.split("/")[:-1])
+
+
 def files_under(root, dirs):
     out = []
     for d in dirs:
@@ -75,7 +83,7 @@ def files_under(root, dirs):
             out.append(base)
             continue
         for p in sorted(base.rglob("*")) if base.is_dir() else []:
-            if p.is_file() and p.suffix in TEXT_EXT and "__pycache__" not in p.parts:
+            if p.is_file() and p.suffix in TEXT_EXT and "__pycache__" not in p.parts and not vendored(p.relative_to(root).as_posix()):
                 out.append(p)
     return out
 
@@ -142,6 +150,9 @@ def apply_edits(root, edits, writable, readonly):
         if not rel or ".." in rel.split("/") or not any(rel == w.rstrip("/") or rel.startswith(w.rstrip("/") + "/") for w in writable):
             refused.append(f"{rel or '(no path)'}: outside the writable directories {list(writable)}")
             continue
+        if vendored(rel):
+            refused.append(f"{rel}: vendored third-party code is byte-exact and read-only — change the project's own files")
+            continue
         if rel in readonly:
             refused.append(f"{rel}: an acceptance test that existed before construction; it is read-only — change the code, not the test")
             continue
@@ -198,7 +209,9 @@ def score(code, output):
 
 
 def snapshot(root, dirs):
-    return {p.relative_to(root).as_posix(): read(p) for p in files_under(root, dirs)}
+    # bytes, not text: a restore must give back exactly what was there (antipode A-4: a text round trip
+    # rewrote vendored Leaflet CSS with LF and broke its Subresource Integrity hash)
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in files_under(root, dirs)}
 
 
 def restore(root, snap, dirs):
@@ -206,10 +219,11 @@ def restore(root, snap, dirs):
         rel = p.relative_to(root).as_posix()
         if rel not in snap:
             p.unlink()
-    for rel, text in snap.items():
+    for rel, data in snap.items():
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8", newline="\n")
+        if not p.is_file() or p.read_bytes() != data:
+            p.write_bytes(data)
 
 
 def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False, require_coverage=False):

@@ -24,7 +24,11 @@ STALE = (TODAY - datetime.timedelta(days=40)).strftime("%a %b %d %H:%M:%S %Y")
 
 def cfg(**over):
     d = {"schema": 1, "track": "web", "tier": "IL4", "provider": "aws", "app_type": "n/a", "mode": "local", "side": "low",
-         "timezone": "UTC", "ship_images": {"app": "Dockerfile"}, "scan_owner": "casey"}
+         "timezone": "UTC", "ship_images": {"app": "Dockerfile"}, "scan_owner": "casey",
+         # static analysis needs a rule directory (any existing one: the fake plays the analyzer) and a Python
+         # project declares its runtime
+         "sast_rules": str(__import__("pathlib").Path(__file__).resolve().parent),
+         "runtime_components": [{"name": "python", "version": "3.12.13", "cpe": "cpe:2.3:a:python:python:3.12.13:*:*:*:*:*:*:*"}]}
     d.update(over)
     return Config(d)
 
@@ -70,6 +74,10 @@ def baseline(fresh=True, vulns=True):
         "fs --format json": (0, json.dumps({"Results": []})),
         "grype dir:": (0, json.dumps({"matches": []})),
         "syft dir:": (0, json.dumps({"bomFormat": "CycloneDX", "components": []})),
+        "semgrep scan": (0, json.dumps({"results": [], "errors": []})),
+        "bandit -q": (0, json.dumps({"results": []})),
+        "trivy sbom": (0, json.dumps({"Results": []})),
+        "grype sbom:": (0, json.dumps({"matches": []})),
     }
 
 
@@ -108,10 +116,10 @@ class Pins(unittest.TestCase):
         self.assertIs(o.state, State.FINDINGS)
         self.assertTrue(o.blocking)
 
-    def test_five_required_concerns_by_separate_tools(self):
+    def test_seven_required_concerns_by_separate_tools(self):
         tools_ = [images.SCANNERS[c][0] for c in images.REQUIRED_CONCERNS]
-        self.assertEqual(len(images.REQUIRED_CONCERNS), 5)
-        self.assertEqual(len(set(tools_)), 5)
+        self.assertEqual(len(images.REQUIRED_CONCERNS), 7, "five plus two static analyzers of the project's own code")
+        self.assertEqual(len(set(tools_)), 7)
 
 
 class Engine(unittest.TestCase):
@@ -325,6 +333,50 @@ class Run(unittest.TestCase):
             sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"syft dir:": (0, "{}")}), c=cfg(ship_images={}, vendored_components=vend))
             self.assertEqual(r["verdict"], "red")
             self.assertTrue(any("does not exist" in p for p in r["problems"]), r["problems"])
+
+    def test_sast_high_blocks_medium_is_carried_low_is_informational(self):
+        semgrep = json.dumps({"errors": [], "results": [
+            {"check_id": "python.lang.security.subprocess-shell-true", "path": "src/app.py", "start": {"line": 4},
+             "extra": {"severity": "ERROR", "message": "shell=True with user input"}},
+            {"check_id": "python.lang.audit.eval-detected", "path": "src/app.py", "start": {"line": 5},
+             "extra": {"severity": "WARNING", "message": "eval"}}]})
+        bandit = json.dumps({"results": [
+            {"test_id": "B324", "test_name": "hashlib", "issue_severity": "HIGH", "issue_confidence": "LOW", "filename": "./src/app.py",
+             "line_number": 7, "issue_text": "md5"},
+            {"test_id": "B404", "test_name": "import_subprocess", "issue_severity": "LOW", "issue_confidence": "HIGH",
+             "filename": "./src/app.py", "line_number": 1, "issue_text": "subprocess"}]})
+        with tree() as t:
+            self.no_image_project(t)
+            sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"semgrep scan": (0, semgrep), "bandit -q": (1, bandit)}),
+                                    c=cfg(ship_images={}))
+        self.assertEqual(r["verdict"], "red")
+        self.assertEqual([(f.id, f.target) for f in r["actionable"]], [("subprocess-shell-true", "src/app.py:4")])
+        carried = {f.id: f.reason for f in r["carried"]}
+        self.assertIn("eval-detected", carried)
+        self.assertIn("B324-hashlib", carried, "a HIGH the analyzer itself doubts is carried, not blocking")
+        self.assertIn("B404-import_subprocess", [f.id for f in r["informational"]])
+
+    def test_sast_without_a_rule_set_fails_the_scan(self):
+        with tree() as t:
+            self.no_image_project(t)
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(ship_images={}, sast_rules=str(t / "no-such-rules")))
+        self.assertEqual(r["verdict"], "red")
+        self.assertTrue(any("no rule set" in p for p in r["problems"]), r["problems"])
+
+    def test_a_python_project_must_declare_its_runtime(self):
+        with tree() as t:
+            self.no_image_project(t)
+            sc, r, fake = self.scan(t, baseline(vulns=False), c=cfg(ship_images={}, runtime_components=[]))
+        self.assertTrue(any("declares no Python runtime" in p for p in r["problems"]), r["problems"])
+
+    def test_runtime_cves_block_within_the_series_and_are_carried_across_series(self):
+        same = runner.Finding("vulnerabilities", "CVE-A", "HIGH", "python", "3.12.13", "3.13.11, 3.12.14", source="grype")
+        newer = runner.Finding("vulnerabilities", "CVE-B", "MEDIUM", "python", "3.12.13", "3.13.11, 3.14.1", source="grype")
+        a, b = runner.Scan._judge_runtime(same, "3.12.13"), runner.Scan._judge_runtime(newer, "3.12.13")
+        self.assertTrue(a.actionable)
+        self.assertEqual(a.fixed, "3.12.14", "the fix within the series is the one to take")
+        self.assertFalse(b.actionable)
+        self.assertIn("newer release series", b.reason)
 
     def test_the_host_engine_runs_the_real_executables(self):
         import unittest.mock as mock

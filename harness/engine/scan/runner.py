@@ -10,6 +10,7 @@ which is a different result and never reads as clean.
 """
 import datetime
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -29,6 +30,10 @@ DATA_DATE = ".engine/records/scan/detection-data-date"
 ENGINES = ("containers", "host", "auto")
 HIGH = ("HIGH", "CRITICAL")
 SKIP_DIRS = (".engine", ".git")
+# static analysis reads the project's own code: not the placed harness, git internals, vendored third-party code
+# (scanned by version instead) or the tests (assertions and fixtures are not shipped code)
+SAST_EXCLUDES = (".engine", ".git", "vendor", "vendored", "third_party", "node_modules", "tests")
+SAST_SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM", "INFO": "LOW"}
 
 
 class ScanError(Exception):
@@ -77,9 +82,10 @@ def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
 
 
 class Finding:
-    def __init__(self, concern, ident, severity="UNKNOWN", package="", version="", fixed=None, target="", source=""):
+    def __init__(self, concern, ident, severity="UNKNOWN", package="", version="", fixed=None, target="", source="", reason=None):
         self.concern, self.id, self.severity, self.package, self.version = concern, ident, severity.upper(), package, version
         self.fixed, self.target, self.sources = fixed, target, {source} if source else set()
+        self.reason = reason            # why a carried finding is not fixed now: it becomes the POA&M row
 
     @property
     def key(self):
@@ -87,7 +93,9 @@ class Finding:
 
     @property
     def actionable(self):
-        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration", "secret")
+        if self.reason:                 # explicitly carried: on the plan of action, not blocking
+            return False
+        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration", "secret", "sast")
 
     def line(self):
         fix = f"fix: {self.fixed}" if self.fixed else "no fix available"
@@ -110,6 +118,8 @@ class Scan:
         self.findings = []
         self.digests = {}
         self.secrets = []
+        self.runtime_findings = []
+        self.sast_informational = []
         self.data_age = None
         self.data_date = None
 
@@ -340,14 +350,36 @@ class Scan:
         b = self.run_scanner("vulnerabilities-b", [f"dir:{target}", "-o", "json", *excludes], mounts,
                              parse=lambda res: self._parse_grype(res, "grype")) or []
         va, vb = self.scan_vendored()
-        return a + va, b + vb
+        runtimes = {c["name"].lower(): c.get("version", "") for c in ((self.cfg.get("runtime_components") if self.cfg else None) or [])}
+        self.runtime_findings = [self._judge_runtime(f, runtimes[f.package.lower()]) for f in va + vb if f.package.lower() in runtimes]
+        keep = lambda fs: [f for f in fs if f.package.lower() not in runtimes]
+        return a + keep(va), b + keep(vb)
+
+    @staticmethod
+    def _judge_runtime(f, installed):
+        """A runtime CVE whose fix exists in the runtime's own release series blocks (upgrade within the series); one
+        fixed only in a newer series is carried on the plan of action with that upgrade as its milestone."""
+        series = ".".join(installed.split(".")[:2])
+        fixes = [v.strip() for v in (f.fixed or "").split(",") if v.strip()]
+        same = [v for v in fixes if ".".join(v.split(".")[:2]) == series]
+        if same:
+            f.fixed = ", ".join(same)
+            return f
+        f.reason = (f"fixed only in a newer release series ({', '.join(fixes) or 'none announced'}); "
+                    f"no fix in {series}.x — carried until the runtime moves series")
+        return f
 
     def vendored_sbom(self):
         """A CycloneDX inventory of the third-party code the project vendors (config vendored_components:
         name, version, purl, path). A minified library copied in byte-exact carries no package metadata, so
         neither scanner can see it otherwise (antipode and daynight: Leaflet 1.9.4 was invisible to both)."""
         declared = (self.cfg.get("vendored_components") if self.cfg else None) or []
-        if not declared:
+        runtimes = (self.cfg.get("runtime_components") if self.cfg else None) or []
+        if any(self.root.rglob("*.py")) and not any(c.get("name", "").lower() == "python" for c in runtimes) \
+                and any(p for p in self.root.rglob("*.py") if not set(p.relative_to(self.root).parts) & {".engine", ".git"}):
+            self.problems.append("the project runs Python and declares no Python runtime component (config runtime_components): "
+                                 "the interpreter is part of what ships and must be inventoried and scanned")
+        if not declared and not runtimes:
             return None
         comps = []
         for c in declared:
@@ -357,6 +389,9 @@ class Scan:
                 continue
             comps.append({"type": c.get("type", "library"), "name": c["name"], "version": c.get("version", ""),
                           **({"purl": c["purl"]} if c.get("purl") else {})})
+        for c in runtimes:
+            comps.append({"type": "framework", "name": c["name"], "version": c.get("version", ""),
+                          **({"cpe": c["cpe"]} if c.get("cpe") else {}), **({"purl": c["purl"]} if c.get("purl") else {})})
         d = self.root / SBOM_DIR
         d.mkdir(parents=True, exist_ok=True)
         p = d / "vendored.cdx.json"
@@ -393,6 +428,71 @@ class Scan:
                                             target=f"{r.get('Target', '')}:{s.get('StartLine', '?')}", source="trivy-secret",
                                             fixed="remove the secret and rotate it"))
         return self._parse_trivy(res, "trivy")
+
+    def scan_sast(self):
+        """Static analysis of the project's own code with two independent analyzers. A HIGH finding blocks, a MEDIUM
+        one is carried on the plan of action, a LOW one is informational (an unscanned codebase made the gates moot)."""
+        rules = (self.cfg.get("sast_rules") if self.cfg else None) or os.environ.get("ENGINE_SAST_RULES", "")
+        target = "/src" if self.engine == "containers" else "."
+        mounts = ((str(self.root), "/src"),)
+        out, info = [], []
+        if not rules or not pathlib.Path(rules).is_dir():
+            self.problems.append("sast-a (semgrep): no rule set (config sast_rules or ENGINE_SAST_RULES names a directory of "
+                                 "vendored rules) — static analysis cannot run, the scan fails")
+        else:
+            excludes = []
+            for d in SAST_EXCLUDES:
+                excludes += ["--exclude", d]
+            cfg_path = "/rules" if self.engine == "containers" else rules
+            found = self.run_scanner("sast-a", ["scan", "--config", cfg_path, "--json", "--metrics", "off", "--disable-version-check",
+                                                "--quiet", *excludes, target], mounts + ((rules, "/rules"),),
+                                     parse=self._parse_semgrep, ok_codes=(0,), finding_codes=(1,)) or []
+            out += [f for f in found if f.severity != "LOW"]
+            info += [f for f in found if f.severity == "LOW"]
+        found = self.run_scanner("sast-b", ["-q", "-f", "json", "-r", target, "-x", ",".join(SAST_EXCLUDES)], mounts,
+                                 parse=self._parse_bandit, ok_codes=(0,), finding_codes=(1,)) or []
+        out += [f for f in found if f.severity != "LOW"]
+        info += [f for f in found if f.severity == "LOW"]
+        self.sast_informational = info
+        return out
+
+    def _parse_semgrep(self, res):
+        try:
+            data = json.loads(res.stdout or "{}")
+        except ValueError:
+            self.problems.append("sast-a (semgrep): output is not JSON")
+            return []
+        for e in data.get("errors", []) or []:
+            if e.get("level") == "error":
+                self.notes.append(f"sast-a (semgrep): {str(e.get('message', ''))[:120]}")
+        return [self._sast_finding(x["check_id"].split(".")[-1], SAST_SEVERITY.get(x.get("extra", {}).get("severity", ""), "LOW"),
+                                   x.get("path", ""), x.get("start", {}).get("line", "?"), x.get("extra", {}).get("message", ""), "semgrep")
+                for x in data.get("results", []) or []]
+
+    def _parse_bandit(self, res):
+        try:
+            data = json.loads(res.stdout or "{}")
+        except ValueError:
+            self.problems.append("sast-b (bandit): output is not JSON")
+            return []
+        out = []
+        for x in data.get("results", []) or []:
+            sev = x.get("issue_severity", "LOW").upper()
+            if sev == "HIGH" and x.get("issue_confidence", "").upper() == "LOW":
+                sev = "MEDIUM"          # a high-severity guess the analyzer itself doubts is carried, not blocking
+            out.append(self._sast_finding(f"{x.get('test_id')}-{x.get('test_name')}", sev, x.get("filename", ""),
+                                          x.get("line_number", "?"), x.get("issue_text", ""), "bandit"))
+        return out
+
+    @staticmethod
+    def _sast_finding(rule, severity, path, line, message, source):
+        path = str(path).replace("\\", "/").lstrip("./")
+        f = Finding("sast", rule, severity, package=path, target=f"{path}:{line}", source=source)
+        if severity == "HIGH":
+            f.fixed = "fix the code: " + " ".join(str(message).split())[:160]
+        elif severity == "MEDIUM":
+            f.reason = "static-analysis finding of medium severity: fix or document why it is safe by the milestone"
+        return f
 
     def sbom_project(self):
         tool, image, _ = images.SCANNERS["composition"]
@@ -480,7 +580,7 @@ class Scan:
                 continue
             table.append(self.root, CARRIED_RECORD, sch.CARRIED, {
                 "id": ident, "component": f.package, "version": f.version, "severity": f.severity,
-                "reason_no_fix": "no upstream fix available at detection", "owner": owner,
+                "reason_no_fix": f.reason or "no upstream fix available at detection", "owner": owner,
                 "milestone": "adopt upstream fix when released", "milestone_date": (today + datetime.timedelta(days=days)).isoformat(),
                 "review_by": (today + datetime.timedelta(days=days)).isoformat(), "status": "carried",
                 "status_history": f"{today.isoformat()}:carried", "side": self.cfg.side if self.cfg else sch.UNKNOWN})
@@ -546,6 +646,9 @@ class Scan:
         single_all += single
         self.sbom_project()
         findings += self.secrets
+        findings += self.runtime_findings
+        findings += self.scan_sast()
+        single_all += self.sast_informational
         findings += confirmed_all
         gate, alarm_verdict, actionable, carried, complete = self.verdicts(findings)
         aged = self.aged_carried(confirmed_all + single_all)

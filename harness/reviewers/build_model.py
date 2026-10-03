@@ -1,31 +1,49 @@
 # © 2026 Casey Houle. All rights reserved.
 # ENGINE-OWNED: local edits to this file are discarded on update
-"""A construction session on a local open-weight model — the build role (CW1), never the gate.
+"""A construction session on local open-weight models — the build role (CW1), never the gate.
 
     python .engine/harness/reviewers/build_model.py --model devstral:24b-small-2505-q4_K_M --item N-2
+    python .engine/harness/reviewers/build_model.py --phase tests --model gemma4:31b-it-q4_K_M --item N-2
+    python harness/reviewers/build_model.py --task work/task.md --source harness/engine --tests harness/selftest \
+        --test-cmd "python -m unittest selftest.test_gate" --test-cwd harness --model a,b
 
-The model is given the work item's definition of done, the design plan, the project
-rules, and the current source and tests, and asked for the files to write. It may
-write only under the source and test directories — never the harness, the records,
-the governed files, the plan or the tickets. After each pass the project's own test
-command runs; failures go back to the model for up to a few rounds. Nothing is
-committed: the human reads the diff and commits, and the gate is a different model
-in a different process. Loopback endpoint only.
+Two phases. `--phase tests` writes the acceptance tests for the item's definition of done
+and succeeds only when they exist, parse, and fail against the current code. `--phase build`
+(the default) refuses to start on a green suite and treats every test file that existed when
+it started as read-only: construction makes the acceptance tests pass, never edits them.
+
+The model answers with search/replace edits, not whole files: a 24B model rewriting a
+400-line file loses lines; an edit whose search text is not found exactly once is refused
+and the model is told why. After each round the test command runs; a round that leaves more
+tests failing than the best state so far is rolled back. `--model` takes a comma-separated
+list: after `--patience` rounds without improvement the next model takes over. Files are
+written with LF line endings. Nothing is committed: the human reads the diff and commits,
+and the gate is a different model in a different process. Loopback endpoint only.
 """
 import argparse
 import json
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 import urllib.error
 import urllib.request
 
 LOOPBACK = ("http://127.0.0.1", "http://localhost", "http://[::1]")
+TEXT_EXT = (".py", ".html", ".htm", ".js", ".mjs", ".css", ".json", ".md", ".txt", ".toml", ".cfg", ".svg")
+MAX_CONTEXT_FILE = 40_000      # larger files (vendored libraries, data) are listed by name, not shown
 SCHEMA = {"type": "object", "properties": {
-    "files": {"type": "array", "items": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
-                                          "required": ["path", "content"]}},
-    "notes": {"type": "string"}}, "required": ["files", "notes"]}
+    "edits": {"type": "array", "items": {"type": "object", "properties": {
+        "path": {"type": "string"}, "search": {"type": "string"}, "replace": {"type": "string"}},
+        "required": ["path", "search", "replace"]}},
+    "notes": {"type": "string"}}, "required": ["edits", "notes"]}
+EDIT_RULES = (
+    "Answer ONLY with JSON: {\"edits\": [{\"path\", \"search\", \"replace\"}], \"notes\"}. Each edit replaces the exact text "
+    "`search` in file `path` with `replace`. `search` must be copied character for character from the current file and must "
+    "occur exactly once in it; include enough surrounding lines to make it unique. To create a new file give an empty "
+    "`search` and the whole file as `replace`. To change most of a small file, search for its whole content. Paths are "
+    "relative to the project root, with forward slashes.")
 
 
 def read(p):
@@ -44,13 +62,110 @@ def header(text):
     return out
 
 
-def tree_text(root, dirs):
-    parts = []
+def files_under(root, dirs):
+    out = []
     for d in dirs:
-        for p in sorted((root / d).rglob("*")):
-            if p.is_file() and p.suffix == ".py" and "__pycache__" not in p.parts:
-                parts.append(f"=== {p.relative_to(root).as_posix()} ===\n{read(p)}")
-    return "\n".join(parts) or "(no source yet)"
+        base = root / d
+        if base.is_file():
+            out.append(base)
+            continue
+        for p in sorted(base.rglob("*")) if base.is_dir() else []:
+            if p.is_file() and p.suffix in TEXT_EXT and "__pycache__" not in p.parts:
+                out.append(p)
+    return out
+
+
+def tree_text(root, dirs):
+    parts, listed = [], []
+    for p in files_under(root, dirs):
+        rel = p.relative_to(root).as_posix()
+        text = read(p)
+        if len(text) > MAX_CONTEXT_FILE:
+            listed.append(f"{rel} ({len(text)} chars, not shown)")
+        else:
+            parts.append(f"=== {rel} ===\n{text}")
+    if listed:
+        parts.append("Files present but not shown (too large to edit): " + ", ".join(listed))
+    return "\n".join(parts) or "(no files yet)"
+
+
+def apply_edits(root, edits, writable, readonly):
+    """Apply search/replace edits. Returns (written paths, refusals). An edit is refused, and
+    nothing of it written, when its path is outside the writable directories, is a read-only
+    file, or its search text is not found exactly once. Line endings are normalized to LF."""
+    written, refused, staged = [], [], {}
+    for e in edits:
+        rel = str(e.get("path", "")).replace("\\", "/").lstrip("./")
+        search, replace = str(e.get("search", "")), str(e.get("replace", ""))
+        if not rel or ".." in rel.split("/") or not any(rel == w.rstrip("/") or rel.startswith(w.rstrip("/") + "/") for w in writable):
+            refused.append(f"{rel or '(no path)'}: outside the writable directories {list(writable)}")
+            continue
+        if rel in readonly:
+            refused.append(f"{rel}: an acceptance test that existed before construction; it is read-only — change the code, not the test")
+            continue
+        p = root / rel
+        current = staged.get(rel, read(p).replace("\r\n", "\n") if p.is_file() else None)
+        search, replace = search.replace("\r\n", "\n"), replace.replace("\r\n", "\n")
+        if current is None:
+            if search.strip():
+                refused.append(f"{rel}: the file does not exist, so `search` must be empty to create it")
+                continue
+            new = replace
+        elif not search.strip():
+            refused.append(f"{rel}: the file exists; give the exact text to replace in `search` (an empty search only creates new files)")
+            continue
+        else:
+            n = current.count(search)
+            if n != 1:
+                stripped = [ln.rstrip() for ln in search.split("\n")]
+                loose = "\n".join(stripped)
+                cur_loose = "\n".join(ln.rstrip() for ln in current.split("\n"))
+                if n == 0 and cur_loose.count(loose) == 1:
+                    current, search = cur_loose, loose
+                else:
+                    refused.append(f"{rel}: `search` occurs {n} times; it must occur exactly once — copy it exactly and add context")
+                    continue
+            new = current.replace(search, replace, 1)
+        if rel.endswith(".py"):
+            try:
+                compile(new, rel, "exec")
+            except SyntaxError as err:
+                refused.append(f"{rel}: the result does not parse — SyntaxError line {err.lineno}: {err.msg} -> {str(err.text or '').strip()[:100]}")
+                continue
+        staged[rel] = new
+    for rel, new in staged.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(new, encoding="utf-8", newline="\n")
+        written.append(rel)
+    return written, refused
+
+
+def score(code, output):
+    """Failing tests (failures + errors) from unittest output; 0 when the command passed.
+    A suite that cannot even be collected scores worse than any count."""
+    if code == 0:
+        return 0
+    m = re.search(r"FAILED \(([^)]*)\)", output)
+    if m:
+        n = sum(int(x) for x in re.findall(r"(?:failures|errors)=(\d+)", m.group(1)))
+        return n or 1
+    return 10_000
+
+
+def snapshot(root, dirs):
+    return {p.relative_to(root).as_posix(): read(p) for p in files_under(root, dirs)}
+
+
+def restore(root, snap, dirs):
+    for p in files_under(root, dirs):
+        rel = p.relative_to(root).as_posix()
+        if rel not in snap:
+            p.unlink()
+    for rel, text in snap.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8", newline="\n")
 
 
 def ask(endpoint, model, system, user, num_ctx, temperature=0.1):
@@ -62,111 +177,150 @@ def ask(endpoint, model, system, user, num_ctx, temperature=0.1):
     return json.loads(out["message"]["content"]), out
 
 
-def run_tests(root, cmd):
-    res = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace")
+def run_tests(cmd, cwd):
+    res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace")
     return res.returncode, (res.stdout + res.stderr)[-6000:]
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True)
-    ap.add_argument("--item", required=True)
+    ap.add_argument("--model", required=True, help="one model, or a comma-separated list tried in order")
+    ap.add_argument("--item", help="the work item (tickets/<item>.md)")
+    ap.add_argument("--task", help="a file stating the task, in place of an item (for work outside the project lifecycle)")
+    ap.add_argument("--phase", choices=["build", "tests"], default="build")
     ap.add_argument("--endpoint", default="http://127.0.0.1:11434")
-    ap.add_argument("--num-ctx", type=int, default=16384)
-    ap.add_argument("--rounds", type=int, default=4)
-    ap.add_argument("--source", default="src")
-    ap.add_argument("--tests", default="tests")
+    ap.add_argument("--num-ctx", type=int, default=24576)
+    ap.add_argument("--rounds", type=int, default=8)
+    ap.add_argument("--patience", type=int, default=3, help="rounds without improvement before the next model takes over")
+    ap.add_argument("--source", default="src", help="comma-separated writable source directories")
+    ap.add_argument("--tests", default="tests", help="comma-separated test directories")
+    ap.add_argument("--context", action="append", default=[], help="a read-only file or directory shown to the model")
+    ap.add_argument("--test-cmd", help="the test command (default: the project's test_command)")
+    ap.add_argument("--test-cwd", default=".")
     ap.add_argument("--root", default=".")
     a = ap.parse_args(argv)
     if not a.endpoint.startswith(LOOPBACK):
         print(f"build_model: REFUSED — endpoint {a.endpoint} is not the loopback interface")
         return 2
     root = pathlib.Path(a.root).resolve()
-    ticket = read(root / "tickets" / f"{a.item}.md")
-    if not ticket:
-        print(f"build_model: COULD NOT RUN — no ticket tickets/{a.item}.md; create the item first (`item new`)")
-        return 2
-    h = header(ticket)
-    if h.get("state") not in ("claimed", "open"):
-        print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
-        return 2
+    if a.task:
+        goal = read(root / a.task) or read(a.task)
+        if not goal:
+            print(f"build_model: COULD NOT RUN — task file {a.task} is empty or missing")
+            return 2
+        name = pathlib.Path(a.task).stem
+    else:
+        if not a.item:
+            print("build_model: COULD NOT RUN — give --item or --task")
+            return 2
+        ticket = read(root / "tickets" / f"{a.item}.md")
+        if not ticket:
+            print(f"build_model: COULD NOT RUN — no ticket tickets/{a.item}.md; create the item first (`item new`)")
+            return 2
+        h = header(ticket)
+        if h.get("state") not in ("claimed", "open"):
+            print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
+            return 2
+        goal = f"Definition of done: {h.get('done_when', '(none)')}"
+        name = a.item
     try:
         cfg = json.loads(read(root / ".engine" / "rules" / "config.json"))
     except ValueError:
         cfg = {}
-    test_cmd = cfg.get("test_command") or [sys.executable, "-m", "unittest", "discover", "-s", a.tests, "-t", "."]
-    allowed = (a.source.rstrip("/") + "/", a.tests.rstrip("/") + "/")
+    sources = [s.strip().rstrip("/") for s in a.source.split(",") if s.strip()]
+    tests = [t.strip().rstrip("/") for t in a.tests.split(",") if t.strip()]
+    test_cmd = shlex.split(a.test_cmd) if a.test_cmd else (cfg.get("test_command") or [sys.executable, "-m", "unittest", "discover", "-s", tests[0], "-t", "."])
+    test_cwd = (root / a.test_cwd).resolve()
+    models = [m.strip() for m in a.model.split(",") if m.strip()]
     rules = read(root / ".engine" / "rules" / "RULES.md")
-    system = ("You are the construction session for a software project governed by the rules below. You write code and tests "
-              "only; you never touch the harness, the records, the manifest, the plan or the tickets, and you never attribute "
-              "yourself. Every route must reject a missing credential and, where a record belongs to a principal, another "
-              "principal. Tests must cover the rejection cases, not only success. Answer only with the JSON the schema describes: "
-              "the complete content of each file you create or change.\n\n" + rules)
-    code, output = run_tests(root, test_cmd)
-    if code == 0:
+    if a.phase == "tests":
+        writable, readonly = tests, set()
+        role = ("You write acceptance tests. Express every clause of the definition of done as a unittest test that FAILS "
+                "against the current code and will pass once the behaviour exists. Cover rejection cases (bad input, missing "
+                "or wrong credentials where the design has credentials), not only success. Change only files under the test "
+                "directories. Python files start with the project's copyright header line when other files carry one.")
+    else:
+        writable = sources + tests
+        readonly = {p.relative_to(root).as_posix() for p in files_under(root, tests)}
+        role = ("You are the construction session. Make the failing tests pass by changing the source. The existing test "
+                "files are the specification and are read-only; you may add new test files. Follow the design plan and the "
+                "project rules exactly, including what the design says about credentials: a route the design declares public "
+                "needs no credential check, every other route rejects a missing credential and, where a record belongs to a "
+                "principal, another principal. Python files start with the project's copyright header line when other files "
+                "carry one. Standard library only unless the plan names a dependency.")
+    system = (role + " You never touch the harness, the records, the manifest, the plan or the tickets, and you never attribute "
+              "yourself.\n\n" + EDIT_RULES + ("\n\n" + rules if rules else ""))
+    code, output = run_tests(test_cmd, test_cwd)
+    if a.phase == "build" and code == 0:
         # a green suite is not a definition of done: the model would rewrite what exists and be told it passed
         # (seen on the to-do demo: 120 tokens, the empty skeleton, "tests pass"). Construction starts red.
         print("build_model: REFUSED — the test suite already passes; write the failing acceptance tests that express "
-              f"the definition of done under {a.tests}/ first, then build (a run that changes nothing would 'converge')")
+              f"the definition of done first (`--phase tests`), then build")
         return 2
+    watched = sources + tests
+    best_snap, best = snapshot(root, watched), score(code, output)
+    start_files = set(best_snap)
     feedback = output
-    last_written = {}
-    temperature = 0.1
+    temperature, stale, mi = 0.1, 0, 0
+    print(f"build_model: {a.phase} phase for {name}; models {models}; starting score {best} failing")
     for rnd in range(1, a.rounds + 1):
-        user = (f"Work item {a.item}. Definition of done: {h.get('done_when', '(none)')}\n\n"
+        model = models[mi]
+        user = (f"Task {name}. {goal}\n\n"
                 f"Design plan (plans/design.md):\n{read(root / 'plans' / 'design.md') or '(none)'}\n\n"
-                f"Project rules (AGENTS.md):\n{read(root / 'AGENTS.md')[-3000:]}\n\n"
-                f"Current source and tests:\n{tree_text(root, [a.source, a.tests])}\n\n"
-                f"Standard library only. Write files under {a.source}/ and {a.tests}/ only; give each file's full content.\n"
-                + (f"\nThe test suite currently FAILS; make it pass:\n{feedback}\n" if feedback else ""))
-        print(f"build_model: round {rnd} with {a.model}; prompt {len(user)} chars")
+                f"Project rules (AGENTS.md):\n{read(root / 'AGENTS.md')[-3000:] or '(none)'}\n\n"
+                + "".join(f"Read-only context ({c}):\n{tree_text(root, [c])}\n\n" for c in a.context)
+                + f"Current files you may change (writable: {writable}):\n{tree_text(root, watched)}\n\n"
+                f"Test command: {' '.join(test_cmd)} (run in {a.test_cwd})\n"
+                + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
+        print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
         try:
-            out, raw = ask(a.endpoint, a.model, system, user, a.num_ctx, temperature)
+            out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature)
         except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
             print(f"build_model: COULD NOT RUN — the model did not answer ({e})")
             return 2
-        written, refused, rejected, now = [], [], [], {}
-        for f in out.get("files") or []:
-            rel = str(f.get("path", "")).replace("\\", "/").lstrip("./")
-            if not rel.startswith(allowed) or ".." in rel.split("/"):
-                refused.append(rel)
-                continue
-            p = root / rel
-            content = str(f.get("content", ""))
-            if rel.endswith(".py"):
-                try:
-                    compile(content, rel, "exec")
-                except SyntaxError as e:
-                    # a file that does not parse is not written: the healthy version stays and the model is told exactly why
-                    rejected.append(f"{rel}: SyntaxError line {e.lineno}: {e.msg} -> {str(e.text or '').strip()[:100]}")
-                    continue
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content, encoding="utf-8", newline="\n")
-            written.append(rel)
-            now[rel] = content
-        identical = bool(now) and all(last_written.get(k) == v for k, v in now.items())
-        last_written.update(now)
-        print(f"build_model: wrote {len(written)} file(s): {', '.join(written)}" + (f"; REFUSED {len(refused)} outside {allowed}: {', '.join(refused)}" if refused else ""))
+        written, refused = apply_edits(root, out.get("edits") or [], writable, readonly)
+        print(f"build_model: wrote {len(written)} file(s): {', '.join(written) or '-'}; refused {len(refused)}")
         print(f"build_model: model notes: {str(out.get('notes', ''))[:300]}")
-        for r in rejected:
-            print(f"build_model: REJECTED (kept the previous version) {r}")
-        code, output = run_tests(root, test_cmd)
-        if rejected:
-            code = code or 1
-            output = "FILES REJECTED because they do not parse (the previous versions were kept; write the whole file again, correctly):\n" \
-                     + "\n".join(rejected) + "\n\n" + output
-        print(f"build_model: test command exited {code}; {raw.get('eval_count')} tokens in {raw.get('total_duration', 0) / 1e9:.0f}s")
-        if code == 0:
-            print("build_model: tests pass. Nothing is committed: read the diff, commit as yourself, then scan, hand off and gate.")
-            return 0
-        feedback = output
-        if identical:
-            # the same answer twice cannot be the fix: say so, and sample a little wider
-            temperature = min(0.6, temperature + 0.25)
-            feedback = ("YOUR PREVIOUS ANSWER WAS BYTE-IDENTICAL TO THE ONE BEFORE IT AND DID NOT FIX THE ERROR. Read the traceback "
-                        "line by line; rewrite the failing function from scratch rather than editing it.\n" + output)
-            print(f"build_model: round {rnd} changed nothing; temperature raised to {temperature}")
-    print(f"build_model: tests still failing after {a.rounds} round(s); the tree is left as the model wrote it for the human to read")
+        for r in refused:
+            print(f"build_model: REFUSED edit {r}")
+        code, output = run_tests(test_cmd, test_cwd)
+        now = score(code, output)
+        print(f"build_model: test command exited {code}; {now} failing (best {best}); {raw.get('eval_count')} tokens in {raw.get('total_duration', 0) / 1e9:.0f}s")
+        notes = ("EDITS REFUSED (nothing of these was written):\n" + "\n".join(refused) + "\n\n") if refused else ""
+        if a.phase == "tests":
+            new_tests = set(snapshot(root, tests)) - start_files
+            if written and code != 0 and now < 10_000:
+                print(f"build_model: acceptance tests written and failing as they must ({now} failing; new files: {sorted(new_tests) or 'edits to existing files'}). "
+                      "Read them before construction: they are the specification.")
+                return 0
+            if code == 0 and written:
+                notes += "THE SUITE PASSES: the new tests do not fail against the current code, so they test nothing new. Make them assert the behaviour the definition of done requires.\n"
+            if now >= 10_000:
+                notes += "THE SUITE CANNOT BE COLLECTED (import or syntax error) — tests must import and run, then fail on assertions.\n"
+            feedback = notes + output
+            stale += 1
+        else:
+            if code == 0 and not refused:
+                print("build_model: tests pass. Nothing is committed: read the diff, commit as yourself, then scan, hand off and gate.")
+                return 0
+            if now < best:
+                best, best_snap, stale = now, snapshot(root, watched), 0
+                feedback = notes + output
+            else:
+                stale += 1
+                if now > best:
+                    restore(root, best_snap, watched)
+                    notes += f"YOUR LAST EDITS MADE THINGS WORSE ({now} failing against {best}) AND WERE ROLLED BACK. The files above are not what you see now: the previous state is restored. Try a different approach.\n"
+                    code, output = run_tests(test_cmd, test_cwd)
+                feedback = notes + output
+        if stale >= a.patience and mi + 1 < len(models):
+            mi, stale, temperature = mi + 1, 0, 0.1
+            print(f"build_model: no improvement in {a.patience} round(s); handing over to {models[mi]}")
+        elif stale:
+            temperature = min(0.6, temperature + 0.15)
+    print(f"build_model: not converged after {a.rounds} round(s); best state kept ({best} failing) for the human to read")
+    if a.phase == "build":
+        restore(root, best_snap, watched)
     return 1
 
 

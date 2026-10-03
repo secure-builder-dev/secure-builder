@@ -112,5 +112,62 @@ class GovernedInputsAtHead(unittest.TestCase):
                              "a file version control does not hold at head falls back to the working tree")
 
 
+class BuildEdits(unittest.TestCase):
+    """The build driver applies search/replace edits and refuses the ones that would do harm."""
+
+    def setUp(self):
+        self.bm = load("build_model")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.tmp.name)
+        (self.root / "src").mkdir()
+        (self.root / "tests").mkdir()
+        (self.root / "src" / "a.py").write_text("X = 1\r\nY = 2\r\n", encoding="utf-8", newline="")
+        (self.root / "tests" / "test_a.py").write_text("import unittest\n", encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def apply(self, edits, readonly=("tests/test_a.py",)):
+        return self.bm.apply_edits(self.root, edits, ["src", "tests"], set(readonly))
+
+    def test_an_exact_single_match_is_replaced_and_written_with_lf(self):
+        written, refused = self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 3"}])
+        self.assertEqual((written, refused), (["src/a.py"], []))
+        self.assertEqual((self.root / "src" / "a.py").read_bytes(), b"X = 1\nY = 3\n")
+
+    def test_a_new_file_needs_an_empty_search(self):
+        self.assertEqual(self.apply([{"path": "src/b.py", "search": "", "replace": "Z = 1\n"}])[0], ["src/b.py"])
+        self.assertTrue(self.apply([{"path": "src/c.py", "search": "Z", "replace": "Z = 1\n"}])[1])
+
+    def test_missing_ambiguous_outside_readonly_and_unparsable_edits_are_refused_and_not_written(self):
+        before = (self.root / "src" / "a.py").read_bytes()
+        cases = [{"path": "src/a.py", "search": "Q = 9", "replace": "Q = 1"},
+                 {"path": "src/a.py", "search": " = ", "replace": "="},
+                 {"path": ".engine/rules/config.json", "search": "", "replace": "{}"},
+                 {"path": "src/../x.py", "search": "", "replace": "1"},
+                 {"path": "tests/test_a.py", "search": "import unittest", "replace": "pass"},
+                 {"path": "src/a.py", "search": "Y = 2", "replace": "Y = ("}]
+        for e in cases:
+            written, refused = self.apply([e])
+            self.assertEqual((written, len(refused)), ([], 1), e)
+        self.assertEqual((self.root / "src" / "a.py").read_bytes(), before)
+
+    def test_a_readonly_test_is_writable_in_the_tests_phase(self):
+        self.assertEqual(self.apply([{"path": "tests/test_a.py", "search": "import unittest", "replace": "import unittest\nimport os"}],
+                                    readonly=())[0], ["tests/test_a.py"])
+
+    def test_score_counts_failures_and_errors_and_ranks_an_uncollectable_suite_worst(self):
+        self.assertEqual(self.bm.score(0, "OK"), 0)
+        self.assertEqual(self.bm.score(1, "Ran 9 tests\n\nFAILED (failures=2, errors=1)"), 3)
+        self.assertEqual(self.bm.score(1, "SyntaxError: invalid syntax"), 10_000)
+
+    def test_restore_returns_the_tree_to_a_snapshot(self):
+        snap = self.bm.snapshot(self.root, ["src"])
+        self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 9"}, {"path": "src/new.py", "search": "", "replace": "N = 1\n"}])
+        self.bm.restore(self.root, snap, ["src"])
+        self.assertFalse((self.root / "src" / "new.py").exists())
+        self.assertIn("Y = 2", (self.root / "src" / "a.py").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

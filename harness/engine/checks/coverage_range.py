@@ -6,19 +6,12 @@ The range is the protected branch (as the remote sees it) to HEAD. On the
 protected branch itself there is no range under review. A missing report is
 "could not run": coverage that was not measured is not coverage.
 """
-from .. import coverage, gitutil
+from .. import controlshape, coverage, gitutil
 from ..outcome import Outcome
 
 NAME = "coverage-range"
 DEFAULT_REPORT = ".engine/work/coverage.json"
-VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
-
-
-def vendored(path):
-    """Third-party code copied in byte-exact (a DDIL project vendors its libraries): the project's
-    suite cannot and should not cover it; its integrity is pinned elsewhere (Subresource Integrity,
-    the license and dependency records)."""
-    return any(part in VENDORED_DIRS for part in path.split("/")[:-1])
+vendored = controlshape.vendored     # one rule for what is third-party code
 
 
 def run(root, cfg, base=None, head=None):

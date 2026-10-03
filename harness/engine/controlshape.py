@@ -51,10 +51,26 @@ def control_symbols(path, text):
     return out
 
 
+VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
+
+
+def vendored(path):
+    """Third-party code copied in byte-exact (a DDIL project vendors its libraries). It is not the
+    project's code: the project's suite does not cover it and its words are not the project's controls
+    (antipode A-2: minified Leaflet read as authentication, authorization and cryptography)."""
+    return any(part in VENDORED_DIRS for part in path.replace("\\", "/").split("/")[:-1])
+
+
 def diff_is_control_shaped(diff_text):
-    """Control-shaped if any added or removed line, or any touched file's path, reads as a control."""
-    touched = []
+    """Control-shaped if any added or removed line, or any touched file's path, reads as a control.
+    Hunks of vendored files are skipped."""
+    touched, skip = [], False
     for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            skip = vendored(line.rsplit(" b/", 1)[-1])
+            continue
+        if skip:
+            continue
         if line.startswith(("+++ ", "--- ")):
             touched.append(line[4:].strip())
         elif line.startswith(("+", "-")) and not line.startswith(("+++", "---")):

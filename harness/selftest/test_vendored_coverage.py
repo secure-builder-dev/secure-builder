@@ -17,5 +17,15 @@ class Vendored(unittest.TestCase):
             self.assertFalse(coverage_range.vendored(p), p)
 
 
+class VendoredDiff(unittest.TestCase):
+    def test_a_vendored_file_does_not_make_the_diff_control_shaped(self):
+        from engine import controlshape
+        vendored = ("diff --git a/src/static/vendor/leaflet/leaflet.js b/src/static/vendor/leaflet/leaflet.js\n"
+                    "+++ b/src/static/vendor/leaflet/leaflet.js\n+var token = allowPermission(hash);\n")
+        own = "diff --git a/src/auth.py b/src/auth.py\n+++ b/src/auth.py\n+def require_auth(token):\n"
+        self.assertEqual(controlshape.diff_is_control_shaped(vendored), [])
+        self.assertIn("authentication", controlshape.diff_is_control_shaped(vendored + own))
+
+
 if __name__ == "__main__":
     unittest.main()

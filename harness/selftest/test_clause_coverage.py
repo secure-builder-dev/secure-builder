@@ -120,6 +120,12 @@ class DriverRobustness(unittest.TestCase):
         self.assertEqual(len(hints), 1, hints)
         self.assertIn("src/s.py:3: dict key 'A' is repeated (first at line 1)", hints[0])
 
+    def test_a_test_module_that_cannot_import_scores_worse_than_real_failures(self):
+        uncollectable = ("ERROR: test_terminator (unittest.loader._FailedTest.test_terminator)\n"
+                         "ImportError: Failed to import test module: test_terminator\n\nFAILED (errors=1)\n")
+        ten_real = "FAIL: test_a (tests.t.C.test_a)\n\nFAILED (failures=10)\n"
+        self.assertGreater(self.bm.score(1, uncollectable), self.bm.score(1, ten_real))
+
     def test_failing_test_names_are_read_from_unittest_output(self):
         out = "FAIL: test_a (tests.t.C.test_a)\nERROR: test_b (tests.t.C.test_b)\nok\n"
         self.assertEqual(self.bm.failing_tests(out), {"tests.t.C.test_a", "tests.t.C.test_b"})

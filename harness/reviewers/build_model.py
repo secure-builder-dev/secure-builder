@@ -239,6 +239,11 @@ def score(code, output):
     m = re.search(r"FAILED \(([^)]*)\)", output)
     if m:
         n = sum(int(x) for x in re.findall(r"(?:failures|errors)=(\d+)", m.group(1)))
+        # a test module that cannot even be imported counts as one error but hides all its tests: score it as
+        # uncollectable, so a round that makes it import (and shows 10 real failures) is progress, not a loss
+        # (daynight D-1: fifteen rounds held at '1 failing' while the models' app.py never imported)
+        if "unittest.loader._FailedTest" in output or re.search(r"^(ImportError|ModuleNotFoundError)\b", output, re.M):
+            return 5_000 + n
         return n or 1
     return 10_000
 
@@ -417,6 +422,9 @@ def main(argv=None):
         now, failing = score(code, output), failing_tests(output)
         print(f"build_model: test command exited {code}; {now} failing (best {best}); {raw.get('eval_count')} tokens in {raw.get('total_duration', 0) / 1e9:.0f}s"
               + (f"; failing: {', '.join(sorted(failing))}" if failing else ""))
+        errors = re.findall(r"^\w*(?:Error|Exception):.*$", output, re.M)
+        if errors:     # the human reading the log sees what the model saw (daynight D-1's log showed only counts)
+            print(f"build_model: first error: {errors[0][:240]}")
         notes = ("EDITS REFUSED (nothing of these was written):\n" + "\n".join(refused) + "\n\n") if refused else ""
         hints = static_hints(root, sources)
         if hints:

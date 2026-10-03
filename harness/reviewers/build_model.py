@@ -21,6 +21,7 @@ written with LF line endings. Nothing is committed: the human reads the diff and
 and the gate is a different model in a different process. Loopback endpoint only.
 """
 import argparse
+import ast
 import difflib
 import json
 import pathlib
@@ -120,6 +121,31 @@ def uncovered(clauses, covered, names):
     """Clause numbers (1-based) with no mapping to an existing test function (antipode A-4: five string
     checks were offered for an eight-clause definition of done and the phase reported success)."""
     return [i for i in range(1, len(clauses) + 1) if covered.get(i) not in names]
+
+
+def static_hints(root, dirs):
+    """Silent defects no test output names, found with the standard library's parser: a dict literal that
+    repeats a constant key keeps only the last value (antipode A-4: a hard-coded Content-Security-Policy
+    repeated in the headers dict overrode the computed one, the page's script was refused, and three models
+    spent 24 rounds on a render test that said only '0 drawn')."""
+    hints = []
+    for p in files_under(root, dirs):
+        if p.suffix != ".py":
+            continue
+        try:
+            tree = ast.parse(read(p))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Dict):
+                seen = {}
+                for k in node.keys:
+                    if isinstance(k, ast.Constant):
+                        if k.value in seen:
+                            hints.append(f"{p.relative_to(root).as_posix()}:{k.lineno}: dict key {k.value!r} is repeated "
+                                         f"(first at line {seen[k.value]}); only the last value is kept")
+                        seen.setdefault(k.value, k.lineno)
+    return hints
 
 
 def closest(text, search):
@@ -326,7 +352,9 @@ def main(argv=None):
     watched = sources + tests
     best_snap, best = snapshot(root, watched), score(code, output)
     start_files = set(best_snap)
-    feedback = output
+    first_hints = static_hints(root, sources)
+    feedback = (("STATIC CHECK OF THE SOURCE (no test reports these):" + chr(10) + chr(10).join(first_hints) + chr(10) * 2)
+                if first_hints else "") + output
     temperature, stale, mi = 0.1, 0, 0
     covered = {}
     print(f"build_model: {a.phase} phase for {name}; models {models}; starting score {best} failing")
@@ -375,6 +403,10 @@ def main(argv=None):
         now = score(code, output)
         print(f"build_model: test command exited {code}; {now} failing (best {best}); {raw.get('eval_count')} tokens in {raw.get('total_duration', 0) / 1e9:.0f}s")
         notes = ("EDITS REFUSED (nothing of these was written):\n" + "\n".join(refused) + "\n\n") if refused else ""
+        hints = static_hints(root, sources)
+        if hints:
+            notes += "STATIC CHECK OF YOUR SOURCE (fix these first; no test reports them):\n" + "\n".join(hints) + "\n\n"
+            print(f"build_model: static check: {len(hints)} problem(s): {hints[0]}")
         if a.phase == "tests":
             new_tests = set(snapshot(root, tests)) - start_files
             # every edit must land: a refused edit is a clause of the definition of done left unexpressed

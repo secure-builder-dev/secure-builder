@@ -107,6 +107,15 @@ class DriverRobustness(unittest.TestCase):
             self.assertEqual(css.read_bytes(), original, "a vendored file keeps its exact bytes")
             self.assertEqual((root / "src" / "app.py").read_text(encoding="utf-8"), "X = 1\n")
 
+    def test_a_repeated_dict_key_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "src").mkdir()
+            (root / "src" / "s.py").write_text('H = {"A": 1,\n     "B": 2,\n     "A": 3}\nOK = {"A": 1}\n', encoding="utf-8")
+            hints = self.bm.static_hints(root, ["src"])
+        self.assertEqual(len(hints), 1, hints)
+        self.assertIn("src/s.py:3: dict key 'A' is repeated (first at line 1)", hints[0])
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

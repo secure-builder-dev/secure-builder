@@ -194,6 +194,20 @@ class BuildEdits(unittest.TestCase):
         self.assertEqual(code, 1, out.getvalue())
         self.assertIn("REFUSED edit", out.getvalue())
 
+    def test_the_reviewers_note_reaches_the_model(self):
+        from unittest import mock
+        (self.root / "task.md").write_text("write the tests", encoding="utf-8")
+        seen = []
+
+        def fake(endpoint, model, system, user, *a, **k):
+            seen.append(user)
+            return {"edits": [], "notes": ""}, {}
+        with mock.patch.object(self.bm, "ask", fake), contextlib.redirect_stdout(io.StringIO()):
+            self.bm.main(["--phase", "tests", "--task", str(self.root / "task.md"), "--root", str(self.root), "--model", "m",
+                          "--rounds", "1", "--note", "the CRLF clause has no test", "--test-cmd", f"\"{sys.executable}\" -c pass"])
+        self.assertIn("REVIEWER NOTE", seen[0])
+        self.assertIn("the CRLF clause has no test", seen[0])
+
     def test_restore_returns_the_tree_to_a_snapshot(self):
         snap = self.bm.snapshot(self.root, ["src"])
         self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 9"}, {"path": "src/new.py", "search": "", "replace": "N = 1\n"}])

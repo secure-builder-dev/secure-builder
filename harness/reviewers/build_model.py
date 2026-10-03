@@ -201,6 +201,7 @@ def main(argv=None):
     ap.add_argument("--test-cmd", help="the test command (default: the project's test_command)")
     ap.add_argument("--test-cwd", default=".")
     ap.add_argument("--root", default=".")
+    ap.add_argument("--note", action="append", default=[], help="the human reviewer's note to the model (what the tests or code still miss)")
     ap.add_argument("--think", action="store_true", help="let a reasoning model think aloud (spent from the output budget)")
     a = ap.parse_args(argv)
     if not a.endpoint.startswith(LOOPBACK):
@@ -275,6 +276,7 @@ def main(argv=None):
                 + "".join(f"Read-only context ({c}):\n{tree_text(root, [c])}\n\n" for c in a.context)
                 + f"Current files you may change (writable: {writable}):\n{tree_text(root, watched)}\n\n"
                 f"Test command: {' '.join(test_cmd)} (run in {a.test_cwd})\n"
+                + "".join(f"\nREVIEWER NOTE (from the human; act on it): {n}\n" for n in a.note)
                 + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
         try:

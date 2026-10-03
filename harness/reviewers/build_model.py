@@ -323,8 +323,20 @@ def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False, re
     return json.loads(out["message"]["content"]), out
 
 
-def run_tests(cmd, cwd):
-    res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace")
+TEST_TIMEOUT = 600
+
+
+def run_tests(cmd, cwd, timeout=TEST_TIMEOUT):
+    # a bounded run: a test that waits on a server that never answers (the CWE-400 fix's own acceptance test,
+    # against the unfixed server) hung the suite, and the loop with it, for half an hour
+    try:
+        res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        out = "".join(x.decode("utf-8", "replace") if isinstance(x, bytes) else (x or "") for x in (e.stdout, e.stderr))
+        return 124, (out[-5000:] + f"\nFAIL: the test command did not finish within {timeout}s and was stopped. A test hung: "
+                     "every network read or connection in a test needs its own timeout, so that a server that never "
+                     "answers fails the test instead of blocking it.\n")
     return res.returncode, (res.stdout + res.stderr)[-6000:]
 
 

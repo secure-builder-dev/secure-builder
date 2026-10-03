@@ -20,8 +20,10 @@ import shutil
 import struct
 import subprocess
 import tempfile
+import time
 import zlib
 
+PNG_END = b"IEND\xaeB`\x82"     # the last chunk and its CRC: the file is complete
 CANDIDATES = ("msedge", "chrome", "chromium", "chromium-browser", "google-chrome")
 WINDOWS_PATHS = (r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe",
                  r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe",
@@ -117,11 +119,18 @@ def screenshot(url, width=1280, height=800, wait_ms=10000, timeout=120):
     exe = browser()
     if not exe:
         return None
-    with tempfile.TemporaryDirectory() as d:
+    # a browser on Windows leaves a helper process holding the profile's lockfile for a moment after it
+    # exits; the leftover profile is temporary and is not worth failing a test over
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         out = pathlib.Path(d) / "shot.png"
         subprocess.run([exe, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--window-size={width},{height}",
                         f"--virtual-time-budget={wait_ms}", f"--user-data-dir={pathlib.Path(d) / 'profile'}",
                         f"--screenshot={out}", url], capture_output=True, timeout=timeout)
-        if not out.is_file():
-            raise RuntimeError(f"{exe} wrote no screenshot for {url}")
-        return decode_png(out.read_bytes())
+        # Edge's launcher on Windows returns at once and a child renders: wait for a complete PNG
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            data = out.read_bytes() if out.is_file() else b""
+            if data.endswith(PNG_END):
+                return decode_png(data)
+            time.sleep(0.25)
+        raise RuntimeError(f"{exe} wrote no screenshot for {url} within {timeout}s")

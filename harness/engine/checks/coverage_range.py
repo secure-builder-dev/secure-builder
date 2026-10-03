@@ -11,6 +11,14 @@ from ..outcome import Outcome
 
 NAME = "coverage-range"
 DEFAULT_REPORT = ".engine/work/coverage.json"
+VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
+
+
+def vendored(path):
+    """Third-party code copied in byte-exact (a DDIL project vendors its libraries): the project's
+    suite cannot and should not cover it; its integrity is pinned elsewhere (Subresource Integrity,
+    the license and dependency records)."""
+    return any(part in VENDORED_DIRS for part in path.split("/")[:-1])
 
 
 def run(root, cfg, base=None, head=None):
@@ -27,6 +35,8 @@ def run(root, cfg, base=None, head=None):
         base = gitutil.merge_base(root, ref, head) or ref
     # the placed harness under .engine/ is engine-owned and covered by its own suite, not the project's
     changed = [f for f in gitutil.changed_files(root, base, head) if not f.startswith(".engine/")]
+    skipped = [f for f in changed if vendored(f)]
+    changed = [f for f in changed if not vendored(f)]
     report_path = (cfg.get("coverage_report") if cfg else None) or DEFAULT_REPORT
     report = coverage.read_report(root / report_path if not str(report_path).startswith("/") else report_path)
     thresholds = (cfg.get("coverage_thresholds") if cfg else None) or coverage.DEFAULT_THRESHOLDS
@@ -37,4 +47,5 @@ def run(root, cfg, base=None, head=None):
         return Outcome.could_not_run(NAME, f"no coverage report at {report_path}; {assessed} changed source file(s) unmeasured")
     if findings:
         return Outcome.found(NAME, f"{len(findings)} of {assessed} changed source files below threshold or unmeasured", findings, blocking=True)
-    return Outcome.clean(NAME, f"{assessed} changed source file(s) in {base[:7]}..{head[:7]} meet their layer thresholds")
+    return Outcome.clean(NAME, f"{assessed} changed source file(s) in {base[:7]}..{head[:7]} meet their layer thresholds"
+                         + (f"; {len(skipped)} vendored third-party file(s) not measured" if skipped else ""))

@@ -21,6 +21,7 @@ written with LF line endings. Nothing is committed: the human reads the diff and
 and the gate is a different model in a different process. Loopback endpoint only.
 """
 import argparse
+import difflib
 import json
 import pathlib
 import re
@@ -89,6 +90,20 @@ def tree_text(root, dirs):
     return "\n".join(parts) or "(no files yet)"
 
 
+def closest(text, search):
+    """The passage of `text` most like `search` (same number of lines), quoted back so a model that
+    misremembered a line can copy the real one; empty when nothing is close."""
+    lines, want = text.split("\n"), search.strip("\n").split("\n")
+    k = max(1, len(want))
+    best, best_ratio = "", 0.0
+    for i in range(0, max(1, len(lines) - k + 1)):
+        window = "\n".join(lines[i:i + k])
+        r = difflib.SequenceMatcher(None, window, "\n".join(want)).ratio()
+        if r > best_ratio:
+            best, best_ratio = window, r
+    return best if best_ratio >= 0.6 else ""
+
+
 def apply_edits(root, edits, writable, readonly):
     """Apply search/replace edits. Returns (written paths, refusals). An edit is refused, and
     nothing of it written, when its path is outside the writable directories, is a read-only
@@ -123,7 +138,9 @@ def apply_edits(root, edits, writable, readonly):
                 if n == 0 and cur_loose.count(loose) == 1:
                     current, search = cur_loose, loose
                 else:
-                    refused.append(f"{rel}: `search` occurs {n} times; it must occur exactly once — copy it exactly and add context")
+                    hint = closest(current, search) if n == 0 else ""
+                    refused.append(f"{rel}: `search` occurs {n} times; it must occur exactly once — copy it exactly and add context"
+                                   + (f". The closest passage in the file is:\n{hint}" if hint else ""))
                     continue
             new = current.replace(search, replace, 1)
         if rel.endswith(".py"):

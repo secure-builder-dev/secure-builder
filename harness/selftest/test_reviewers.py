@@ -208,6 +208,12 @@ class BuildEdits(unittest.TestCase):
         self.assertIn("REVIEWER NOTE", seen[0])
         self.assertIn("the CRLF clause has no test", seen[0])
 
+    def test_a_near_miss_search_is_answered_with_the_real_passage(self):
+        written, refused = self.apply([{"path": "src/a.py", "search": "Y  =  2", "replace": "Y = 3"}])
+        self.assertEqual(written, [])
+        self.assertIn("closest passage", refused[0])
+        self.assertIn("Y = 2", refused[0])
+
     def test_restore_returns_the_tree_to_a_snapshot(self):
         snap = self.bm.snapshot(self.root, ["src"])
         self.apply([{"path": "src/a.py", "search": "Y = 2", "replace": "Y = 9"}, {"path": "src/new.py", "search": "", "replace": "N = 1\n"}])

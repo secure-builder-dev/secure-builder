@@ -336,7 +336,9 @@ def run_tests(cmd, cwd, timeout=TEST_TIMEOUT):
         out = "".join(x.decode("utf-8", "replace") if isinstance(x, bytes) else (x or "") for x in (e.stdout, e.stderr))
         return 124, (out[-5000:] + f"\nFAIL: the test command did not finish within {timeout}s and was stopped. A test hung: "
                      "every network read or connection in a test needs its own timeout, so that a server that never "
-                     "answers fails the test instead of blocking it.\n")
+                     "answers fails the test instead of blocking it. A test server's shutdown() waits for the request "
+                     "it is handling: close every client socket the test opened (in a finally block or addCleanup) "
+                     "before shutting the server down, or a failing test hangs in tearDown.\n")
     return res.returncode, (res.stdout + res.stderr)[-6000:]
 
 

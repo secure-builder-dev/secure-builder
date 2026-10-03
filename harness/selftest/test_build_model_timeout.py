@@ -16,6 +16,7 @@ class TestRunBounded(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertIn("did not finish within 2s", out)
         self.assertIn("needs its own timeout", out)
+        self.assertIn("before shutting the server down", out)
 
     def test_a_finished_command_reports_its_own_exit_code(self):
         with tree() as t:

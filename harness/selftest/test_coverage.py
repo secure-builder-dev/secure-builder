@@ -99,6 +99,7 @@ class ExecutableLines(unittest.TestCase):
         with tree() as t:
             write(t, "engine/a.py", "x = 1" + chr(10))
             write(t, "engine/dist/b.py", "y = 2" + chr(10))
+            write(t, "engine/selftest/test_c.py", "z = 3" + chr(10))
             rep = coverage.Collector(t, "engine").report()
             self.assertEqual(list(rep["files"]), ["engine/a.py"])
 

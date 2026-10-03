@@ -146,20 +146,22 @@ class Collector:
     def report(self):
         files = {}
         for p in sorted(pathlib.Path(self.prefix).rglob("*.py")):
-            if "dist" in p.parts:
+            rel = p.relative_to(self.root).as_posix()
+            if "dist" in p.parts or TEST_PATH.search(rel):     # test code is what measures, not what is measured
                 continue
             total = executable_lines(p)
             covered = total & self.hit.get(str(p), set())
-            files[p.relative_to(self.root).as_posix()] = {"covered": len(covered), "total": len(total)}
+            files[rel] = {"covered": len(covered), "total": len(total)}
         return {"files": files}
 
 
 def collect(root, run_suite, prefix=None, out=".engine/work/coverage.json"):
     """Run `run_suite()` under the collector and write the report. Returns the report. With no
-    prefix, the harness's own package is measured wherever the tree keeps it (harness/engine or engine)."""
+    prefix, the whole harness is measured wherever the tree keeps it: the engine package and the build driver and
+    reviewers beside it (a change to reviewers/build_model.py read as unmeasured when only the package was traced)."""
     if prefix is None:
-        pkg = layout.package_dir(root)
-        prefix = layout.rel(root, pkg) if pkg else "engine"
+        h = layout.harness_dir(root)
+        prefix = layout.rel(root, h) if h else "engine"
     c = Collector(root, prefix)
     c.start()
     try:

@@ -462,7 +462,7 @@ def cmd_handoff(root, argv):
 def cmd_gate(root, argv):
     from . import gate, gitutil
     if not argv:
-        print("gate prepare unit=<u> run=<n> base=<sha> head=<sha> | gate submit unit= run= file=<verdict.json> attested_by= | gate no-model unit= run= attested_by=")
+        print("gate prepare unit=<u> run=<n> base=<sha> head=<sha> | gate submit unit= run= file=<verdict.json> attested_by= | gate no-model unit= run= attested_by= | gate abandon unit= run= reason= attested_by=")
         return 2
     sub, kv = argv[0], _kv(argv[1:])
     try:
@@ -504,6 +504,13 @@ def cmd_gate(root, argv):
                 print("  - " + p)
             return 1
         print(f"gate: recorded {line}")
+        return 0
+    if sub == "abandon":
+        line, probs = gate.abandon(root, cfg, kv.get("unit", ""), kv.get("run", ""), kv.get("reason", ""), kv.get("attested_by", ""))
+        if probs:
+            print("gate: REFUSED — " + "; ".join(probs))
+            return 1
+        print(f"gate: recorded abandoned run: {line}")
         return 0
     if sub == "no-model":
         line, probs = gate.no_model(root, cfg, kv["unit"], kv["run"], kv.get("attested_by", ""))

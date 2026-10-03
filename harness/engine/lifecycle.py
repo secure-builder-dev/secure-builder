@@ -168,7 +168,10 @@ def orient(root, cfg, ci_status=None):
     all_items = items(root)
     mine = {k: v for k, v in all_items.items() if v.get("unit") == unit}
     rows, _ = gatelog.series(root)
-    runs = [r for r in rows if r["unit"] == unit]
+    # the latest run is the highest run number with a verdict, not the last row in the file: rows are
+    # append-only and an earlier run closed late lands below a later one (antipode ANTI-1)
+    runs = sorted([r for r in rows if r["unit"] == unit and r["verdict"] not in ("abandoned", "superseded") and not r.get("_superseded")],
+                  key=lambda r: int(r["run"]) if str(r["run"]).isdigit() else -1)
     L.append(f"unit: {unit} state={unit_hdr.get('state', 'no unit file')}; items: "
              + ", ".join(f"{k}={v.get('state')}" for k, v in mine.items()) if mine else f"unit: {unit} state={unit_hdr.get('state', 'no unit file')}; items: none")
     if runs:

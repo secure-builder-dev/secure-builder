@@ -36,7 +36,7 @@ MUTATION = ("mutation-results", 1, ["date", "control", "branch", "mutation", "ba
 INGEST = ("ingest-records", 1, ["date", "bundle", "production_date", "arrival_date", "hash_result", "modified_in_transit", "operator", "side"])
 
 REVIEWER_CLASSES = ("human", "automated", "automated-with-human-review")
-VERDICTS = ("pass", "fail", "advisory", "field-pass", "field-fail", "superseded")
+VERDICTS = ("pass", "fail", "advisory", "field-pass", "field-fail", "superseded", "abandoned")
 MODES = ("normal", "field")
 UNKNOWN = "unknown"
 

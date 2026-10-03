@@ -26,6 +26,13 @@ class VendoredDiff(unittest.TestCase):
         self.assertEqual(controlshape.diff_is_control_shaped(vendored), [])
         self.assertIn("authentication", controlshape.diff_is_control_shaped(vendored + own))
 
+    def test_the_placed_harness_and_prose_do_not_make_the_diff_control_shaped(self):
+        from engine import controlshape
+        noise = ("diff --git a/.engine/harness/engine/gate.py b/.engine/harness/engine/gate.py\n+def require_auth(token):\n"
+                 "diff --git a/tickets/A-2.md b/tickets/A-2.md\n+the policy allows a hash\n"
+                 "diff --git a/.gitattributes b/.gitattributes\n+*.sha binary\n")
+        self.assertEqual(controlshape.diff_is_control_shaped(noise), [])
+
 
 if __name__ == "__main__":
     unittest.main()

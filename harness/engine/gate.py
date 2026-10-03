@@ -474,3 +474,26 @@ def no_model(root, cfg, unit, run, attested_by):
                           attested_by=attested_by, harness_version=state["harness_version"],
                           checklist_version=state["checklist_version"])
     return line, []
+
+
+def abandon(root, cfg, unit, run, reason, attested_by):
+    """Close a started run that will never get a verdict (its handoff was stale, the range was
+    replaced) with an 'abandoned' row: the marker is matched honestly, and nobody claims a review
+    happened. The range comes from the run's started marker."""
+    if not str(reason).strip() or not str(attested_by).strip():
+        return None, ["an abandoned run needs a reason and the name of who abandoned it"]
+    marker = next((m for m in gatelog.started_markers(root) if m.get("unit") == unit and str(m.get("run")) == str(run)), None)
+    if marker is None:
+        return None, [f"no started marker for {unit}#{run}: a run that never started needs no row"]
+    if (unit, str(run)) not in {(m.get("unit"), str(m.get("run"))) for m in gatelog.unmatched_markers(root)}:
+        return None, [f"{unit}#{run} already has a completed row"]
+    p = state_path(root, unit, run)
+    state = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+    base, _, head = str(marker.get("range", "")).partition("..")
+    line = gatelog.append(root, cfg, unit=unit, range=f"{base[:12]}..{head[:12]}", run=str(run), verdict="abandoned",
+                          findings=f"1: ABANDONED - {reason}", reviewer="none", reviewer_class="automated",
+                          model="none - run abandoned", attested_by=attested_by,
+                          harness_version=state.get("harness_version", version()),
+                          checklist_version=state.get("checklist_version", "-"))
+    return line, []
+

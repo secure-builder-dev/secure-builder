@@ -51,6 +51,7 @@ def control_symbols(path, text):
     return out
 
 
+PROSE_EXT = (".md", ".txt", ".rst", ".adoc")
 VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
 
 
@@ -67,7 +68,10 @@ def diff_is_control_shaped(diff_text):
     touched, skip = [], False
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
-            skip = vendored(line.rsplit(" b/", 1)[-1])
+            path = line.rsplit(" b/", 1)[-1]
+            # the placed harness is engine-owned (its own suite covers it), vendored code is not the
+            # project's, and prose (plans, tickets, attributes) describes controls without being one
+            skip = path.startswith(".engine/") or vendored(path) or path.endswith(PROSE_EXT) or path.rsplit("/", 1)[-1].startswith(".git")
             continue
         if skip:
             continue

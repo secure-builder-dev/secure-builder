@@ -1,12 +1,12 @@
 # Coverage inventory — the assessed boundary
 
-Generated 2026-09-20 from the gate log. A file is *assessed* because a passing gate-log
+Generated 2026-10-03 from the gate log. A file is *assessed* because a passing gate-log
 row's range contains it — never because it looks reviewed. 'Assessed' means assessed at least once;
 it is not a clean bill of health. *Assessed elsewhere, evidence not available* is code received across
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 123 (100%)
+- never assessed: 135 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -67,6 +67,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/engine/net.py | never assessed |  |
 | harness/engine/outcome.py | never assessed |  |
 | harness/engine/ownership.py | never assessed |  |
+| harness/engine/pagecheck.py | never assessed |  |
 | harness/engine/probes.py | never assessed |  |
 | harness/engine/records/__init__.py | never assessed |  |
 | harness/engine/records/changelog.py | never assessed |  |
@@ -99,6 +100,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/selftest/test_checks_docs.py | never assessed |  |
 | harness/selftest/test_checks_scan.py | never assessed |  |
 | harness/selftest/test_citations.py | never assessed |  |
+| harness/selftest/test_clause_coverage.py | never assessed |  |
 | harness/selftest/test_cli.py | never assessed |  |
 | harness/selftest/test_config.py | never assessed |  |
 | harness/selftest/test_coverage.py | never assessed |  |
@@ -106,27 +108,37 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/selftest/test_distribute.py | never assessed |  |
 | harness/selftest/test_export.py | never assessed |  |
 | harness/selftest/test_field.py | never assessed |  |
+| harness/selftest/test_framework_callbacks.py | never assessed |  |
 | harness/selftest/test_gate.py | never assessed |  |
+| harness/selftest/test_gate_abandon.py | never assessed |  |
 | harness/selftest/test_governance.py | never assessed |  |
 | harness/selftest/test_guard.py | never assessed |  |
+| harness/selftest/test_handoff_items.py | never assessed |  |
+| harness/selftest/test_init_commands.py | never assessed |  |
 | harness/selftest/test_integration_tier.py | never assessed |  |
 | harness/selftest/test_leftovers.py | never assessed |  |
 | harness/selftest/test_manifest.py | never assessed |  |
 | harness/selftest/test_net.py | never assessed |  |
 | harness/selftest/test_outcome.py | never assessed |  |
+| harness/selftest/test_pagecheck.py | never assessed |  |
 | harness/selftest/test_probes.py | never assessed |  |
+| harness/selftest/test_public_routes.py | never assessed |  |
 | harness/selftest/test_records.py | never assessed |  |
+| harness/selftest/test_reviewer_diff_scope.py | never assessed |  |
+| harness/selftest/test_reviewer_repair.py | never assessed |  |
 | harness/selftest/test_reviewers.py | never assessed |  |
 | harness/selftest/test_scan.py | never assessed |  |
 | harness/selftest/test_sequence.py | never assessed |  |
 | harness/selftest/test_tools.py | never assessed |  |
 | harness/selftest/test_topology.py | never assessed |  |
 | harness/selftest/test_truth.py | never assessed |  |
+| harness/selftest/test_vendored_coverage.py | never assessed |  |
 | harness/selftest/test_version.py | never assessed |  |
 | work/hooks/commit-msg.py | never assessed |  |
 | work/hooks/install.py | never assessed |  |
 | work/hooks/pre-commit.py | never assessed |  |
 | work/tools/build_test.py | never assessed |  |
+| work/tools/forge.py | never assessed |  |
 | work/tools/gen_ledger.py | never assessed |  |
 | work/tools/hooks_test.py | never assessed |  |
 | work/tools/ledger.py | never assessed |  |

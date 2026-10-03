@@ -138,6 +138,16 @@ def static_hints(root, dirs):
             tree = ast.parse(read(p))
         except SyntaxError:
             continue
+        for body in [tree.body] + [n.body for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]:
+            # a function or class defined twice at one level: only the last definition is ever used, so a fix to
+            # the first is dead and every search for its body matches twice (daynight D-1: csp_for at lines 7 and 118)
+            first = {}
+            for d in body:
+                if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    if d.name in first:
+                        hints.append(f"{p.relative_to(root).as_posix()}:{d.lineno}: {d.name} is defined again (first at line "
+                                     f"{first[d.name]}); only this last definition is used — delete one of them")
+                    first.setdefault(d.name, d.lineno)
         for node in ast.walk(tree):
             if isinstance(node, ast.Dict):
                 seen = {}
@@ -148,6 +158,17 @@ def static_hints(root, dirs):
                                          f"(first at line {seen[k.value]}); only the last value is kept")
                         seen.setdefault(k.value, k.lineno)
     return hints
+
+
+def occurrences(text, search):
+    """Where `search` occurs: the line number of each match, so the model can add the context that tells them apart."""
+    lines, starts, i = [], [], text.find(search)
+    while i >= 0:
+        starts.append(text.count("\n", 0, i) + 1)
+        i = text.find(search, i + 1)
+    for n in starts[:5]:
+        lines.append(f"line {n}")
+    return ", ".join(lines) + " — include lines around the one you mean (or remove the duplicate)"
 
 
 def closest(text, search):
@@ -206,9 +227,9 @@ def apply_edits(root, edits, writable, readonly):
                 if n == 0 and cur_loose.count(loose) == 1:
                     current, search = cur_loose, loose
                 else:
-                    hint = closest(current, search) if n == 0 else ""
+                    hint = closest(current, search) if n == 0 else occurrences(current, search)
                     refused.append(f"{rel}: `search` occurs {n} times; it must occur exactly once — copy it exactly and add context"
-                                   + (f". The closest passage in the file is:\n{hint}" if hint else ""))
+                                   + ((f". The closest passage in the file is:\n{hint}" if n == 0 else f". It matches at {hint}") if hint else ""))
                     continue
             new = current.replace(search, replace, 1)
         if rel.endswith(".py"):

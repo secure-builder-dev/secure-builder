@@ -199,6 +199,24 @@ class DriverRobustness(unittest.TestCase):
                               "--test-cmd", f"\"{sys.executable}\" -m unittest discover -s tests -t ."])
             self.assertIn("X = 'two'", (root / "src" / "m.py").read_text(encoding="utf-8"), out.getvalue())
 
+    def test_a_function_defined_twice_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "src").mkdir()
+            (root / "src" / "s.py").write_text("def f():\n    return 1\n\n\ndef g():\n    pass\n\n\ndef f():\n    return 2\n", encoding="utf-8")
+            hints = self.bm.static_hints(root, ["src"])
+        self.assertEqual(len(hints), 1, hints)
+        self.assertIn("src/s.py:9: f is defined again (first at line 1)", hints[0])
+
+    def test_a_search_that_matches_twice_names_its_lines(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = pathlib.Path(d)
+            (root / "src").mkdir()
+            (root / "src" / "s.py").write_text("x = 1\ny = 2\nx = 1\n", encoding="utf-8")
+            written, refused = self.bm.apply_edits(root, [{"path": "src/s.py", "search": "x = 1", "replace": "x = 3"}], ["src"], set())
+        self.assertEqual(written, [])
+        self.assertIn("It matches at line 1, line 3", refused[0])
+
     def test_the_closest_passage_hint_is_capped(self):
         text = "\n".join(f"line {i} " + "x" * 80 for i in range(100))
         hint = self.bm.closest(text, text.replace("line 5 ", "line five "))

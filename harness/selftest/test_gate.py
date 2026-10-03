@@ -423,6 +423,32 @@ class SecurityMechanical(unittest.TestCase):
             self.assertIn("lead time to approval and transfer: 10-15 working days", dp.findings[0])
 
 
+class PrepareRange(unittest.TestCase):
+    """Found on the demo apps: `gate prepare` without base= died with a KeyError traceback."""
+    def test_the_range_defaults_to_the_handoff(self):
+        with tree() as t:
+            base = project(t)
+            head = feature(t, files={"docs/x.md": "hi" + NL})
+            write(t, ".engine/work/handoff-epic-7-1.json", json.dumps({"unit": "epic-7", "run": 1, "range": {"base": base, "head": head}}))
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {}}))
+            code, out = cli(t, "gate", "prepare", "unit=epic-7", "run=1")
+            out = chr(10).join(out) if isinstance(out, list) else out
+            self.assertIn(f"quality gate on {base[:12]}..{head[:12]}", out)
+
+    def test_no_base_and_no_handoff_is_a_message_not_a_traceback(self):
+        with tree() as t:
+            project(t)
+            code, out = cli(t, "gate", "prepare", "unit=epic-7", "run=1")
+            out = chr(10).join(out) if isinstance(out, list) else out
+            self.assertEqual(code, 2)
+            self.assertIn("no base= given and no handoff at .engine/work/handoff-epic-7-1.json", out)
+            code, out = cli(t, "gate", "prepare", "run=1")
+            out = chr(10).join(out) if isinstance(out, list) else out
+            self.assertEqual(code, 2)
+            self.assertIn("base and head default to the range in the unit's handoff", out)
+            self.assertNotIn("Traceback", out)
+
+
 class Submit(unittest.TestCase):
     def prepared(self, t, control_shaped=False):
         base = project(t)

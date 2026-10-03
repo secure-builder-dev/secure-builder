@@ -432,6 +432,54 @@ class Run(unittest.TestCase):
             self.assertEqual(sc.ship_images(), {"registry/svc-hardened": "deploy/Dockerfile.hardened"})
 
 
+class PlanOfActionClosure(unittest.TestCase):
+    """Found on the demo apps: rows written by a scan that read the wrong paths stayed open for ever."""
+    def latest(self, t):
+        rows, _, _ = table.read(t, runner.CARRIED_RECORD, "carried-findings")
+        return {r["id"]: r for r in rows}
+
+    def run_scan(self, t, script, c=None):
+        return runner.Scan(t, c or cfg(), invoke=Fake(script), engine=("containers", "docker")).run()
+
+    def test_a_carried_item_no_longer_reported_closes_and_reopens_when_reported_again(self):
+        with tree() as t:
+            project(t)
+            self.run_scan(t, baseline())
+            self.assertEqual(self.latest(t)["CVE-2/liby"]["status"], "carried")
+            r = self.run_scan(t, baseline(vulns=False))
+            self.assertEqual(r["closed"], ["CVE-2/liby"])
+            row = self.latest(t)["CVE-2/liby"]
+            self.assertEqual(row["status"], "fixed")
+            self.assertTrue(row["status_history"].endswith(":fixed (no longer reported by a complete scan)"), row["status_history"])
+            r = self.run_scan(t, baseline(vulns=False))
+            self.assertEqual(r["closed"], [], "a closed item is closed once")
+            self.run_scan(t, baseline())
+            row = self.latest(t)["CVE-2/liby"]
+            self.assertEqual(row["status"], "carried")
+            self.assertTrue(row["status_history"].endswith(":carried (reported again)"), row["status_history"])
+            self.assertEqual(sum(1 for r_ in table.read(t, runner.CARRIED_RECORD, "carried-findings")[0]), 3, "history is appended")
+
+    def test_a_scan_with_problems_closes_nothing(self):
+        with tree() as t:
+            project(t)
+            self.run_scan(t, baseline())
+            r = self.run_scan(t, baseline(vulns=False), c=cfg(sast_rules=str(t / "no-such-rules")))
+            self.assertTrue(r["problems"])
+            self.assertEqual(r["closed"], [])
+            self.assertEqual(self.latest(t)["CVE-2/liby"]["status"], "carried")
+
+    def test_a_closed_item_does_not_age(self):
+        with tree() as t:
+            project(t)
+            for status, hist in (("carried", "2019-01-01:carried"), ("fixed", "2019-01-01:carried; 2019-02-01:fixed")):
+                table.append(t, runner.CARRIED_RECORD, sch.CARRIED, {
+                    "id": "CVE-5/libz", "component": "libz", "version": "1", "severity": "LOW", "reason_no_fix": "none", "owner": "casey",
+                    "milestone": "m", "milestone_date": "2020-01-01", "review_by": "2020-01-01", "status": status,
+                    "status_history": hist, "side": "low"})
+            r = self.run_scan(t, baseline(vulns=False))
+            self.assertEqual(r["aged"], [])
+
+
 class Impossible(unittest.TestCase):
     def test_no_runtime_and_no_scanner_is_impossible_not_failed(self):
         """Found by the lifecycle exercise: a scan run where scanning is impossible stamped the

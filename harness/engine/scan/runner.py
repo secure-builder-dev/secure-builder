@@ -590,14 +590,18 @@ class Scan:
 
     def record_carried(self, carried):
         """New carried findings become plan-of-action rows (spec 02 REQ-6.3.1; spec 01 REQ-4.10.3)."""
-        rows, _, _ = table.read(self.root, CARRIED_RECORD, "carried-findings")
-        existing = {r["id"] for r in (rows or [])}
+        from . import alarm
+        latest = alarm.latest_rows(self.root)
+        existing = {i for i, r in latest.items() if r["status"] != "fixed"}
         owner = (self.cfg.get("scan_owner") if self.cfg else None) or "unassigned"
         days = int((self.cfg.get("carried_review_days") if self.cfg else None) or 90)
         today = datetime.date.today()
         for f in carried:
             ident = f"{f.id}/{f.package}"
             if ident in existing or not (self.root / CARRIED_RECORD).is_file():
+                continue
+            if ident in latest:                 # closed as fixed, and reported again: the same item reopens
+                alarm.resolve(self.root, self.cfg, ident, "carried", note="reported again")
                 continue
             table.append(self.root, CARRIED_RECORD, sch.CARRIED, {
                 "id": ident, "component": f.package, "version": f.version, "severity": f.severity,
@@ -606,9 +610,24 @@ class Scan:
                 "review_by": (today + datetime.timedelta(days=days)).isoformat(), "status": "carried",
                 "status_history": f"{today.isoformat()}:carried", "side": self.cfg.side if self.cfg else sch.UNKNOWN})
 
+    def close_resolved(self, reported, complete):
+        """A carried row whose finding a complete scan no longer reports is closed as fixed, history appended.
+        Without this a plan of action only grew: rows written by a scan that read the wrong paths stayed open for ever."""
+        if not complete or self.problems or not (self.root / CARRIED_RECORD).is_file():
+            return []
+        from . import alarm
+        still = {f"{f.id}/{f.package}" for f in reported}
+        closed = []
+        for ident, r in alarm.latest_rows(self.root).items():
+            if r["status"] == "carried" and ident not in still:
+                alarm.resolve(self.root, self.cfg, ident, "fixed", note="no longer reported by a complete scan")
+                closed.append(ident)
+        return closed
+
     def aged_carried(self, findings):
         """REQ-4.10.4–4.10.5: carried findings past review-by, or whose fix has since become available, block."""
-        rows, _, _ = table.read(self.root, CARRIED_RECORD, "carried-findings")
+        from . import alarm
+        rows = list(alarm.latest_rows(self.root).values())     # an item's latest row: a closed one no longer ages
         today = datetime.date.today().isoformat()
         now_fixable = {f"{f.id}/{f.package}": f.fixed for f in findings if f.fixed}
         out = []
@@ -677,6 +696,7 @@ class Scan:
             gate = "red"
         self.route(actionable, carried, single_all)
         self.record_carried(carried)
+        closed = self.close_resolved(findings + single_all, complete)
         raw_dir = self.root / RAW_DIR
         raw_dir.mkdir(parents=True, exist_ok=True)
         for tool, text in self.raw.items():
@@ -687,5 +707,5 @@ class Scan:
         stamp.write(self.root, commit=head, verdict=verdict, timestamp=now(self.cfg), scanners=list(dict.fromkeys(self.ran)),
                     digests=self.digests, detection_data_date=self.data_date, mode=self.mode)
         return {"verdict": verdict, "alarm": alarm_verdict, "findings": findings, "actionable": actionable, "carried": carried,
-                "informational": single_all, "problems": self.problems + self.notes, "aged": aged, "ran": list(dict.fromkeys(self.ran)), "complete": complete,
+                "informational": single_all, "problems": self.problems + self.notes, "aged": aged, "closed": closed, "ran": list(dict.fromkeys(self.ran)), "complete": complete,
                 "digests": dict(self.digests), "data_age": self.data_age, "head": head}

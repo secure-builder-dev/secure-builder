@@ -471,8 +471,23 @@ def cmd_gate(root, argv):
         print(f"gate: COULD NOT RUN — {e}")
         return 2
     if sub == "prepare":
+        if "unit" not in kv or "run" not in kv:
+            print("gate prepare unit=<u> run=<n> [base=<sha> head=<sha>] — base and head default to the range in the unit's handoff")
+            return 2
         unit, run = kv["unit"], kv["run"]
-        base, head = gitutil.rev(root, kv["base"]), gitutil.rev(root, kv.get("head", "HEAD"))
+        # the handoff already fixed the range under review; asking for it again only invited a KeyError traceback
+        handed = pathlib.Path(root) / ".engine" / "work" / f"handoff-{unit}-{run}.json"
+        rng = {}
+        if handed.is_file():
+            try:
+                rng = json.loads(handed.read_text(encoding="utf-8")).get("range") or {}
+            except ValueError:
+                rng = {}
+        if "base" not in kv and not rng.get("base"):
+            print(f"gate: COULD NOT RUN — no base= given and no handoff at {handed.relative_to(root).as_posix()}; run `handoff` first")
+            return 2
+        base = gitutil.rev(root, kv.get("base") or rng["base"])
+        head = gitutil.rev(root, kv.get("head") or rng.get("head") or "HEAD")
         if not base or not head:
             print("gate: COULD NOT RUN — base/head do not resolve to commits")
             return 2
@@ -601,6 +616,8 @@ def cmd_scan(root, argv):
         print(f"  actionable: {f.line()}")
     for f in result["carried"]:
         print(f"  carried: {f.line()}")
+    for c in result.get("closed", []):
+        print(f"  closed: {c} (no longer reported by a complete scan; plan-of-action history appended)")
     for a in result["aged"]:
         print(f"  aged: {a}")
     if "--alarm" in argv:

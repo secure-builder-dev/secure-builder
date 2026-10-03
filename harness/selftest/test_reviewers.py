@@ -216,13 +216,7 @@ class BuildEdits(unittest.TestCase):
 
     def test_construction_refuses_an_item_nobody_has_claimed(self):
         (self.root / "tickets").mkdir()
-        (self.root / "tickets" / "X-1.md").write_text("id: X-1
-unit: U
-state: open
-done_when: d
-
-# X-1
-", encoding="utf-8")
+        (self.root / "tickets" / "X-1.md").write_text("id: X-1\nunit: U\nstate: open\ndone_when: d\n\n# X-1\n", encoding="utf-8")
         with contextlib.redirect_stdout(io.StringIO()) as out:
             code = self.bm.main(["--item", "X-1", "--root", str(self.root), "--model", "m"])
         self.assertEqual(code, 2)

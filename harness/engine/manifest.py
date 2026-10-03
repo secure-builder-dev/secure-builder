@@ -15,6 +15,7 @@ Verification distinguishes three states: every entry resolves; at least one
 fails; the manifest holds only template placeholders.
 """
 import fnmatch
+import importlib
 import json
 import pathlib
 import re
@@ -145,13 +146,55 @@ def call_sites(root, symbol, definition_file):
             while n >= 1 and lines[n - 1].strip().startswith("@"):
                 out.append(f"{rel}:{n}")
                 n -= 1
+        if def_line and rel.endswith(".py"):
+            base = framework_callback(lines, def_line, symbol)
+            if base:
+                out.append(f"{rel}:{def_line} (framework callback of {base}.{symbol})")
+        own_super = re.compile(r"\bsuper\(\s*\)\s*\.\s*" + re.escape(symbol) + r"\s*\(")
         for n, line in enumerate(lines, 1):
             if n == def_line or COMMENT.match(line):
                 continue
             stripped = re.sub(r"(#|//).*$", "", line)
+            if own_super.search(stripped):
+                continue        # the override calling the method it overrides is not a call of the control
             if mention.search(stripped) and not re.match(r"^\s*(import|from)\b", stripped):
                 out.append(f"{rel}:{n}")
     return out
+
+
+# standard-library classes whose methods the framework calls: an override of one of them is called by
+# the server for every request although no project line names it (antipode: do_GET, log_request)
+FRAMEWORK_BASES = {"BaseHTTPRequestHandler": "http.server", "SimpleHTTPRequestHandler": "http.server",
+                   "HTTPServer": "http.server", "ThreadingHTTPServer": "http.server",
+                   "BaseRequestHandler": "socketserver", "StreamRequestHandler": "socketserver",
+                   "DatagramRequestHandler": "socketserver", "TCPServer": "socketserver", "ThreadingTCPServer": "socketserver"}
+
+
+def framework_callback(lines, def_line, symbol):
+    """The framework base class whose method `symbol` overrides, when the definition at `def_line`
+    (1-based) sits in a class deriving from a known standard-library framework class; else None."""
+    indent = len(lines[def_line - 1]) - len(lines[def_line - 1].lstrip())
+    for n in range(def_line - 2, -1, -1):
+        line = lines[n]
+        if not line.strip():
+            continue
+        if len(line) - len(line.lstrip()) < indent:
+            m = re.match(r"\s*class\s+\w+\s*\(([^)]*)\)", line)
+            if not m:
+                return None
+            for b in (x.strip().split(".")[-1] for x in m.group(1).split(",")):
+                mod = FRAMEWORK_BASES.get(b)
+                if not mod:
+                    continue
+                if b.endswith("RequestHandler") and re.fullmatch(r"do_[A-Z]+", symbol):
+                    return b        # the handler dispatches each request to do_<METHOD> by name
+                try:
+                    if hasattr(getattr(importlib.import_module(mod), b), symbol):
+                        return b
+                except (ImportError, AttributeError):
+                    continue
+            return None
+    return None
 
 
 def matching_tests(root, pattern):

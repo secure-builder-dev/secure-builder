@@ -51,6 +51,13 @@ class DiffScope(unittest.TestCase):
         self.assertIn("vendored third-party", prompt)
         self.assertIn("bulk data", prompt)
 
+    def test_binary_files_are_summarized_by_folder(self):
+        lm = load("local_model")
+        numstat = "\n".join(f"-\t-\tsrc/static/tiles/5/{i}/0.jpg" for i in range(50)) + "\n3\t1\tsrc/server.py\n"
+        shown, held = lm.held_back_files(numstat)
+        self.assertEqual(shown, ["src/server.py"])
+        self.assertEqual(held, ["src/static/tiles/: 50 binary file(s), not shown"], "one line for the whole tile set")
+
 
 if __name__ == "__main__":
     unittest.main()

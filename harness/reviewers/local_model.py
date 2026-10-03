@@ -127,11 +127,36 @@ def ask(endpoint, model, system, user, num_ctx, raw_path=None):
 
 
 VENDORED_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "node_modules"})
-MAX_FILE_DIFF = 40_000
+MAX_FILE_LINES = 1500        # a text diff longer than this is bulk data, not code to review
+MAX_FILE_BYTES = 40_000
 
 
 def vendored(path):
     return any(part in VENDORED_DIRS for part in path.split("/")[:-1])
+
+
+def held_back_files(numstat):
+    """Split `git diff --numstat` into (text files to show, summaries of the rest). Vendored third-party
+    files, binary files and very large text diffs are summarized by folder, not pasted: minified Leaflet
+    put the antipode A-2 review at 47K tokens, and 1365 binary map tiles put A-4's at 60K."""
+    shown, groups = [], {}
+    for line in numstat.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+        added, deleted, name = parts
+        binary = added == "-" and deleted == "-"
+        big = not binary and int(added) + int(deleted) > MAX_FILE_LINES
+        if not (binary or big or vendored(name)):
+            shown.append(name)
+            continue
+        kind = "vendored third-party" if vendored(name) else "binary" if binary else "bulk data"
+        # grouped by the first three folders: map tiles nest as tiles/<z>/<x>/, and 63 lines for one data set say nothing more than one
+        folder = "/".join(name.split("/")[:-1][:3]) + "/" if "/" in name else "./"
+        groups.setdefault((folder, kind), []).append(name)
+    held = [f"{folder}: {len(names)} {kind} file(s), not shown" + (f" ({names[0]})" if len(names) == 1 else "")
+            for (folder, kind), names in sorted(groups.items())]
+    return shown, held
 
 
 def build_prompt(root, facts, checklist_text, definition, controls):
@@ -139,19 +164,19 @@ def build_prompt(root, facts, checklist_text, definition, controls):
     # the project's change: everything but the placed harness; the governed files under .engine/ are part of the change
     # vendored third-party code and bulk data are listed, not pasted: minified Leaflet alone put the
     # antipode A-2 review at 47K tokens; the reviewer judges the project's code, integrity is pinned elsewhere
-    held_back = []
-    for name in git(root, "diff", "--name-only", f"{base}..{head}", "--", ".", ":(exclude).engine").splitlines():
-        size = len(git(root, "diff", f"{base}..{head}", "--", name))
-        if vendored(name) or size > MAX_FILE_DIFF:
-            held_back.append((name, f"{name} ({size} chars of diff; {'vendored third-party' if vendored(name) else 'bulk data'}, not shown)"))
-    excludes = [f":(exclude){n}" for n, _ in held_back]
-    diff = git(root, "diff", f"{base}..{head}", "--", ".", ":(exclude).engine", *excludes) \
+    shown, held = held_back_files(git(root, "diff", "--numstat", f"{base}..{head}", "--", ".", ":(exclude).engine"))
+    for name in list(shown):        # a one-line data file (a 172 KB GeoJSON) is bulk by size, not by line count
+        size = git(root, "cat-file", "-s", f"{head}:{name}").strip()
+        if size.isdigit() and int(size) > MAX_FILE_BYTES:
+            shown.remove(name)
+            held.append(f"{name}: bulk data, {size} bytes, not shown")
+    diff = (git(root, "diff", f"{base}..{head}", "--", *shown) if shown else "") \
         + git(root, "diff", f"{base}..{head}", "--", ".engine/rules/control-manifest.json", ".engine/rules/config.json", ".engine/rules/governance.json", ".engine/rules/dependency-policy.json")
-    if held_back:
-        diff += "\nFiles in the range not shown in this diff:\n" + "\n".join(t for _, t in held_back) + "\n"
+    if held:
+        diff += "\nFiles in the range not shown in this diff:\n" + "\n".join(held) + "\n"
     if len(diff) > 120_000:
         diff = diff[:120_000] + "\n[diff truncated by the reviewer driver at 120000 characters; say so in the summary]\n"
-    names = git(root, "diff", "--name-only", f"{base}..{head}")
+    names = "\n".join(shown + held + [n for n in git(root, "diff", "--name-only", f"{base}..{head}", "--", ".engine/rules").splitlines()])
     register = read_at(root, head, ".engine/records/findings-register.md")
     register = register if re.search(r"^\| (F|R|AUD)-", register, re.M) else ""     # a template-only register says nothing
     controls = [{k: c.get(k) for k in ("id", "description", "location", "test_pattern", "status")} for c in controls]

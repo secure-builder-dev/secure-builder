@@ -17,6 +17,22 @@ class Vendored(unittest.TestCase):
             self.assertFalse(coverage_range.vendored(p), p)
 
 
+class ControlWords(unittest.TestCase):
+    """antipode ANTI-4: AbortSignal read as cryptography and a comment's 'allows zooming' as authorization."""
+
+    def test_signal_is_not_signing_and_signing_identifiers_still_are(self):
+        from engine import controlshape
+        self.assertEqual(controlshape.families_in("signal: AbortSignal.timeout(3000)"), [])
+        for t in ("def sign_token(key):", "signing_key = 1", "verify the signature"):
+            self.assertIn("cryptography", controlshape.families_in(t), t)
+
+    def test_comment_lines_are_not_control_shaped(self):
+        from engine import controlshape
+        diff = "diff --git a/t.py b/t.py\n+        # map allows zooming to 8\n+    // the policy allows it\n"
+        self.assertEqual(controlshape.diff_is_control_shaped(diff), [])
+        self.assertIn("authorization", controlshape.diff_is_control_shaped("diff --git a/t.py b/t.py\n+allowlist = {}\n"))
+
+
 class VendoredDiff(unittest.TestCase):
     def test_a_vendored_file_does_not_make_the_diff_control_shaped(self):
         from engine import controlshape

@@ -309,7 +309,12 @@ class Scan:
         for m in data.get("matches", []) or []:
             v, a = m.get("vulnerability", {}), m.get("artifact", {})
             fixed = ", ".join(v.get("fix", {}).get("versions", []) or []) or None
-            out.append(Finding("vulnerabilities", v.get("id", "?"), v.get("severity", "UNKNOWN"), a.get("name", ""), a.get("version", ""), fixed, "", source))
+            # grype names an advisory by its GHSA id where trivy uses the CVE: key by the CVE alias when there is one,
+            # or the two scanners never confirm each other and a real finding stays informational, never blocking
+            ident = v.get("id", "?")
+            if not ident.startswith("CVE-"):
+                ident = next((rv["id"] for rv in m.get("relatedVulnerabilities", []) or [] if str(rv.get("id", "")).startswith("CVE-")), ident)
+            out.append(Finding("vulnerabilities", ident, v.get("severity", "UNKNOWN"), a.get("name", ""), a.get("version", ""), fixed, "", source))
         return out
 
     def _skips(self, target):
@@ -332,7 +337,48 @@ class Scan:
             excludes += ["--exclude", f"./{d}/**"]
         b = self.run_scanner("vulnerabilities-b", [f"dir:{target}", "-o", "json", *excludes], mounts,
                              parse=lambda res: self._parse_grype(res, "grype")) or []
-        return a, b
+        va, vb = self.scan_vendored()
+        return a + va, b + vb
+
+    def vendored_sbom(self):
+        """A CycloneDX inventory of the third-party code the project vendors (config vendored_components:
+        name, version, purl, path). A minified library copied in byte-exact carries no package metadata, so
+        neither scanner can see it otherwise (antipode and daynight: Leaflet 1.9.4 was invisible to both)."""
+        declared = (self.cfg.get("vendored_components") if self.cfg else None) or []
+        if not declared:
+            return None
+        comps = []
+        for c in declared:
+            path = self.root / c.get("path", "")
+            if not c.get("path") or not path.exists():
+                self.problems.append(f"vendored component {c.get('name')}: declared path {c.get('path')} does not exist")
+                continue
+            comps.append({"type": c.get("type", "library"), "name": c["name"], "version": c.get("version", ""),
+                          **({"purl": c["purl"]} if c.get("purl") else {})})
+        d = self.root / SBOM_DIR
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / "vendored.cdx.json"
+        doc = {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1,
+               "metadata": {"component": {"type": "application", "name": self.root.name}}, "components": comps}
+        p.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
+        return p
+
+    def scan_vendored(self):
+        p = self.vendored_sbom()
+        if p is None:
+            return [], []
+        rel = p.relative_to(self.root).as_posix()
+        target = f"/src/{rel}" if self.engine == "containers" else rel
+        mounts = ((str(self.root), "/src"),)
+        tool_a, image_a, _ = images.SCANNERS["vulnerabilities-a"]
+        tool_b, image_b, _ = images.SCANNERS["vulnerabilities-b"]
+        ra = self.invoke(tool_a, image_a, ["sbom", "--format", "json", "--exit-code", "0", target], mounts)
+        rb = self.invoke(tool_b, image_b, [f"sbom:{target}", "-o", "json"], mounts)
+        self.raw["vendored-trivy"], self.raw["vendored-grype"] = ra.stdout, rb.stdout
+        for name, res in (("trivy", ra), ("grype", rb)):
+            if not res.ran or res.exit_code != 0:
+                self.problems.append(f"vendored components ({name}): fell over (exit {res.exit_code}: {(res.stderr or res.stdout).strip()[:80]})")
+        return self._parse_trivy(ra, "trivy"), self._parse_grype(rb, "grype")
 
     def _parse_trivy_fs(self, res):
         try:

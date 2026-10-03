@@ -288,6 +288,40 @@ class Run(unittest.TestCase):
             self.assertEqual(r["verdict"], "red")
             self.assertEqual([(f.concern, f.target) for f in r["actionable"]], [("secret", "src/a.py:3")])
 
+    def test_grype_ghsa_ids_correlate_with_trivy_cves(self):
+        sc = runner.Scan(".", cfg(), invoke=Fake({}), engine=("host", None))
+        trivy = json.dumps({"Results": [{"Target": "x", "Vulnerabilities": [
+            {"VulnerabilityID": "CVE-2020-8203", "Severity": "HIGH", "PkgName": "lodash", "InstalledVersion": "4.17.15", "FixedVersion": "4.17.19"}]}]})
+        grype = json.dumps({"matches": [{"vulnerability": {"id": "GHSA-p6mc-m468-83gw", "severity": "High", "fix": {"versions": ["4.17.19"]}},
+                                         "relatedVulnerabilities": [{"id": "CVE-2020-8203"}], "artifact": {"name": "lodash", "version": "4.17.15"}}]})
+        a = sc._parse_trivy(Result("trivy", [], 0, trivy, "", "x"), "trivy")
+        b = sc._parse_grype(Result("grype", [], 0, grype, "", "x"), "grype")
+        confirmed, single = sc.correlate(a, b)
+        self.assertEqual(([f.id for f in confirmed], single), (["CVE-2020-8203"], []))
+
+    def test_declared_vendored_components_are_scanned_by_version(self):
+        with tree() as t:
+            self.no_image_project(t)
+            write(t, "src/static/vendor/leaflet/leaflet.js", "/* leaflet */" + NL)
+            vend = [{"name": "leaflet", "version": "1.9.4", "purl": "pkg:npm/leaflet@1.9.4", "path": "src/static/vendor/leaflet"}]
+            trivy = json.dumps({"Results": [{"Target": "vendored", "Vulnerabilities": [
+                {"VulnerabilityID": "CVE-7", "Severity": "HIGH", "PkgName": "leaflet", "InstalledVersion": "1.9.4", "FixedVersion": "1.9.5"}]}]})
+            grype = json.dumps({"matches": [{"vulnerability": {"id": "CVE-7", "severity": "High", "fix": {"versions": ["1.9.5"]}},
+                                             "artifact": {"name": "leaflet", "version": "1.9.4"}}]})
+            script = dict(baseline(vulns=False), **{"trivy sbom": (0, trivy), "grype sbom:": (0, grype), "syft dir:": (0, "{}")})
+            sc, r, fake = self.scan(t, script, c=cfg(ship_images={}, vendored_components=vend))
+            self.assertIn(("vulnerabilities", "CVE-7"), [(f.concern, f.id) for f in r["actionable"]])
+            doc = json.loads((t / ".engine/records/scan/sbom/vendored.cdx.json").read_text(encoding="utf-8"))
+            self.assertEqual(doc["components"][0]["purl"], "pkg:npm/leaflet@1.9.4")
+
+    def test_a_declared_vendored_component_that_is_missing_is_a_problem(self):
+        with tree() as t:
+            self.no_image_project(t)
+            vend = [{"name": "leaflet", "version": "1.9.4", "path": "src/static/vendor/leaflet"}]
+            sc, r, fake = self.scan(t, dict(baseline(vulns=False), **{"syft dir:": (0, "{}")}), c=cfg(ship_images={}, vendored_components=vend))
+            self.assertEqual(r["verdict"], "red")
+            self.assertTrue(any("does not exist" in p for p in r["problems"]), r["problems"])
+
     def test_the_host_engine_runs_the_real_executables(self):
         import unittest.mock as mock
         seen = []

@@ -831,7 +831,37 @@ class Coverage9(unittest.TestCase):
             finally:
                 os.environ["PATH"] = old
             self.assertEqual(res.exit_code, 0)
-            self.assertEqual(invocations(t / "bin"), [f"docker run --rm -v {t}:/src img:1 hadolint -f json"])
+            offline = " ".join(f"-e {k}={v}" for k, v in runner.OFFLINE_ENV.items())
+            self.assertEqual(invocations(t / "bin"), [f"docker run --rm -v {t}:/src {offline} img:1 hadolint -f json"])
+
+    def test_scanners_never_update_themselves(self):
+        # a scan never reaches the network: trivy and grype updated their databases mid-scan by default
+        for k in ("TRIVY_SKIP_DB_UPDATE", "TRIVY_SKIP_JAVA_DB_UPDATE", "TRIVY_OFFLINE_SCAN", "GRYPE_DB_AUTO_UPDATE",
+                  "GRYPE_CHECK_FOR_APP_UPDATE", "SYFT_CHECK_FOR_APP_UPDATE"):
+            self.assertIn(k, runner.OFFLINE_ENV)
+        self.assertEqual(runner.OFFLINE_ENV["GRYPE_DB_AUTO_UPDATE"], "false")
+        import os
+        from .stubs import stub_path, stub_tool
+        with tree() as t:
+            stub_tool(t / "bin", "trivy", exit_code=0, stdout="ok")
+            old = os.environ.get("PATH", "")
+            os.environ["PATH"] = stub_path(t / "bin")
+            seen = {}
+            real = runner.tools.run_tool
+            try:
+                runner.tools.run_tool = lambda exe, args, **kw: seen.update(kw) or real(exe, args, **kw)
+                runner.real_invoke(t, "host", None, "trivy", "img:1", ["fs", "."])
+            finally:
+                runner.tools.run_tool = real
+                os.environ["PATH"] = old
+        self.assertEqual(seen.get("env"), runner.OFFLINE_ENV)
+
+    def test_a_grype_only_finding_on_a_package_trivy_never_listed_is_enforced(self):
+        F = runner.Finding
+        jar = F("vulnerabilities", "CVE-1", "MEDIUM", "log4j-core", "2.14.1", "2.15.0", "", "grype")
+        listed = F("vulnerabilities", "CVE-2", "MEDIUM", "PyYAML", "5.3", "5.4", "", "grype")
+        self.assertEqual([f.id for f in runner.Scan.unseen_by_trivy([jar, listed], {"pyyaml"})], ["CVE-1"])
+        self.assertEqual(runner.Scan.unseen_by_trivy([jar], set()), [], "no inventory: nothing promoted on a guess")
 
     def test_incomplete_scanner_set_fails_gate_independent_of_findings(self):
         with tree() as t:

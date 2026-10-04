@@ -66,12 +66,22 @@ def select_engine(cfg):
     return ("containers", rt) if rt else ("host", None)
 
 
+# a scan never reaches the network (only `currency` does, spec 04): the scanners' own database and version updates
+# are switched off, and trivy resolves nothing from Maven Central. Detection data is refreshed deliberately, and its
+# age is gated by check_freshness; a scanner that updated itself mid-scan stalls or fails on a disconnected network.
+OFFLINE_ENV = {"TRIVY_SKIP_DB_UPDATE": "true", "TRIVY_SKIP_JAVA_DB_UPDATE": "true", "TRIVY_SKIP_CHECK_UPDATE": "true",
+               "TRIVY_OFFLINE_SCAN": "true", "TRIVY_DISABLE_TELEMETRY": "true", "GRYPE_DB_AUTO_UPDATE": "false",
+               "GRYPE_CHECK_FOR_APP_UPDATE": "false", "SYFT_CHECK_FOR_APP_UPDATE": "false"}
+
+
 def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
     """Run a tool under the selected engine. Returns engine.tools.Result."""
     if engine == "containers":
         cmd = ["run", "--rm"]
         for host_path, container_path in mounts:
             cmd += ["-v", f"{host_path}:{container_path}"]
+        for k, v in OFFLINE_ENV.items():
+            cmd += ["-e", f"{k}={v}"]
         cmd += [image, *args]
         return tools.run_tool(rt, cmd, cwd=str(root), timeout=timeout)
     exe, args = images.HOST_EXECUTABLES.get(tool, tool), list(args)
@@ -79,7 +89,7 @@ def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
     # (hadolint linted a file called "hadolint" and reported a clean Dockerfile that had three violations)
     if args and args[0] in ("clamscan", "freshclam", "hadolint"):
         exe, args = args[0], args[1:]
-    return tools.run_tool(exe, args, cwd=str(root), timeout=timeout)
+    return tools.run_tool(exe, args, cwd=str(root), timeout=timeout, env=OFFLINE_ENV)
 
 
 def package_identity(name):
@@ -175,6 +185,7 @@ class Scan:
         self.problems = []
         self.notes = []
         self.findings = []
+        self.trivy_inventory = set()
         self.digests = {}
         self.secrets = []
         self.runtime_findings = []
@@ -403,7 +414,7 @@ class Scan:
         mounts = ((str(self.root), "/src"),)
         # dev dependencies run on the build machine (test runners, bundlers): read, not skipped (planted dev-only
         # minimist 1.2.5 scanned green); grype cannot read them, so its silence is coverage, not doubt (unseen_by_grype)
-        a = self.run_scanner("vulnerabilities-a", ["fs", "--format", "json", "--scanners", "vuln,secret", "--include-dev-deps",
+        a = self.run_scanner("vulnerabilities-a", ["fs", "--format", "json", "--scanners", "vuln,secret", "--include-dev-deps", "--list-all-pkgs",
                                                    "--exit-code", "0", *self._skips(target), target], mounts,
                              parse=self._parse_trivy_fs) or []
         excludes = []
@@ -556,6 +567,8 @@ class Scan:
         except ValueError:
             return []
         for r in data.get("Results", []) or []:
+            for pk in r.get("Packages", []) or []:          # trivy's inventory: what it could read at all
+                self.trivy_inventory.add(package_identity(pk.get("Name", "")))
             for s in r.get("Secrets", []) or []:
                 self.secrets.append(Finding("secret", s.get("RuleID", "SECRET"), s.get("Severity", "HIGH"),
                                             target=f"{r.get('Target', '')}:{s.get('StartLine', '?')}", source="trivy-secret",
@@ -666,6 +679,15 @@ class Scan:
             if c.get("group"):
                 seen.add(package_identity(f"{c['group']}:{c.get('name', '')}"))
         return [f for f in single if f.sources == {"trivy"} and package_identity(f.package) not in seen]
+
+    @staticmethod
+    def unseen_by_trivy(single, inventory):
+        """The mirror of unseen_by_grype: a finding grype alone reports on a package trivy's tree scan never listed
+        (planted-CVE trials: a JAR and an installed site-packages folder were read by grype only). With no inventory
+        from trivy at all, nothing is promoted on a guess."""
+        if not inventory:
+            return []
+        return [f for f in single if f.sources == {"grype"} and package_identity(f.package) not in inventory]
 
     def sbom_project(self):
         tool, image, _ = images.SCANNERS["composition"]
@@ -838,7 +860,7 @@ class Scan:
         # build was impossible used to switch the tree scan off, and a vulnerable lodash and requests went unread
         a, b = self.scan_project()
         confirmed, single = self.correlate(a, b)
-        unseen = self.unseen_by_grype(single, self.sbom_project())
+        unseen = self.unseen_by_grype(single, self.sbom_project()) + self.unseen_by_trivy(single, self.trivy_inventory)
         confirmed_all += confirmed + unseen
         single_all += [f for f in single if f not in unseen]
         findings += self.secrets

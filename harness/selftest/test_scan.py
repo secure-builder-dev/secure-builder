@@ -50,7 +50,9 @@ class Fake:
         return Result(tool, list(args), 0, "", "", "fake")
 
 
-TRIVY = json.dumps({"Results": [{"Target": "app", "Vulnerabilities": [
+# trivy lists every package it read (--list-all-pkgs): libz among them, so grype's CVE-9 there is a disagreement
+TRIVY = json.dumps({"Results": [{"Target": "app", "Packages": [{"Name": "libx"}, {"Name": "liby"}, {"Name": "libz"}],
+                                 "Vulnerabilities": [
     {"VulnerabilityID": "CVE-1", "Severity": "HIGH", "PkgName": "libx", "InstalledVersion": "1.0", "FixedVersion": "1.1"},
     {"VulnerabilityID": "CVE-2", "Severity": "LOW", "PkgName": "liby", "InstalledVersion": "2.0"}]}]})
 GRYPE = json.dumps({"matches": [
@@ -290,6 +292,18 @@ class Run(unittest.TestCase):
             fs = next(args for tool, args, _ in fake.calls if args[:1] == ["fs"])
             self.assertTrue(any(a.endswith(".engine") for a in fs), "the placed harness is not the project")
             self.assertTrue((t / ".engine/records/scan/sbom/project.cdx.json").is_file())
+
+    def test_a_grype_only_medium_on_a_package_trivy_never_read_is_not_informational(self):
+        # planted requests 2.25.0 in site-packages: trivy's tree scan listed nothing, grype's medium stayed informational
+        with tree() as t:
+            self.no_image_project(t)
+            nothing = json.dumps({"Results": []})
+            script = dict(baseline(vulns=False), **{"fs --format json": (0, nothing), "grype dir:": (0, GRYPE),
+                                                    "syft dir:": (0, json.dumps({"bomFormat": "CycloneDX"}))})
+            sc, r, fake = self.scan(t, script, c=cfg(ship_images={}))
+        self.assertNotIn("CVE-9", [f.id for f in r["informational"]])
+        self.assertIn("CVE-9", [f.id for f in r["carried"]], "no fix: on the plan of action, not read and forgotten")
+        self.assertIn("CVE-1", [f.id for f in r["actionable"]], "a fixable one blocks")
 
     def test_a_committed_secret_blocks(self):
         with tree() as t:
@@ -861,7 +875,9 @@ class Coverage9(unittest.TestCase):
         jar = F("vulnerabilities", "CVE-1", "MEDIUM", "log4j-core", "2.14.1", "2.15.0", "", "grype")
         listed = F("vulnerabilities", "CVE-2", "MEDIUM", "PyYAML", "5.3", "5.4", "", "grype")
         self.assertEqual([f.id for f in runner.Scan.unseen_by_trivy([jar, listed], {"pyyaml"})], ["CVE-1"])
-        self.assertEqual(runner.Scan.unseen_by_trivy([jar], set()), [], "no inventory: nothing promoted on a guess")
+        self.assertEqual(runner.Scan.unseen_by_trivy([jar], None), [], "trivy did not run: nothing promoted on a guess")
+        self.assertEqual([f.id for f in runner.Scan.unseen_by_trivy([jar], set())], ["CVE-1"],
+                         "trivy ran and listed nothing: it saw none of it")
 
     def test_incomplete_scanner_set_fails_gate_independent_of_findings(self):
         with tree() as t:

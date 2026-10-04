@@ -185,7 +185,7 @@ class Scan:
         self.problems = []
         self.notes = []
         self.findings = []
-        self.trivy_inventory = set()
+        self.trivy_inventory = None      # None: trivy's tree scan produced nothing to read; set(): it ran and listed these
         self.digests = {}
         self.secrets = []
         self.runtime_findings = []
@@ -566,6 +566,8 @@ class Scan:
             data = json.loads(res.stdout or "{}")
         except ValueError:
             return []
+        if self.trivy_inventory is None:
+            self.trivy_inventory = set()
         for r in data.get("Results", []) or []:
             for pk in r.get("Packages", []) or []:          # trivy's inventory: what it could read at all
                 self.trivy_inventory.add(package_identity(pk.get("Name", "")))
@@ -683,9 +685,10 @@ class Scan:
     @staticmethod
     def unseen_by_trivy(single, inventory):
         """The mirror of unseen_by_grype: a finding grype alone reports on a package trivy's tree scan never listed
-        (planted-CVE trials: a JAR and an installed site-packages folder were read by grype only). With no inventory
-        from trivy at all, nothing is promoted on a guess."""
-        if not inventory:
+        (planted-CVE trials: a JAR and an installed site-packages folder were read by grype only). When trivy's tree
+        scan did not run there is no inventory and nothing is promoted on a guess; when it ran and listed nothing, it
+        saw none of these packages (planted site-packages requests 2.25.0 in a stdlib-only app stayed informational)."""
+        if inventory is None:
             return []
         return [f for f in single if f.sources == {"grype"} and package_identity(f.package) not in inventory]
 

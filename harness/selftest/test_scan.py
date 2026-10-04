@@ -514,6 +514,18 @@ class UndeclaredVendored(unittest.TestCase):
         self.assertTrue(probs[1].startswith("undeclared third-party code at src/static/lib/moment.min.js (its banner names moment.js 2.29.1)"))
         self.assertTrue(probs[2].startswith("undeclared third-party code at src/static/vendor/jquery (third-party code under a vendor folder)"))
 
+    def test_banners_in_their_usual_shapes(self):
+        NL = chr(10)
+        cases = {"/*!" + NL + " * Chart.js v2.9.3" + NL + " * https://www.chartjs.org" + NL + " */" + NL: ("Chart.js", "2.9.3"),
+                 "/*! jQuery v1.12.4 | (c) jQuery Foundation */": ("jQuery", "1.12.4"),
+                 "//! moment.js" + NL + "//! version : 2.29.1" + NL: ("moment.js", "2.29.1"),
+                 "/* @preserve" + NL + " * Leaflet 1.9.4, a JS library */": ("Leaflet", "1.9.4"),
+                 "/*! @license DOMPurify 2.0.8 */": ("DOMPurify", "2.0.8")}
+        for text, want in cases.items():
+            self.assertEqual(runner.library_banner(text), want, text)
+        for own in ("const x = 1; // v1.2 of the map", "// draw the map" + NL + "const v = 2.5;", "", "body { color: red }"):
+            self.assertIsNone(runner.library_banner(own), own)
+
     def test_declared_paths_are_covered(self):
         with tree() as t:
             write(t, "src/static/vendor/jquery/jquery.min.js", "/*! jQuery v3.7.1 */" + chr(10))
@@ -528,6 +540,59 @@ class UndeclaredVendored(unittest.TestCase):
             r = sc.run()
         self.assertEqual(r["verdict"], "red")
         self.assertTrue(any("undeclared third-party code at web/third_party/chart" in p for p in r["problems"]), r["problems"])
+
+
+class Unpinned(unittest.TestCase):
+    """Planted-CVE trials: `Jinja2>=2.10` scanned green; the scanners cannot check a version nobody fixed."""
+    def problems(self, t):
+        sc = runner.Scan.__new__(runner.Scan)
+        sc.root = t
+        return sc.unpinned_dependencies()
+
+    def test_requirement_lines_must_pin_an_exact_version(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "requirements.txt", NL.join([
+                "# pinned", "requests[security]==2.25.0 \\", "    --hash=sha256:abc", "PyYAML===5.4.1",
+                "urllib3==1.26.18 ; python_version >= '3.8'", "-r requirements-dev.txt", "--index-url https://x", "",
+                "Jinja2>=2.10", "flask", "Django~=3.2", "numpy==1.*"]) + NL)
+            write(t, "services/api/requirements-dev.txt", "pytest<8" + NL)
+            write(t, ".engine/harness/requirements.txt", "anything" + NL)
+            probs = self.problems(t)
+        self.assertEqual([p.split(":", 1)[0] + ":" + p.split("'")[1] for p in probs],
+                         ["unpinned dependency in requirements.txt:Jinja2>=2.10", "unpinned dependency in requirements.txt:flask",
+                          "unpinned dependency in requirements.txt:Django~=3.2", "unpinned dependency in requirements.txt:numpy==1.*",
+                          "unpinned dependency in services/api/requirements-dev.txt:pytest<8"])
+
+    def test_a_manifest_needs_its_lockfile(self):
+        with tree() as t:
+            write(t, "web/package.json", json.dumps({"dependencies": {"left-pad": "^1.3.0"}}))
+            write(t, "tools/package.json", json.dumps({"name": "no-deps"}))
+            write(t, "api/package.json", json.dumps({"dependencies": {"x": "1.0.0"}}))
+            write(t, "api/package-lock.json", "{}")
+            write(t, "pyproject.toml", "[project]" + chr(10) + "name = 'p'" + chr(10) + "dependencies = [\"requests\"]" + chr(10))
+            write(t, "lib/pyproject.toml", "[build-system]" + chr(10) + "requires = ['setuptools']" + chr(10))
+            write(t, "Gemfile", "gem 'rack'" + chr(10))
+            write(t, "Gemfile.lock", "GEM" + chr(10))
+            probs = self.problems(t)
+        self.assertEqual([p.split(" declares")[0] for p in probs], ["pyproject.toml", "web/package.json"])
+
+    def test_dev_dependencies_are_read(self):
+        # planted dev-only minimist 1.2.5 scanned green: test runners and bundlers run on the build machine
+        with tree() as t:
+            project(t)
+            fake = Fake(baseline(vulns=False))
+            runner.Scan(t, cfg(), invoke=fake, engine=("containers", "docker")).run()
+        fs = [args for tool, args, _ in fake.calls if args[:1] == ["fs"]]
+        self.assertTrue(fs and "--include-dev-deps" in fs[0], fs)
+
+    def test_the_scan_fails_on_an_unpinned_requirement(self):
+        with tree() as t:
+            project(t)
+            write(t, "requirements.txt", "Jinja2>=2.10" + chr(10))
+            r = runner.Scan(t, cfg(), invoke=Fake(baseline(vulns=False)), engine=("containers", "docker")).run()
+        self.assertEqual(r["verdict"], "red")
+        self.assertTrue(any("unpinned dependency in requirements.txt: 'Jinja2>=2.10'" in p for p in r["problems"]), r["problems"])
 
 
 class UnseenByGrype(unittest.TestCase):

@@ -106,10 +106,38 @@ def series_depth(name, declared=None):
     return RELEASE_SERIES_DEPTH.get(str(name or "").strip().lower(), 1)
 
 
+REQUIREMENTS_FILE = re.compile(r"^requirements[\w.-]*\.(txt|in)$|^constraints[\w.-]*\.txt$", re.I)
+# name, optional extras, == or ===, a version; environment markers after ';' allowed
+PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[^\]]*\])?\s*===?\s*[A-Za-z0-9][^\s;,*]*(\s*;.*)?(\s+--.*)?$")
+PYPROJECT_DEPENDENCIES = re.compile(r"^\s*(dependencies\s*=\s*\[\s*\S|\[tool\.poetry\.dependencies\]|\[tool\.pdm\])", re.M)
+LOCKFILES_FOR = {"package.json": ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml"),
+                 "Pipfile": ("Pipfile.lock",), "pyproject.toml": ("poetry.lock", "uv.lock", "pdm.lock"),
+                 "Gemfile": ("Gemfile.lock",), "Cargo.toml": ("Cargo.lock",), "composer.json": ("composer.lock",)}
 UNDECLARED_VENDOR_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "thirdparty", "external", "lib-vendor"})
-# the licence banner minified libraries carry: "/*! jQuery v1.12.4", "//! moment.js 2.29.1", "/* @preserve Leaflet 1.9.4"
-LIBRARY_BANNER = re.compile(r"^\s*/[*/]!?\s*(?:(?:@preserve|@license)\s*(?:\*\s*)?)?([A-Za-z][\w.@/-]*(?: [A-Za-z][\w.-]*)?)\s+v?(\d+\.\d+(?:\.\d+)?)\b",
-                            re.M)
+# a line of the licence banner minified libraries carry: "/*! jQuery v1.12.4", "//! moment.js 2.29.1", " * Leaflet 1.9.4",
+# " * Chart.js v2.9.3" under a bare "/*!" (planted Chart.js 2.9.3 outside a vendor folder scanned green)
+BANNER_LINE = re.compile(r"^[\s/*!]*(?:@preserve|@license)?\s*([A-Za-z][\w.@/-]*(?: [A-Za-z][\w.-]*)?)\s+v?(\d+\.\d+(?:\.\d+)?)\b", re.M)
+
+
+def library_banner(text):
+    """(name, version) from the comment a file opens with, or None. Only the opening comment is read: a library
+    announces itself there, and a project's own code past it is never mistaken for one."""
+    head = text.lstrip("﻿ \t\r\n")
+    if head.startswith("/*"):
+        end = head.find("*/")
+        block = head[:end if end >= 0 else 600]
+    elif head.startswith("//"):
+        block = "\n".join(l for l in head.splitlines()[:12] if l.lstrip().startswith("//"))
+    else:
+        return None
+    m = BANNER_LINE.search(block)
+    if m and m.group(1).strip().lower() != "version":
+        return (m.group(1).strip(), m.group(2))
+    # the name on one line and "version : 2.29.1" on another (moment.js)
+    v = re.search(r"(?i)\bversion\s*[:=]?\s*v?(\d+\.\d+(?:\.\d+)?)\b", block)
+    first = next((l.strip(" \t/*!") for l in block.splitlines() if l.strip(" \t/*!")), "")
+    name = first.split()[0] if first else ""
+    return (name, v.group(1)) if v and name and name.lower() != "version" else None
 
 
 class Finding:
@@ -373,8 +401,11 @@ class Scan:
         no image, so vulnerabilities, secrets and composition were never looked at)."""
         target = "/src" if self.engine == "containers" else "."
         mounts = ((str(self.root), "/src"),)
-        a = self.run_scanner("vulnerabilities-a", ["fs", "--format", "json", "--scanners", "vuln,secret", "--exit-code", "0",
-                                                   *self._skips(target), target], mounts, parse=self._parse_trivy_fs) or []
+        # dev dependencies run on the build machine (test runners, bundlers): read, not skipped (planted dev-only
+        # minimist 1.2.5 scanned green); grype cannot read them, so its silence is coverage, not doubt (unseen_by_grype)
+        a = self.run_scanner("vulnerabilities-a", ["fs", "--format", "json", "--scanners", "vuln,secret", "--include-dev-deps",
+                                                   "--exit-code", "0", *self._skips(target), target], mounts,
+                             parse=self._parse_trivy_fs) or []
         excludes = []
         for d in SKIP_DIRS:
             excludes += ["--exclude", f"./{d}/**"]
@@ -413,6 +444,7 @@ class Scan:
             self.problems.append("the project runs Python and declares no Python runtime component (config runtime_components): "
                                  "the interpreter is part of what ships and must be inventoried and scanned")
         self.problems += self.undeclared_vendored(declared)
+        self.problems += self.unpinned_dependencies()
         if not declared and not runtimes:
             return None
         comps = []
@@ -458,11 +490,48 @@ class Scan:
                     head = f.read_bytes()[:600].decode("utf-8", "replace")
                 except OSError:
                     continue
-                m = LIBRARY_BANNER.search(head)
-                if m:
-                    found.setdefault(rel.as_posix(), f"its banner names {m.group(1).strip()} {m.group(2)}")
+                lib = library_banner(head)
+                if lib:
+                    found.setdefault(rel.as_posix(), f"its banner names {lib[0]} {lib[1]}")
         return [f"undeclared third-party code at {where} ({why}): declare it in config vendored_components (name, version, "
                 f"purl, path) so it is inventoried and scanned" for where, why in sorted(found.items())]
+
+    def unpinned_dependencies(self):
+        """A version the scanners cannot know is a version they cannot check (planted-CVE trials: `Jinja2>=2.10` in a
+        requirements file scanned green). Every requirement line must pin an exact version, and a manifest that
+        resolves versions at install time must have its lockfile beside it."""
+        skip = set(SKIP_DIRS) | {"node_modules"}
+        out = []
+        for f in sorted(self.root.rglob("*")):
+            if not f.is_file():
+                continue
+            rel = f.relative_to(self.root).as_posix()
+            if set(pathlib.PurePosixPath(rel).parts) & skip:
+                continue
+            name = f.name
+            if REQUIREMENTS_FILE.match(name):
+                text = f.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
+                for line in text.splitlines():
+                    req = line.split(" #", 1)[0].strip()
+                    if not req or req.startswith(("#", "-")):
+                        continue
+                    if not PINNED_REQUIREMENT.match(req):
+                        out.append(f"unpinned dependency in {rel}: '{req.split(' --', 1)[0].strip()}' — a range lets a version "
+                                   "no scanner checked ship; pin it with == (or install from a lockfile)")
+            elif name in LOCKFILES_FOR:
+                if name == "pyproject.toml" and not PYPROJECT_DEPENDENCIES.search(f.read_text(encoding="utf-8", errors="replace")):
+                    continue
+                if name == "package.json":
+                    try:
+                        data = json.loads(f.read_text(encoding="utf-8"))
+                    except ValueError:
+                        data = {}
+                    if not any(data.get(k) for k in ("dependencies", "devDependencies", "optionalDependencies")):
+                        continue
+                if not any((f.parent / lock).is_file() for lock in LOCKFILES_FOR[name]):
+                    out.append(f"{rel} declares dependencies with no lockfile beside it ({' or '.join(LOCKFILES_FOR[name])}): "
+                               "the versions that ship are unknown to the scanners")
+        return out
 
     def scan_vendored(self):
         p = self.vendored_sbom()

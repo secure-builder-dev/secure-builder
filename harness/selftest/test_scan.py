@@ -625,6 +625,37 @@ class Unpinned(unittest.TestCase):
         self.assertTrue(any("unpinned dependency in requirements.txt: 'Jinja2>=2.10'" in p for p in r["problems"]), r["problems"])
 
 
+class InstalledWithoutLockfile(unittest.TestCase):
+    """Planted node_modules/minimist 1.2.5 with no lockfile scanned green: neither scanner reads installed packages."""
+    def inventory(self, t):
+        sc = runner.Scan.__new__(runner.Scan)
+        sc.root = t
+        return sorted((c["name"], c["version"], c["purl"]) for c in sc.installed_without_lockfile())
+
+    def test_installed_packages_are_inventoried_from_their_package_json(self):
+        with tree() as t:
+            write(t, "node_modules/minimist/package.json", json.dumps({"name": "minimist", "version": "1.2.5"}))
+            write(t, "node_modules/@babel/traverse/package.json", json.dumps({"name": "@babel/traverse", "version": "7.22.0"}))
+            write(t, "node_modules/a/node_modules/lodash/package.json", json.dumps({"name": "lodash", "version": "4.17.15"}))
+            write(t, "node_modules/a/package.json", json.dumps({"name": "a", "version": "1.0.0"}))
+            write(t, "node_modules/a/test/fixture/package.json", json.dumps({"name": "fixture", "version": "0.0.1"}))
+            write(t, "web/node_modules/x/package.json", json.dumps({"name": "x", "version": "1.0.0"}))
+            write(t, "web/package-lock.json", "{}")
+            write(t, ".engine/harness/node_modules/y/package.json", json.dumps({"name": "y", "version": "1.0.0"}))
+            inv = self.inventory(t)
+        self.assertEqual(inv, [("@babel/traverse", "7.22.0", "pkg:npm/%40babel/traverse@7.22.0"), ("a", "1.0.0", "pkg:npm/a@1.0.0"),
+                               ("lodash", "4.17.15", "pkg:npm/lodash@4.17.15"), ("minimist", "1.2.5", "pkg:npm/minimist@1.2.5")])
+
+    def test_they_reach_the_sbom_both_scanners_read(self):
+        with tree() as t:
+            project(t)
+            write(t, "node_modules/minimist/package.json", json.dumps({"name": "minimist", "version": "1.2.5"}))
+            sc = runner.Scan(t, cfg(), invoke=Fake(baseline(vulns=False)), engine=("containers", "docker"))
+            p = sc.vendored_sbom()
+            comps = json.loads(p.read_text(encoding="utf-8"))["components"]
+        self.assertIn({"type": "library", "name": "minimist", "version": "1.2.5", "purl": "pkg:npm/minimist@1.2.5"}, comps)
+
+
 class UnseenByGrype(unittest.TestCase):
     """Planted-CVE trials: grype 0.86 cannot read a NuGet packages.lock.json; a trivy-only medium there is coverage, not doubt."""
     def test_a_trivy_only_finding_on_a_package_grype_never_inventoried_is_enforced(self):

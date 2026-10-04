@@ -467,9 +467,10 @@ class Scan:
                                  "the interpreter is part of what ships and must be inventoried and scanned")
         self.problems += self.undeclared_vendored(declared)
         self.problems += self.unpinned_dependencies()
-        if not declared and not runtimes:
+        installed = self.installed_without_lockfile()
+        if not declared and not runtimes and not installed:
             return None
-        comps = []
+        comps = list(installed)
         for c in declared:
             path = self.root / c.get("path", "")
             if not c.get("path") or not path.exists():
@@ -519,6 +520,40 @@ class Scan:
                     found.setdefault(rel.as_posix(), f"its banner names {lib[0]} {lib[1]}")
         return [f"undeclared third-party code at {where} ({why}): declare it in config vendored_components (name, version, "
                 f"purl, path) so it is inventoried and scanned" for where, why in sorted(found.items())]
+
+    def installed_without_lockfile(self):
+        """npm packages installed in a node_modules folder no lockfile describes. Neither scanner reads installed
+        packages in a directory scan, only lockfiles (planted node_modules/minimist 1.2.5 with no lockfile scanned
+        green): the engine reads each package.json and puts the package in the SBOM both scanners check."""
+        out, seen = [], set()
+        for nm in self.root.rglob("node_modules"):
+            rel = nm.relative_to(self.root).parts
+            if not nm.is_dir() or set(rel) & set(SKIP_DIRS) or "node_modules" in rel[:-1]:
+                continue                       # nested node_modules are read below, from their top folder
+            owner = nm.parent
+            if any((owner / lock).is_file() for lock in LOCKFILES_FOR["package.json"]):
+                continue                       # the lockfile describes it and both scanners read that
+            for pj in nm.rglob("package.json"):
+                parts = pj.relative_to(nm).parts      # <name>/package.json or @scope/<name>/package.json, at any nesting
+                if len(parts) < 2:
+                    continue
+                try:
+                    data = json.loads(pj.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                name, version = data.get("name"), data.get("version")
+                if not name or not version or not isinstance(name, str):
+                    continue
+                home = pj.parent.parent
+                if home.name.startswith("@"):
+                    home = home.parent
+                if home.name != "node_modules" or pj.parent.name != name.split("/")[-1]:
+                    continue                   # a package.json inside a package's own fixtures or examples, not a package
+                if (name, version) in seen:
+                    continue
+                seen.add((name, version))
+                out.append({"type": "library", "name": name, "version": version, "purl": f"pkg:npm/{name.replace('@', '%40', 1) if name.startswith('@') else name}@{version}"})
+        return out
 
     def unpinned_dependencies(self):
         """A version the scanners cannot know is a version they cannot check (planted-CVE trials: `Jinja2>=2.10` in a

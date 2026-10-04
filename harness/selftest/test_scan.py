@@ -589,6 +589,8 @@ class Unpinned(unittest.TestCase):
             write(t, "services/api/requirements-dev.txt", "pytest<8" + NL)
             write(t, ".engine/harness/requirements.txt", "anything" + NL)
             probs = self.problems(t)
+        self.assertIn("requirements.txt includes requirements-dev.txt, which does not exist: what it pins cannot be checked", probs)
+        probs = [p for p in probs if p.startswith("unpinned")]
         self.assertEqual([p.split(":", 1)[0] + ":" + p.split("'")[1] for p in probs],
                          ["unpinned dependency in requirements.txt:Jinja2>=2.10", "unpinned dependency in requirements.txt:flask",
                           "unpinned dependency in requirements.txt:Django~=3.2", "unpinned dependency in requirements.txt:numpy==1.*",
@@ -606,6 +608,54 @@ class Unpinned(unittest.TestCase):
             write(t, "Gemfile.lock", "GEM" + chr(10))
             probs = self.problems(t)
         self.assertEqual([p.split(" declares")[0] for p in probs], ["pyproject.toml", "web/package.json"])
+
+    def test_includes_are_followed_and_their_pins_reach_the_sbom(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "requirements.txt", "-r base.txt" + NL + "-c constraints/pins.txt" + NL + "--requirement=missing.txt" + NL)
+            write(t, "base.txt", "urllib3==1.24.1" + NL + "Jinja2>=2.10" + NL + "-r base.txt" + NL)
+            write(t, "constraints/pins.txt", "PyYAML==5.3" + NL)
+            sc = runner.Scan.__new__(runner.Scan)
+            sc.root = t
+            probs = sc.unpinned_dependencies()
+        self.assertIn("unpinned dependency in base.txt: 'Jinja2>=2.10' — a range lets a version no scanner checked ship; "
+                      "pin it with == (or install from a lockfile)", probs)
+        self.assertIn("requirements.txt includes missing.txt, which does not exist: what it pins cannot be checked", probs)
+        self.assertEqual(sorted((c["name"], c["purl"]) for c in sc.included_pins),
+                         [("PyYAML", "pkg:pypi/pyyaml@5.3"), ("urllib3", "pkg:pypi/urllib3@1.24.1")])
+
+    def test_a_dotnet_project_file_needs_its_lockfile(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "src/App/App.csproj", '<Project><ItemGroup><PackageReference Include="Newtonsoft.Json" Version="12.0.3" /></ItemGroup></Project>' + NL)
+            write(t, "src/Lib/Lib.fsproj", '<Project><ItemGroup><PackageReference Include="x" Version="1" /></ItemGroup></Project>' + NL)
+            write(t, "src/Lib/packages.lock.json", "{}")
+            write(t, "src/Empty/Empty.csproj", "<Project></Project>" + NL)
+            probs = self.problems(t)
+        self.assertEqual([p.split(" declares")[0] for p in probs], ["src/App/App.csproj"])
+
+    def test_a_conda_environment_is_pinned_and_inventoried(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "environment.yml", NL.join([
+                "name: plant", "channels:", "  - defaults", "dependencies:", "  - python=3.12", "  - pyyaml=5.3",
+                "  - conda-forge::numpy==1.19.0", "  - requests", "  - pip", "  - pip:", "    - Jinja2==2.10", "    - flask>=2",
+                "variables:", "  X: 1"]) + NL)
+            sc = runner.Scan.__new__(runner.Scan)
+            sc.root = t
+            probs = sc.unpinned_dependencies()
+        self.assertEqual([p.split("'")[1] for p in probs], ["requests", "flask>=2"])
+        self.assertEqual(sorted((c["name"], c["version"], c["purl"]) for c in sc.included_pins),
+                         [("Jinja2", "2.10", "pkg:pypi/jinja2@2.10"), ("numpy", "1.19.0", "pkg:pypi/numpy@1.19.0"),
+                          ("pyyaml", "5.3", "pkg:pypi/pyyaml@5.3")])
+
+    def test_a_gradle_build_script_needs_its_lockfile(self):
+        with tree() as t:
+            write(t, "build.gradle", "dependencies { implementation 'org.apache.logging.log4j:log4j-core:2.14.1' }" + chr(10))
+            write(t, "app/build.gradle.kts", "dependencies {}" + chr(10))
+            write(t, "app/gradle.lockfile", "empty=" + chr(10))
+            probs = self.problems(t)
+        self.assertEqual([p.split(" declares")[0] for p in probs], ["build.gradle"])
 
     def test_dev_dependencies_are_read(self):
         # planted dev-only minimist 1.2.5 scanned green: test runners and bundlers run on the build machine

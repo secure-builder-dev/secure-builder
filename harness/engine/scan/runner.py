@@ -116,13 +116,18 @@ def series_depth(name, declared=None):
     return RELEASE_SERIES_DEPTH.get(str(name or "").strip().lower(), 1)
 
 
+CONDA_ENV = re.compile(r"^(environment|conda[\w.-]*|env)\.ya?ml$", re.I)
+REQUIREMENT_INCLUDE = re.compile(r"^(-r|--requirement|-c|--constraint)[\s=]+(\S+)")
+PINNED_NAME_VERSION = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])?\s*===?\s*([^\s;,]+)")
 REQUIREMENTS_FILE = re.compile(r"^requirements[\w.-]*\.(txt|in)$|^constraints[\w.-]*\.txt$", re.I)
 # name, optional extras, == or ===, a version; environment markers after ';' allowed
 PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[^\]]*\])?\s*===?\s*[A-Za-z0-9][^\s;,*]*(\s*;.*)?(\s+--.*)?$")
 PYPROJECT_DEPENDENCIES = re.compile(r"^\s*(dependencies\s*=\s*\[\s*\S|\[tool\.poetry\.dependencies\]|\[tool\.pdm\])", re.M)
 LOCKFILES_FOR = {"package.json": ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml"),
                  "Pipfile": ("Pipfile.lock",), "pyproject.toml": ("poetry.lock", "uv.lock", "pdm.lock"),
-                 "Gemfile": ("Gemfile.lock",), "Cargo.toml": ("Cargo.lock",), "composer.json": ("composer.lock",)}
+                 "Gemfile": ("Gemfile.lock",), "Cargo.toml": ("Cargo.lock",), "composer.json": ("composer.lock",),
+                 # neither scanner reads a Gradle build script, only the lockfile (planted build.gradle log4j 2.14.1: green)
+                 "build.gradle": ("gradle.lockfile",), "build.gradle.kts": ("gradle.lockfile",)}
 UNDECLARED_VENDOR_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "thirdparty", "external", "lib-vendor"})
 # a line of the licence banner minified libraries carry: "/*! jQuery v1.12.4", "//! moment.js 2.29.1", " * Leaflet 1.9.4",
 # " * Chart.js v2.9.3" under a bare "/*!" (planted Chart.js 2.9.3 outside a vendor folder scanned green)
@@ -196,7 +201,8 @@ class Scan:
         self.problems = []
         self.notes = []
         self.findings = []
-        self.trivy_inventory = None      # None: trivy's tree scan produced nothing to read; set(): it ran and listed these
+        self.trivy_inventory = None
+        self.included_pins = []          # pins from requirements includes the scanners do not open      # None: trivy's tree scan produced nothing to read; set(): it ran and listed these
         self.digests = {}
         self.secrets = []
         self.runtime_findings = []
@@ -467,7 +473,7 @@ class Scan:
                                  "the interpreter is part of what ships and must be inventoried and scanned")
         self.problems += self.undeclared_vendored(declared)
         self.problems += self.unpinned_dependencies()
-        installed = self.installed_without_lockfile()
+        installed = self.installed_without_lockfile() + self.included_pins
         if not declared and not runtimes and not installed:
             return None
         comps = list(installed)
@@ -555,6 +561,78 @@ class Scan:
                 out.append({"type": "library", "name": name, "version": version, "purl": f"pkg:npm/{name.replace('@', '%40', 1) if name.startswith('@') else name}@{version}"})
         return out
 
+    def _requirements(self, f, rel, chain=()):
+        """Pinning problems in one requirements file, following its -r/-c includes. An included file the scanners do not
+        open (they read requirements*.txt only) has its pins put in the SBOM both scanners check (planted
+        `-r base.txt` with urllib3 1.24.1 in base.txt scanned green)."""
+        out = []
+        text = f.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
+        for line in text.splitlines():
+            req = line.split(" #", 1)[0].strip()
+            if not req or req.startswith("#"):
+                continue
+            inc = REQUIREMENT_INCLUDE.match(req)
+            if inc:
+                target = (f.parent / inc.group(2)).resolve()
+                if not target.is_file():
+                    out.append(f"{rel} includes {inc.group(2)}, which does not exist: what it pins cannot be checked")
+                elif target not in chain + (f.resolve(),) and not REQUIREMENTS_FILE.match(target.name):
+                    try:
+                        inc_rel = target.relative_to(self.root.resolve()).as_posix()
+                    except ValueError:
+                        inc_rel = inc.group(2)
+                    out += self._requirements(target, inc_rel, chain + (f.resolve(),))
+                continue
+            if req.startswith("-"):
+                continue
+            if not PINNED_REQUIREMENT.match(req):
+                out.append(f"unpinned dependency in {rel}: '{req.split(' --', 1)[0].strip()}' — a range lets a version "
+                           "no scanner checked ship; pin it with == (or install from a lockfile)")
+            elif chain:
+                m = PINNED_NAME_VERSION.match(req)
+                if m:
+                    self.__dict__.setdefault("included_pins", []).append({"type": "library", "name": m.group(1), "version": m.group(2),
+                                               "purl": f"pkg:pypi/{package_identity(m.group(1))}@{m.group(2)}"})
+        return out
+
+    def _conda_environment(self, f, rel):
+        """A conda environment file, which neither scanner reads (planted environment.yml pyyaml=5.3 scanned green):
+        every package must pin a version, and the pins go into the SBOM both scanners check (conda's Python packages
+        carry their PyPI names). The interpreter itself is the declared runtime component."""
+        out, in_deps, in_pip = [], False, False
+        for raw in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw.split("#", 1)[0].rstrip()
+            if not line.strip():
+                continue
+            indent = len(line) - len(line.lstrip())
+            if indent == 0:
+                in_deps, in_pip = line.strip() == "dependencies:", False
+                continue
+            if not in_deps:
+                continue
+            item = line.strip()
+            if not item.startswith("- "):
+                continue
+            item = item[2:].strip().strip("'\"")
+            if item == "pip:":
+                in_pip = True
+                continue
+            if in_pip and indent <= 2:
+                in_pip = False
+            m = re.match(r"^(?:[\w.-]+::)?([A-Za-z0-9][A-Za-z0-9._-]*)\s*(==?|=)\s*([0-9][^\s=*]*)$", item)
+            if m and not (in_pip and m.group(2) == "="):
+                name, version = m.group(1), m.group(3)
+                if name.lower() not in ("python", "pip"):
+                    self.__dict__.setdefault("included_pins", []).append(
+                        {"type": "library", "name": name, "version": version, "purl": f"pkg:pypi/{package_identity(name)}@{version}"})
+                continue
+            base = re.split(r"[\s=<>~!]", item, 1)[0]
+            if base.split("::")[-1].lower() in ("python", "pip"):
+                continue
+            out.append(f"unpinned dependency in {rel}: '{item}' — a range lets a version no scanner checked ship; "
+                       "pin it (name=version, or name==version under pip:)")
+        return out
+
     def unpinned_dependencies(self):
         """A version the scanners cannot know is a version they cannot check (planted-CVE trials: `Jinja2>=2.10` in a
         requirements file scanned green). Every requirement line must pin an exact version, and a manifest that
@@ -569,14 +647,7 @@ class Scan:
                 continue
             name = f.name
             if REQUIREMENTS_FILE.match(name):
-                text = f.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
-                for line in text.splitlines():
-                    req = line.split(" #", 1)[0].strip()
-                    if not req or req.startswith(("#", "-")):
-                        continue
-                    if not PINNED_REQUIREMENT.match(req):
-                        out.append(f"unpinned dependency in {rel}: '{req.split(' --', 1)[0].strip()}' — a range lets a version "
-                                   "no scanner checked ship; pin it with == (or install from a lockfile)")
+                out += self._requirements(f, rel)
             elif name in LOCKFILES_FOR:
                 if name == "pyproject.toml" and not PYPROJECT_DEPENDENCIES.search(f.read_text(encoding="utf-8", errors="replace")):
                     continue
@@ -590,6 +661,15 @@ class Scan:
                 if not any((f.parent / lock).is_file() for lock in LOCKFILES_FOR[name]):
                     out.append(f"{rel} declares dependencies with no lockfile beside it ({' or '.join(LOCKFILES_FOR[name])}): "
                                "the versions that ship are unknown to the scanners")
+            elif CONDA_ENV.match(name):
+                out += self._conda_environment(f, rel)
+            elif f.suffix.lower() in (".csproj", ".fsproj", ".vbproj"):
+                # neither scanner reads a .NET project file, only packages.lock.json (planted PackageReference
+                # Newtonsoft.Json 12.0.3 in a .csproj scanned green); RestorePackagesWithLockFile writes it
+                if "PackageReference" in f.read_text(encoding="utf-8", errors="replace") \
+                        and not (f.parent / "packages.lock.json").is_file():
+                    out.append(f"{rel} declares dependencies with no lockfile beside it (packages.lock.json; set "
+                               "RestorePackagesWithLockFile): the versions that ship are unknown to the scanners")
         return out
 
     def scan_vendored(self):

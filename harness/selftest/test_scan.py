@@ -649,6 +649,15 @@ class Unpinned(unittest.TestCase):
                          [("Jinja2", "2.10", "pkg:pypi/jinja2@2.10"), ("numpy", "1.19.0", "pkg:pypi/numpy@1.19.0"),
                           ("pyyaml", "5.3", "pkg:pypi/pyyaml@5.3")])
 
+    def test_pipenv_develop_pins_reach_the_sbom(self):
+        with tree() as t:
+            write(t, "Pipfile.lock", json.dumps({"default": {"requests": {"version": "==2.31.0"}},
+                                                 "develop": {"PyYAML": {"version": "==5.3"}, "editable": {"path": "."}}}))
+            sc = runner.Scan.__new__(runner.Scan)
+            sc.root = t
+            self.assertEqual(sc.unpinned_dependencies(), [])
+        self.assertEqual([(c["name"], c["purl"]) for c in sc.included_pins], [("PyYAML", "pkg:pypi/pyyaml@5.3")])
+
     def test_a_gradle_build_script_needs_its_lockfile(self):
         with tree() as t:
             write(t, "build.gradle", "dependencies { implementation 'org.apache.logging.log4j:log4j-core:2.14.1' }" + chr(10))

@@ -663,6 +663,19 @@ class Scan:
                                "the versions that ship are unknown to the scanners")
             elif CONDA_ENV.match(name):
                 out += self._conda_environment(f, rel)
+            elif name == "Pipfile.lock":
+                # neither scanner reads Pipenv's develop section (planted dev-only PyYAML 5.3 scanned green); dev tools run
+                # on the build machine, so its pins go into the SBOM both scanners check
+                try:
+                    develop = json.loads(f.read_text(encoding="utf-8")).get("develop") or {}
+                except ValueError:
+                    develop = {}
+                for pkg_name, spec in develop.items():
+                    version = str((spec or {}).get("version", "")).lstrip("=")
+                    if version:
+                        self.__dict__.setdefault("included_pins", []).append(
+                            {"type": "library", "name": pkg_name, "version": version,
+                             "purl": f"pkg:pypi/{package_identity(pkg_name)}@{version}"})
             elif f.suffix.lower() in (".csproj", ".fsproj", ".vbproj"):
                 # neither scanner reads a .NET project file, only packages.lock.json (planted PackageReference
                 # Newtonsoft.Json 12.0.3 in a .csproj scanned green); RestorePackagesWithLockFile writes it

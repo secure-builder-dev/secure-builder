@@ -493,6 +493,60 @@ class RuntimeSeries(unittest.TestCase):
         self.assertFalse(f.actionable, "declared series_depth 2: 26.2 is a newer line")
 
 
+class UndeclaredVendored(unittest.TestCase):
+    """Planted-CVE trials: jQuery 1.12.4 dropped into src/static/vendor/ undeclared scanned green."""
+    def problems(self, t, declared=()):
+        sc = runner.Scan.__new__(runner.Scan)
+        sc.root = t
+        return sc.undeclared_vendored(list(declared))
+
+    def test_a_vendor_folder_or_a_library_banner_must_be_declared(self):
+        with tree() as t:
+            write(t, "src/static/vendor/jquery/jquery-1.12.4.min.js", "/*! jQuery v1.12.4 | (c) jQuery Foundation */" + chr(10))
+            write(t, "src/static/lib/moment.min.js", "//! moment.js 2.29.1" + chr(10))
+            write(t, "src/static/leaflet.js", "/* @preserve" + chr(10) + " * Leaflet 1.9.4, a JS library */" + chr(10))
+            write(t, "src/static/app.js", "// draw the map" + chr(10) + "const x = 1;" + chr(10))
+            write(t, "node_modules/lodash/lodash.js", "/*! lodash 4.17.15 */" + chr(10))
+            write(t, ".engine/harness/x.js", "/*! jQuery v1.12.4 */" + chr(10))
+            probs = self.problems(t)
+        self.assertEqual(len(probs), 3, probs)
+        self.assertTrue(probs[0].startswith("undeclared third-party code at src/static/leaflet.js (its banner names Leaflet 1.9.4)"), probs[0])
+        self.assertTrue(probs[1].startswith("undeclared third-party code at src/static/lib/moment.min.js (its banner names moment.js 2.29.1)"))
+        self.assertTrue(probs[2].startswith("undeclared third-party code at src/static/vendor/jquery (third-party code under a vendor folder)"))
+
+    def test_declared_paths_are_covered(self):
+        with tree() as t:
+            write(t, "src/static/vendor/jquery/jquery.min.js", "/*! jQuery v3.7.1 */" + chr(10))
+            write(t, "src/static/vendor/jquery/jquery.min.map", "{}")
+            self.assertEqual(self.problems(t, [{"name": "jquery", "version": "3.7.1", "path": "src/static/vendor/jquery"}]), [])
+
+    def test_the_scan_fails_on_undeclared_code(self):
+        with tree() as t:
+            project(t)
+            write(t, "web/third_party/chart/chart.min.js", "x" + chr(10))
+            sc = runner.Scan(t, cfg(), invoke=Fake(baseline(vulns=False)), engine=("containers", "docker"))
+            r = sc.run()
+        self.assertEqual(r["verdict"], "red")
+        self.assertTrue(any("undeclared third-party code at web/third_party/chart" in p for p in r["problems"]), r["problems"])
+
+
+class UnseenByGrype(unittest.TestCase):
+    """Planted-CVE trials: grype 0.86 cannot read a NuGet packages.lock.json; a trivy-only medium there is coverage, not doubt."""
+    def test_a_trivy_only_finding_on_a_package_grype_never_inventoried_is_enforced(self):
+        F = runner.Finding
+        nuget = F("vulnerabilities", "CVE-2024-21907", "MEDIUM", "Newtonsoft.Json", "12.0.3", "13.0.1", "", "trivy")
+        known = F("vulnerabilities", "CVE-3", "MEDIUM", "PyYAML", "5.3", "5.4", "", "trivy")
+        grype_only = F("vulnerabilities", "CVE-4", "MEDIUM", "left-pad", "1.0", "1.1", "", "grype")
+        with tree() as t:
+            write(t, "sbom.json", json.dumps({"components": [{"name": "pyyaml", "version": "5.3"},
+                                                              {"group": "org.apache.logging.log4j", "name": "log4j-core"}]}))
+            unseen = runner.Scan.unseen_by_grype([nuget, known, grype_only], t / "sbom.json")
+            self.assertEqual([f.id for f in unseen], ["CVE-2024-21907"])
+            self.assertEqual(runner.Scan.unseen_by_grype([nuget], None), [], "no inventory: nothing is promoted on a guess")
+            write(t, "bad.json", "{")
+            self.assertEqual(runner.Scan.unseen_by_grype([nuget], t / "bad.json"), [])
+
+
 class PlanOfActionClosure(unittest.TestCase):
     """Found on the demo apps: rows written by a scan that read the wrong paths stayed open for ever."""
     def latest(self, t):

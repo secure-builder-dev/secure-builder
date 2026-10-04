@@ -106,6 +106,12 @@ def series_depth(name, declared=None):
     return RELEASE_SERIES_DEPTH.get(str(name or "").strip().lower(), 1)
 
 
+UNDECLARED_VENDOR_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "thirdparty", "external", "lib-vendor"})
+# the licence banner minified libraries carry: "/*! jQuery v1.12.4", "//! moment.js 2.29.1", "/* @preserve Leaflet 1.9.4"
+LIBRARY_BANNER = re.compile(r"^\s*/[*/]!?\s*(?:(?:@preserve|@license)\s*(?:\*\s*)?)?([A-Za-z][\w.@/-]*(?: [A-Za-z][\w.-]*)?)\s+v?(\d+\.\d+(?:\.\d+)?)\b",
+                            re.M)
+
+
 class Finding:
     def __init__(self, concern, ident, severity="UNKNOWN", package="", version="", fixed=None, target="", source="", reason=None):
         self.concern, self.id, self.severity, self.package, self.version = concern, ident, severity.upper(), package, version
@@ -406,6 +412,7 @@ class Scan:
                 and any(p for p in self.root.rglob("*.py") if not set(p.relative_to(self.root).parts) & {".engine", ".git"}):
             self.problems.append("the project runs Python and declares no Python runtime component (config runtime_components): "
                                  "the interpreter is part of what ships and must be inventoried and scanned")
+        self.problems += self.undeclared_vendored(declared)
         if not declared and not runtimes:
             return None
         comps = []
@@ -426,6 +433,36 @@ class Scan:
                "metadata": {"component": {"type": "application", "name": self.root.name}}, "components": comps}
         p.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
         return p
+
+    def undeclared_vendored(self, declared):
+        """Third-party code no declared component covers is invisible to both scanners (planted-CVE trials: jQuery
+        1.12.4 dropped into src/static/vendor/ scanned green). Anything under a vendor folder, and any script or
+        stylesheet whose banner names a library and version, must be declared; each is a problem until it is."""
+        covered = [pathlib.PurePosixPath(c["path"]) for c in declared if c.get("path")]
+        skip = set(SKIP_DIRS) | {"node_modules"}            # installed packages are read from their lockfile
+        found = {}
+        for f in self.root.rglob("*"):
+            if not f.is_file():
+                continue
+            rel = pathlib.PurePosixPath(f.relative_to(self.root).as_posix())
+            if set(rel.parts) & skip or any(rel == c or c in rel.parents for c in covered):
+                continue
+            parts = rel.parts[:-1]
+            vend = next((i for i, part in enumerate(parts) if part.lower() in UNDECLARED_VENDOR_DIRS), None)
+            if vend is not None:
+                where = "/".join(rel.parts[:vend + 2]) if len(parts) > vend + 1 else "/".join(rel.parts[:vend + 1])
+                found.setdefault(where, "third-party code under a vendor folder")
+                continue
+            if f.suffix.lower() in (".js", ".mjs", ".cjs", ".css"):
+                try:
+                    head = f.read_bytes()[:600].decode("utf-8", "replace")
+                except OSError:
+                    continue
+                m = LIBRARY_BANNER.search(head)
+                if m:
+                    found.setdefault(rel.as_posix(), f"its banner names {m.group(1).strip()} {m.group(2)}")
+        return [f"undeclared third-party code at {where} ({why}): declare it in config vendored_components (name, version, "
+                f"purl, path) so it is inventoried and scanned" for where, why in sorted(found.items())]
 
     def scan_vendored(self):
         p = self.vendored_sbom()
@@ -541,6 +578,25 @@ class Scan:
         elif severity == "MEDIUM":
             f.reason = "static-analysis finding of medium severity: fix or document why it is safe by the milestone"
         return f
+
+    @staticmethod
+    def unseen_by_grype(single, sbom_path):
+        """A finding trivy alone reports for a package grype never inventoried is not a disagreement between the
+        scanners: it is the only scanner that can read that manifest (planted-CVE trials: grype 0.86 does not read a
+        NuGet packages.lock.json, so a medium Newtonsoft.Json CVE would have stayed informational). Grype's inventory
+        is syft's, the project SBOM."""
+        if not sbom_path:
+            return []
+        try:
+            comps = json.loads(pathlib.Path(sbom_path).read_text(encoding="utf-8")).get("components") or []
+        except (OSError, ValueError):
+            return []
+        seen = set()
+        for c in comps:
+            seen.add(package_identity(c.get("name", "")))
+            if c.get("group"):
+                seen.add(package_identity(f"{c['group']}:{c.get('name', '')}"))
+        return [f for f in single if f.sources == {"trivy"} and package_identity(f.package) not in seen]
 
     def sbom_project(self):
         tool, image, _ = images.SCANNERS["composition"]
@@ -713,9 +769,9 @@ class Scan:
         # build was impossible used to switch the tree scan off, and a vulnerable lodash and requests went unread
         a, b = self.scan_project()
         confirmed, single = self.correlate(a, b)
-        confirmed_all += confirmed
-        single_all += single
-        self.sbom_project()
+        unseen = self.unseen_by_grype(single, self.sbom_project())
+        confirmed_all += confirmed + unseen
+        single_all += [f for f in single if f not in unseen]
         findings += self.secrets
         findings += self.runtime_findings
         findings += self.scan_sast()

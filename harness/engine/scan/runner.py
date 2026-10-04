@@ -92,6 +92,20 @@ def package_identity(name):
     return re.sub(r"[-_.]+", "-", n)
 
 
+# how many version parts name a runtime's release line: Python 3.14 and Go 1.22 are lines, Node 14 and Java 17 are.
+# Planted-CVE trials: Node.js 14.0.0 with a fix in 14.4.0 was carried as "newer series only" and scanned green.
+RELEASE_SERIES_DEPTH = {"python": 2, "cpython": 2, "go": 2, "golang": 2, "ruby": 2, "php": 2, "dotnet": 2, ".net": 2,
+                        "node": 1, "node.js": 1, "nodejs": 1, "java": 1, "openjdk": 1, "jdk": 1, "jre": 1, "deno": 1, "bun": 1}
+
+
+def series_depth(name, declared=None):
+    """The release-line depth for a runtime: the component's own `series_depth`, else the known value, else 1 (the
+    stricter reading: an unknown runtime with a fix anywhere in its major line must take it)."""
+    if declared:
+        return int(declared)
+    return RELEASE_SERIES_DEPTH.get(str(name or "").strip().lower(), 1)
+
+
 class Finding:
     def __init__(self, concern, ident, severity="UNKNOWN", package="", version="", fixed=None, target="", source="", reason=None):
         self.concern, self.id, self.severity, self.package, self.version = concern, ident, severity.upper(), package, version
@@ -361,18 +375,20 @@ class Scan:
         b = self.run_scanner("vulnerabilities-b", [f"dir:{target}", "-o", "json", *excludes], mounts,
                              parse=lambda res: self._parse_grype(res, "grype")) or []
         va, vb = self.scan_vendored()
-        runtimes = {c["name"].lower(): c.get("version", "") for c in ((self.cfg.get("runtime_components") if self.cfg else None) or [])}
-        self.runtime_findings = [self._judge_runtime(f, runtimes[f.package.lower()]) for f in va + vb if f.package.lower() in runtimes]
+        runtimes = {c["name"].lower(): (c.get("version", ""), c.get("series_depth"))
+                    for c in ((self.cfg.get("runtime_components") if self.cfg else None) or [])}
+        self.runtime_findings = [self._judge_runtime(f, *runtimes[f.package.lower()]) for f in va + vb if f.package.lower() in runtimes]
         keep = lambda fs: [f for f in fs if f.package.lower() not in runtimes]
         return a + keep(va), b + keep(vb)
 
     @staticmethod
-    def _judge_runtime(f, installed):
+    def _judge_runtime(f, installed, depth=None):
         """A runtime CVE whose fix exists in the runtime's own release series blocks (upgrade within the series); one
         fixed only in a newer series is carried on the plan of action with that upgrade as its milestone."""
-        series = ".".join(installed.split(".")[:2])
+        depth = series_depth(f.package, depth)
+        series = ".".join(installed.split(".")[:depth])
         fixes = [v.strip() for v in (f.fixed or "").split(",") if v.strip()]
-        same = [v for v in fixes if ".".join(v.split(".")[:2]) == series]
+        same = [v for v in fixes if ".".join(v.split(".")[:depth]) == series]
         if same:
             f.fixed = ", ".join(same)
             return f

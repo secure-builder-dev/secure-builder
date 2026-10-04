@@ -469,6 +469,30 @@ class PlantedCorrelation(unittest.TestCase):
         self.assertEqual(confirmed[0].severity, "CRITICAL")
 
 
+class RuntimeSeries(unittest.TestCase):
+    """Planted-CVE trials: Node.js 14.0.0 with its fix in 14.4.0 was carried as newer-series-only and scanned green."""
+    def judge(self, name, installed, fixed, depth=None):
+        return runner.Scan._judge_runtime(runner.Finding("vulnerabilities", "CVE-1", "HIGH", name, installed, fixed, "", "grype"),
+                                          installed, depth)
+
+    def test_node_and_java_lines_are_the_major_version(self):
+        for name, installed, fixed in (("node.js", "14.0.0", "10.21.0, 12.18.0, 14.4.0"), ("openjdk", "17.0.1", "17.0.9, 21.0.1")):
+            f = self.judge(name, installed, fixed)
+            self.assertTrue(f.actionable, name)
+            self.assertEqual(f.fixed, fixed.split(", ")[-2] if name == "openjdk" else "14.4.0")
+
+    def test_python_and_go_lines_are_major_minor(self):
+        f = self.judge("python", "3.14.7", "3.15.0")
+        self.assertFalse(f.actionable)
+        self.assertIn("no fix in 3.14.x", f.reason)
+        self.assertTrue(self.judge("go", "1.22.1", "1.21.9, 1.22.4").actionable)
+
+    def test_unknown_runtime_is_strict_and_a_declared_depth_wins(self):
+        self.assertTrue(self.judge("erlang", "26.0", "26.2.1").actionable, "unknown: the major line")
+        f = self.judge("erlang", "26.0", "26.2.1", depth=2)
+        self.assertFalse(f.actionable, "declared series_depth 2: 26.2 is a newer line")
+
+
 class PlanOfActionClosure(unittest.TestCase):
     """Found on the demo apps: rows written by a scan that read the wrong paths stayed open for ever."""
     def latest(self, t):

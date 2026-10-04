@@ -540,6 +540,22 @@ class UndeclaredVendored(unittest.TestCase):
         for own in ("const x = 1; // v1.2 of the map", "// draw the map" + NL + "const v = 2.5;", "", "body { color: red }"):
             self.assertIsNone(runner.library_banner(own), own)
 
+    def test_a_package_managers_vendor_folder_is_not_undeclared(self):
+        NL = chr(10)
+        with tree() as t:
+            write(t, "go.mod", "module x" + NL + "require golang.org/x/text v0.3.6" + NL)
+            write(t, "vendor/modules.txt", "# golang.org/x/text v0.3.6" + NL)
+            write(t, "vendor/golang.org/x/text/doc.go", "package text" + NL)
+            write(t, "php/composer.lock", "{}")
+            write(t, "php/vendor/guzzlehttp/guzzle/src/Client.php", "<?php" + NL)
+            write(t, "rb/Gemfile.lock", "GEM" + NL)
+            write(t, "rb/vendor/bundle/ruby/3.1.0/gems/rack-2.2.3/lib/rack.rb", "x" + NL)
+            write(t, "rb/vendor/assets/chart.min.js", "/*! Chart.js v2.9.3 */" + NL)
+            write(t, "web/vendor/jquery/jquery.min.js", "/*! jQuery v3.4.1 */" + NL)
+            probs = self.problems(t)
+        self.assertEqual([p.split(" (")[0] for p in probs], ["undeclared third-party code at rb/vendor/assets",
+                                                             "undeclared third-party code at web/vendor/jquery"])
+
     def test_declared_paths_are_covered(self):
         with tree() as t:
             write(t, "src/static/vendor/jquery/jquery.min.js", "/*! jQuery v3.7.1 */" + chr(10))

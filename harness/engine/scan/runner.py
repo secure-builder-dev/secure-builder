@@ -129,6 +129,17 @@ UNDECLARED_VENDOR_DIRS = frozenset({"vendor", "vendored", "third_party", "third-
 BANNER_LINE = re.compile(r"^[\s/*!]*(?:@preserve|@license)?\s*([A-Za-z][\w.@/-]*(?: [A-Za-z][\w.-]*)?)\s+v?(\d+\.\d+(?:\.\d+)?)\b", re.M)
 
 
+def managed_vendor(vendor_dir, inner):
+    """A vendor folder a package manager fills from a lockfile the scanners read: Go's `go mod vendor` (modules.txt
+    beside go.mod), Composer's vendor/ (composer.lock), Bundler's vendor/bundle (Gemfile.lock). Not undeclared code."""
+    d, parent = pathlib.Path(vendor_dir), pathlib.Path(vendor_dir).parent
+    if (d / "modules.txt").is_file() and (parent / "go.mod").is_file():
+        return True
+    if d.name.lower() == "vendor" and (parent / "composer.lock").is_file():
+        return True
+    return bool(inner) and inner[0] == "bundle" and (parent / "Gemfile.lock").is_file()
+
+
 def library_banner(text):
     """(name, version) from the comment a file opens with, or None. Only the opening comment is read: a library
     announces itself there, and a project's own code past it is never mistaken for one."""
@@ -492,6 +503,8 @@ class Scan:
                 continue
             parts = rel.parts[:-1]
             vend = next((i for i, part in enumerate(parts) if part.lower() in UNDECLARED_VENDOR_DIRS), None)
+            if vend is not None and managed_vendor(self.root / pathlib.PurePosixPath(*rel.parts[:vend + 1]), rel.parts[vend + 1:]):
+                continue                    # a package manager's vendor folder: its lockfile declares it and is scanned
             if vend is not None:
                 where = "/".join(rel.parts[:vend + 2]) if len(parts) > vend + 1 else "/".join(rel.parts[:vend + 1])
                 found.setdefault(where, "third-party code under a vendor folder")

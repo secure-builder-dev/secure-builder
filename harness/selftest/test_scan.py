@@ -432,6 +432,43 @@ class Run(unittest.TestCase):
             self.assertEqual(sc.ship_images(), {"registry/svc-hardened": "deploy/Dockerfile.hardened"})
 
 
+class PlantedCorrelation(unittest.TestCase):
+    """From ten planted-CVE trials: PyYAML, Jinja2 and log4j-core (Log4Shell) all scanned green."""
+    F = staticmethod(runner.Finding)
+
+    def test_the_same_package_spelled_differently_is_one_finding(self):
+        pairs = [("PyYAML", "pyyaml"), ("Jinja2", "jinja2"), ("org.apache.logging.log4j:log4j-core", "log4j-core"),
+                 ("zope.interface", "zope-interface"), ("golang.org/x/text", "golang.org/x/text")]
+        for trivy_name, grype_name in pairs:
+            a = [self.F("vulnerabilities", "CVE-1", "MEDIUM", trivy_name, "1.0", "1.1", "", "trivy")]
+            b = [self.F("vulnerabilities", "CVE-1", "MEDIUM", grype_name, "1.0", "1.1", "", "grype")]
+            confirmed, single = runner.Scan.correlate(a, b)
+            self.assertEqual([sorted(f.sources) for f in confirmed], [["grype", "trivy"]], (trivy_name, grype_name))
+            self.assertEqual(single, [])
+
+    def test_different_packages_stay_apart(self):
+        a = [self.F("vulnerabilities", "CVE-1", "MEDIUM", "@scope/a", "1", "2", "", "trivy")]
+        b = [self.F("vulnerabilities", "CVE-1", "MEDIUM", "@other/a", "1", "2", "", "grype")]
+        confirmed, single = runner.Scan.correlate(a, b)
+        self.assertEqual((confirmed, len(single)), ([], 2))
+
+    def test_a_high_or_critical_seen_by_one_scanner_is_not_informational(self):
+        crit = self.F("vulnerabilities", "CVE-2021-44228", "CRITICAL", "log4j-core", "2.14.1", "2.15.0", "", "trivy")
+        high_nofix = self.F("vulnerabilities", "CVE-7", "HIGH", "libq", "1", None, "", "grype")
+        medium = self.F("vulnerabilities", "CVE-9", "MEDIUM", "libz", "3", "3.1", "", "grype")
+        confirmed, single = runner.Scan.correlate([crit], [high_nofix, medium])
+        self.assertEqual(sorted(f.id for f in confirmed), ["CVE-2021-44228", "CVE-7"])
+        self.assertEqual([f.id for f in single], ["CVE-9"], "medium and low from one scanner are still read, not enforced")
+        self.assertTrue(crit.actionable, "a fixable critical blocks")
+        self.assertFalse(high_nofix.actionable, "an unfixable high is carried on the plan of action")
+
+    def test_the_higher_severity_stands_when_scanners_disagree(self):
+        a = [self.F("vulnerabilities", "CVE-1", "MEDIUM", "x", "1", "2", "", "trivy")]
+        b = [self.F("vulnerabilities", "CVE-1", "CRITICAL", "x", "1", "2", "", "grype")]
+        confirmed, _ = runner.Scan.correlate(a, b)
+        self.assertEqual(confirmed[0].severity, "CRITICAL")
+
+
 class PlanOfActionClosure(unittest.TestCase):
     """Found on the demo apps: rows written by a scan that read the wrong paths stayed open for ever."""
     def latest(self, t):

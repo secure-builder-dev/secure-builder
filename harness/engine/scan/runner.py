@@ -29,6 +29,7 @@ DB_VOLUME = ".engine/work/clamav-db"
 DATA_DATE = ".engine/records/scan/detection-data-date"
 ENGINES = ("containers", "host", "auto")
 HIGH = ("HIGH", "CRITICAL")
+SEVERITY_RANK = {"UNKNOWN": 0, "NEGLIGIBLE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
 SKIP_DIRS = (".engine", ".git")
 # static analysis reads the project's own code: not the placed harness, git internals, vendored third-party code
 # (scanned by version instead) or the tests (assertions and fixtures are not shipped code)
@@ -81,6 +82,16 @@ def real_invoke(root, engine, rt, tool, image, args, mounts=(), timeout=1800):
     return tools.run_tool(exe, args, cwd=str(root), timeout=timeout)
 
 
+def package_identity(name):
+    """One spelling for a package across scanners. Planted-CVE trials: trivy says PyYAML, Jinja2 and
+    org.apache.logging.log4j:log4j-core where grype says pyyaml, jinja2 and log4j-core, so the two never confirmed
+    each other and a critical Log4Shell scanned green. Case folded, PEP 503 separators collapsed, a Maven group dropped."""
+    n = str(name or "").strip().lower()
+    if ":" in n and "/" not in n:          # maven group:artifact (go and npm paths carry slashes, never a colon)
+        n = n.rsplit(":", 1)[-1]
+    return re.sub(r"[-_.]+", "-", n)
+
+
 class Finding:
     def __init__(self, concern, ident, severity="UNKNOWN", package="", version="", fixed=None, target="", source="", reason=None):
         self.concern, self.id, self.severity, self.package, self.version = concern, ident, severity.upper(), package, version
@@ -89,7 +100,7 @@ class Finding:
 
     @property
     def key(self):
-        return (self.id, self.package)
+        return (self.id, package_identity(self.package))
 
     @property
     def actionable(self):
@@ -553,10 +564,14 @@ class Scan:
             if f.key in merged:
                 merged[f.key].sources |= f.sources
                 merged[f.key].fixed = merged[f.key].fixed or f.fixed
+                if SEVERITY_RANK.get(f.severity, 0) > SEVERITY_RANK.get(merged[f.key].severity, 0):
+                    merged[f.key].severity = f.severity          # the scanners disagree: the higher rating stands
             else:
                 merged[f.key] = f
-        confirmed = [f for f in merged.values() if len(f.sources) >= 2]
-        single = [f for f in merged.values() if len(f.sources) < 2]
+        # a high or critical finding one scanner alone reports is not left informational: the scanners' databases
+        # differ, and a critical seen once is still critical (fixable it blocks, unfixable it goes on the plan of action)
+        confirmed = [f for f in merged.values() if len(f.sources) >= 2 or f.severity in HIGH]
+        single = [f for f in merged.values() if not (len(f.sources) >= 2 or f.severity in HIGH)]
         return confirmed, single
 
     def verdicts(self, findings):

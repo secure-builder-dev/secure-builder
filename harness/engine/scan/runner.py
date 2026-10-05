@@ -18,7 +18,7 @@ import shutil
 from .. import gitutil, stamp, tools
 from ..records import now, table
 from ..records import schema as sch
-from . import images
+from . import dast, images, nodered, offline
 
 RAW_DIR = ".engine/records/scan/raw"
 SBOM_DIR = ".engine/records/scan/sbom"
@@ -128,10 +128,47 @@ LOCKFILES_FOR = {"package.json": ("package-lock.json", "npm-shrinkwrap.json", "y
                  "Gemfile": ("Gemfile.lock",), "Cargo.toml": ("Cargo.lock",), "composer.json": ("composer.lock",),
                  # neither scanner reads a Gradle build script, only the lockfile (planted build.gradle log4j 2.14.1: green)
                  "build.gradle": ("gradle.lockfile",), "build.gradle.kts": ("gradle.lockfile",)}
+# what the second analyzer is per language; a language with none fails the scan (an unread tree is not a clean one)
+CODE_LANGUAGES = {".py": "python", ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".ts": "typescript",
+                  ".tsx": "typescript", ".jsx": "javascript", ".kt": "kotlin", ".kts": "kotlin", ".java": "java", ".go": "go",
+                  ".rb": "ruby", ".php": "php", ".cs": "csharp", ".rs": "rust", ".swift": "swift", ".scala": "scala"}
+SECOND_ANALYZERS = {"python": "bandit", "javascript": "eslint"}
+FLOW_CODE_DIR = ".engine/work/flow-code"
+# eslint-plugin-security rules whose finding is a defect, not a smell: they block; the rest are carried
+ESLINT_HIGH = frozenset({"detect-eval-with-expression", "detect-child-process", "detect-pseudoRandomBytes",
+                         "detect-disable-mustache-escape", "detect-no-csrf-before-method-override", "detect-new-buffer",
+                         "detect-buffer-noassert", "detect-bidi-characters"})
 UNDECLARED_VENDOR_DIRS = frozenset({"vendor", "vendored", "third_party", "third-party", "thirdparty", "external", "lib-vendor"})
 # a line of the licence banner minified libraries carry: "/*! jQuery v1.12.4", "//! moment.js 2.29.1", " * Leaflet 1.9.4",
 # " * Chart.js v2.9.3" under a bare "/*!" (planted Chart.js 2.9.3 outside a vendor folder scanned green)
 BANNER_LINE = re.compile(r"^[\s/*!]*(?:@preserve|@license)?\s*([A-Za-z][\w.@/-]*(?: [A-Za-z][\w.-]*)?)\s+v?(\d+\.\d+(?:\.\d+)?)\b", re.M)
+
+
+def npm_installed(nm, seen):
+    """SBOM components for the npm packages installed under one node_modules folder (nested ones included)."""
+    out = []
+    for pj in nm.rglob("package.json"):
+        parts = pj.relative_to(nm).parts      # <name>/package.json or @scope/<name>/package.json, at any nesting
+        if len(parts) < 2:
+            continue
+        try:
+            data = json.loads(pj.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        name, version = data.get("name"), data.get("version")
+        if not name or not version or not isinstance(name, str):
+            continue
+        home = pj.parent.parent
+        if home.name.startswith("@"):
+            home = home.parent
+        if home.name != "node_modules" or pj.parent.name != name.split("/")[-1]:
+            continue                   # a package.json inside a package's own fixtures or examples, not a package
+        if (name, version) in seen:
+            continue
+        seen.add((name, version))
+        purl_name = name.replace("@", "%40", 1) if name.startswith("@") else name
+        out.append({"type": "library", "name": name, "version": version, "purl": f"pkg:npm/{purl_name}@{version}"})
+    return out
 
 
 def managed_vendor(vendor_dir, inner):
@@ -180,7 +217,7 @@ class Finding:
     def actionable(self):
         if self.reason:                 # explicitly carried: on the plan of action, not blocking
             return False
-        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration", "secret", "sast")
+        return bool(self.fixed) or self.concern in ("malware", "container-hygiene", "iac-misconfiguration", "secret", "sast", "dast")
 
     def line(self):
         fix = f"fix: {self.fixed}" if self.fixed else "no fix available"
@@ -473,6 +510,10 @@ class Scan:
                                  "the interpreter is part of what ships and must be inventoried and scanned")
         self.problems += self.undeclared_vendored(declared)
         self.problems += self.unpinned_dependencies()
+        source = (self.cfg.get("offline_packages") if self.cfg else None) or offline.DEFAULT_DIR
+        dep_files = [f for f in self.root.rglob("*") if f.is_file()
+                     and not set(f.relative_to(self.root).parts) & (set(SKIP_DIRS) | {"node_modules", source})]
+        self.problems += offline.problems(self.root, dep_files, source)
         installed = self.installed_without_lockfile() + self.included_pins
         if not declared and not runtimes and not installed:
             return None
@@ -530,7 +571,8 @@ class Scan:
     def installed_without_lockfile(self):
         """npm packages installed in a node_modules folder no lockfile describes. Neither scanner reads installed
         packages in a directory scan, only lockfiles (planted node_modules/minimist 1.2.5 with no lockfile scanned
-        green): the engine reads each package.json and puts the package in the SBOM both scanners check."""
+        green): the engine reads each package.json and puts the package in the SBOM both scanners check. A runtime
+        component with an install_path (Node-RED installed beside the project) has its node_modules read the same way."""
         out, seen = [], set()
         for nm in self.root.rglob("node_modules"):
             rel = nm.relative_to(self.root).parts
@@ -539,26 +581,18 @@ class Scan:
             owner = nm.parent
             if any((owner / lock).is_file() for lock in LOCKFILES_FOR["package.json"]):
                 continue                       # the lockfile describes it and both scanners read that
-            for pj in nm.rglob("package.json"):
-                parts = pj.relative_to(nm).parts      # <name>/package.json or @scope/<name>/package.json, at any nesting
-                if len(parts) < 2:
-                    continue
-                try:
-                    data = json.loads(pj.read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    continue
-                name, version = data.get("name"), data.get("version")
-                if not name or not version or not isinstance(name, str):
-                    continue
-                home = pj.parent.parent
-                if home.name.startswith("@"):
-                    home = home.parent
-                if home.name != "node_modules" or pj.parent.name != name.split("/")[-1]:
-                    continue                   # a package.json inside a package's own fixtures or examples, not a package
-                if (name, version) in seen:
-                    continue
-                seen.add((name, version))
-                out.append({"type": "library", "name": name, "version": version, "purl": f"pkg:npm/{name.replace('@', '%40', 1) if name.startswith('@') else name}@{version}"})
+            out += npm_installed(nm, seen)
+        cfg = getattr(self, "cfg", None)
+        for c in (cfg.get("runtime_components") if cfg else None) or []:
+            if not c.get("install_path"):
+                continue
+            nm = pathlib.Path(c["install_path"])
+            nm = (nm if nm.is_absolute() else self.root / nm) / "node_modules"
+            if not nm.is_dir():
+                self.problems.append(f"runtime component {c.get('name')}: install_path {c['install_path']} has no node_modules "
+                                     "to inventory: what the runtime ships cannot be scanned")
+                continue
+            out += npm_installed(nm, seen)
         return out
 
     def _requirements(self, f, rel, chain=()):
@@ -742,18 +776,182 @@ class Scan:
                                      parse=self._parse_semgrep, ok_codes=(0,), finding_codes=(1,)) or []
             out += [f for f in found if f.severity != "LOW"]
             info += [f for f in found if f.severity == "LOW"]
-        # bandit's -x never matched on Windows (it reports .\\.engine\\... paths): name the project's own top-level
-        # entries as targets instead, and drop anything under an excluded folder when parsing
-        own = sorted(p.name for p in self.root.iterdir() if p.name not in SAST_EXCLUDES and not p.name.startswith("."))
-        targets = [f"{target}/{n}" if self.engine == "containers" else n for n in own]
-        found = self.run_scanner("sast-b", ["-q", "-f", "json", "-r", *targets], mounts,
-                                 parse=self._parse_bandit, ok_codes=(0,), finding_codes=(1,)) or [] if targets else []
-        if not targets:
+        files = self.own_code_files()
+        langs = {}
+        for f in files:
+            lang = CODE_LANGUAGES.get(f.suffix.lower())
+            if lang:
+                langs.setdefault(lang, []).append(f)
+        # Node-RED: the code inside flows is extracted where both analyzers read it; the settings are checked here
+        flows, settings = nodered.find_projects(self.root, files)
+        self.flow_code = {}
+        if flows:
+            flow_dir = self.root / FLOW_CODE_DIR
+            shutil.rmtree(flow_dir, ignore_errors=True)
+            self.flow_code = nodered.extract_code(self.root, flows, flow_dir)
+            if self.flow_code:
+                langs.setdefault("javascript", [])
+                found = self._semgrep_flow_code(rules, mounts) if rules and pathlib.Path(rules).is_dir() else []
+                out += [f for f in found if f.severity != "LOW"]
+                info += [f for f in found if f.severity == "LOW"]
+        creds = [f for f in files if f.name.endswith("_cred.json")]
+        for rule, sev, where, message in nodered.findings(self.root, flows, settings, creds):
+            f = Finding("sast", rule, sev, package=where.split("#")[0], target=where, source="node-red")
+            if sev == "HIGH":
+                f.fixed = "fix the configuration: " + message[:160]
+            else:
+                f.reason = "Node-RED finding of medium severity: fix or document why it is safe by the milestone"
+            (out if sev != "LOW" else info).append(f)
+        # the second analyzer is per language, and a language none covers fails the scan: bandit reads only Python, and
+        # a Kotlin or JavaScript tree used to pass sast-b clean because it found nothing it could read
+        uncovered = sorted(set(langs) - set(SECOND_ANALYZERS))
+        for lang in uncovered:
+            example = langs[lang][0].relative_to(self.root).as_posix()
+            self.problems.append(f"sast: no static analyzer covers the {lang} code ({len(langs[lang])} file(s), e.g. {example}): "
+                                 "the scan cannot vouch for code it cannot read")
+        complete = not uncovered
+        if "python" in langs:
+            # bandit's -x never matched on Windows (it reports .\\.engine\\... paths): name the project's own top-level
+            # entries as targets instead, and drop anything under an excluded folder when parsing
+            own = sorted(p.name for p in self.root.iterdir() if p.name not in SAST_EXCLUDES and not p.name.startswith("."))
+            targets = [f"{target}/{n}" if self.engine == "containers" else n for n in own]
+            found = self.run_scanner("sast-b-python", ["-q", "-f", "json", "-r", *targets], mounts,
+                                     parse=self._parse_bandit, ok_codes=(0,), finding_codes=(1,))
+            complete = complete and found is not None
+            out += [f for f in found or [] if f.severity != "LOW"]
+            info += [f for f in found or [] if f.severity == "LOW"]
+        if "javascript" in langs:
+            found = self._eslint(langs.get("javascript", []), mounts)
+            complete = complete and found is not None
+            out += [f for f in found or [] if f.severity != "LOW"]
+            info += [f for f in found or [] if f.severity == "LOW"]
+        if complete:
             self.ran.append("sast-b")
-        out += [f for f in found if f.severity != "LOW"]
-        info += [f for f in found if f.severity == "LOW"]
         self.sast_informational = info
         return out
+
+    def scan_dast(self):
+        """The running server probed from outside (scan/dast.py). Not a server: nothing to probe. A server with no
+        serve_command fails the scan: code nobody could start is code nobody tested running."""
+        files = self.own_code_files()
+        flows, settings = nodered.find_projects(self.root, files)
+        if not dast.is_server(files, flows or settings):
+            self.ran.append("dast")
+            return []
+        serve = self.cfg.get("serve_command") if self.cfg else None
+        if not serve:
+            self.problems.append("dast: the project serves HTTP and declares no serve_command (config: the command that starts "
+                                 "it, with {port}) — it cannot be probed running, the scan fails")
+            return []
+        before = len(self.problems)
+        problems, found = dast.probe(self.root, serve, (self.cfg.get("protected_routes") or []),
+                                     node_red=bool(flows or settings), ready_path=self.cfg.get("serve_ready_path") or "/")
+        self.problems += problems
+        out = []
+        for rule, sev, where, message in found:
+            f = Finding("dast", rule, sev, package=where, target=where, source="dast")
+            if sev == "HIGH":
+                f.fixed = "fix the running behaviour: " + message[:160]
+            else:
+                f.reason = "dynamic-scan finding of medium severity: fix or document why it is safe by the milestone"
+            out.append(f)
+        if len(self.problems) == before:
+            self.ran.append("dast")
+        return out
+
+    def own_code_files(self):
+        """The project's own files: not the harness, version control, installed packages, tests or declared vendored code."""
+        declared = [pathlib.PurePosixPath(c["path"]) for c in ((self.cfg.get("vendored_components") if self.cfg else None) or [])
+                    if c.get("path")]
+        skip = set(SKIP_DIRS) | set(SAST_EXCLUDES) | {"node_modules", "__pycache__"}
+        out = []
+        for f in self.root.rglob("*"):
+            if not f.is_file():
+                continue
+            rel = pathlib.PurePosixPath(f.relative_to(self.root).as_posix())
+            if set(rel.parts[:-1]) & skip or any(rel == c or c in rel.parents for c in declared):
+                continue
+            if rel.name.endswith((".min.js", ".min.css")):
+                continue
+            out.append(f)
+        return out
+
+    def _semgrep_flow_code(self, rules, mounts):
+        """Semgrep over code extracted from Node-RED flows (it sits under .engine/work, which the tree scan excludes)."""
+        own = pathlib.Path(__file__).resolve().parent.parent / "data" / "semgrep"
+        target = f"/src/{FLOW_CODE_DIR}" if self.engine == "containers" else FLOW_CODE_DIR
+        cfg_path = "/rules" if self.engine == "containers" else rules
+        own_path = "/engine-rules" if self.engine == "containers" else str(own)
+        res = self.invoke("semgrep", images.SCANNERS["sast-a"][1], ["scan", "--config", cfg_path, "--config", own_path, "--json",
+                                                                   "--metrics", "off", "--disable-version-check", "--quiet", target],
+                          mounts + ((rules, "/rules"), (str(own), "/engine-rules")))
+        self.raw["semgrep-flows"] = res.stdout
+        if not res.ran or res.exit_code not in (0, 1):
+            self.problems.append(f"sast-a (semgrep) on Node-RED flow code: fell over (exit {res.exit_code}) — the scan fails")
+            return []
+        return self._parse_semgrep(res)
+
+    def _eslint(self, js_files, mounts):
+        """The second analyzer for JavaScript: eslint with its security plugin, offline (config sast_eslint_config or
+        ENGINE_SAST_ESLINT_CONFIG). Returns None when it could not run, which fails the scan."""
+        config = (self.cfg.get("sast_eslint_config") if self.cfg else None) or os.environ.get("ENGINE_SAST_ESLINT_CONFIG", "")
+        if not config or not pathlib.Path(config).is_file():
+            self.problems.append("sast-b (eslint): no configuration (config sast_eslint_config or ENGINE_SAST_ESLINT_CONFIG names "
+                                 "the security rule set) — the JavaScript code cannot be analyzed, the scan fails")
+            return None
+        targets = sorted({f.relative_to(self.root).parts[0] for f in js_files} | ({FLOW_CODE_DIR} if self.flow_code else set()))
+        if self.engine == "containers":
+            targets = [f"/src/{t}" for t in targets]
+        ignores = []
+        for d in SAST_EXCLUDES:
+            ignores += ["--ignore-pattern", f"**/{d}/**"]
+        for c in (self.cfg.get("vendored_components") if self.cfg else None) or []:
+            if c.get("path"):
+                ignores += ["--ignore-pattern", f"{c['path']}/**"]
+        if self.flow_code:
+            ignores = [i for i in ignores if i != "**/.engine/**"]
+        res = self.invoke("eslint", images.SCANNERS["sast-b-javascript"][1],
+                          ["--config", config, "--no-warn-ignored", "-f", "json", *ignores, *targets], mounts)
+        self.raw["eslint"] = res.stdout
+        if not res.ran or res.exit_code not in (0, 1):
+            self.problems.append(f"sast-b-javascript (eslint): fell over (exit {res.exit_code}: {(res.stderr or res.stdout).strip()[:80]})"
+                                 " — not skipped, the scan fails")
+            return None
+        self.ran.append("sast-b-javascript")
+        return self._parse_eslint(res)
+
+    def _parse_eslint(self, res):
+        try:
+            data = json.loads(res.stdout or "[]")
+        except ValueError:
+            self.problems.append("sast-b (eslint): output is not JSON")
+            return None
+        out = []
+        for f in data:
+            for m in f.get("messages", []) or []:
+                if m.get("fatal"):
+                    # a file the analyzer could not parse is a file nobody analyzed
+                    self.problems.append(f"sast-b (eslint): could not parse {self._sast_path(f.get('filePath', ''))}: "
+                                         f"{str(m.get('message', ''))[:100]}")
+                    continue
+                rule = str(m.get("ruleId") or "")
+                if not rule.startswith("security/"):
+                    continue
+                sev = "HIGH" if rule.split("/", 1)[1] in ESLINT_HIGH else "MEDIUM"
+                out.append(self._sast_finding(rule.replace("/", "-"), sev, self._sast_path(f.get("filePath", "")), m.get("line", "?"),
+                                              m.get("message", ""), "eslint"))
+        return [x for x in out if x is not None]
+
+    def _sast_path(self, path):
+        """An analyzer's path, relative to the project, with code extracted from a Node-RED flow named by its node."""
+        p = str(path).replace("\\", "/")
+        try:
+            p = pathlib.Path(p).resolve().relative_to(self.root.resolve()).as_posix()
+        except (ValueError, OSError):
+            pass
+        while p.startswith("./"):
+            p = p[2:]
+        return getattr(self, "flow_code", {}).get(p, p)
 
     def _parse_semgrep(self, res):
         try:
@@ -771,7 +969,7 @@ class Scan:
             # not enforced (useless-inner-function called a decorator-registered route handler unused)
             security = str((extra.get("metadata") or {}).get("category", "")).lower() == "security"
             sev = SAST_SEVERITY.get(extra.get("severity", ""), "LOW") if security else "LOW"
-            out.append(self._sast_finding(x["check_id"].split(".")[-1], sev, x.get("path", ""), x.get("start", {}).get("line", "?"),
+            out.append(self._sast_finding(x["check_id"].split(".")[-1], sev, self._sast_path(x.get("path", "")), x.get("start", {}).get("line", "?"),
                                           extra.get("message", ""), "semgrep"))
         return [f for f in out if f is not None]
 
@@ -786,7 +984,7 @@ class Scan:
             sev = x.get("issue_severity", "LOW").upper()
             if sev == "HIGH" and x.get("issue_confidence", "").upper() == "LOW":
                 sev = "MEDIUM"          # a high-severity guess the analyzer itself doubts is carried, not blocking
-            out.append(self._sast_finding(f"{x.get('test_id')}-{x.get('test_name')}", sev, x.get("filename", ""),
+            out.append(self._sast_finding(f"{x.get('test_id')}-{x.get('test_name')}", sev, self._sast_path(x.get("filename", "")),
                                           x.get("line_number", "?"), x.get("issue_text", ""), "bandit"))
         return [f for f in out if f is not None]
 
@@ -1010,6 +1208,7 @@ class Scan:
         findings += self.secrets
         findings += self.runtime_findings
         findings += self.scan_sast()
+        findings += self.scan_dast()
         single_all += self.sast_informational
         findings += confirmed_all
         gate, alarm_verdict, actionable, carried, complete = self.verdicts(findings)

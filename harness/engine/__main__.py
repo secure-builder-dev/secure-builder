@@ -40,6 +40,7 @@
   undeclared          regenerate the undeclared-controls list (the manifest completeness probe)
   truth               regenerate the generated system truth and compare it with plans/design.md
   status              orientation: position and exactly one next action (always exits 0)
+  deps lock|fetch      fill the offline package source (pip wheels with hashes; npm cache) once, while connected
   item new|claim|review|done ...     work items with a definition of done; unit new|building|review|merged
 """
 import io
@@ -261,6 +262,28 @@ def cmd_integration(root, argv):
         print(line)
     print(f"integration: {'PASSED' if code == 0 else 'NOT VERIFIED' if code == 2 else 'FAILED'} (exit {code})")
     return code
+
+
+def cmd_deps(root, argv):
+    """`deps lock [in=requirements.in] [out=requirements.txt]` resolves exact pins into the offline package source and
+    writes them back with hashes; `deps fetch` fills the source with npm's cache from package-lock.json. Both need the
+    network once; afterwards the project builds and verifies disconnected."""
+    from .scan import offline
+    kv = _kv(argv[1:])
+    try:
+        cfg = cfgmod.load(root)
+        source = cfg.get("offline_packages") or offline.DEFAULT_DIR
+    except cfgmod.ConfigError:
+        source = offline.DEFAULT_DIR
+    if argv and argv[0] == "lock":
+        ok, msg = offline.lock_python(root, kv.get("in", "requirements.in"), kv.get("out", "requirements.txt"), source)
+    elif argv and argv[0] == "fetch":
+        ok, msg = offline.fetch_npm(root, source)
+    else:
+        print("deps lock [in=requirements.in] [out=requirements.txt] | deps fetch")
+        return 2
+    print(f"deps: {'done' if ok else 'COULD NOT RUN'} — {msg}")
+    return 0 if ok else 2
 
 
 def cmd_coverage(root, argv):
@@ -1015,7 +1038,7 @@ COMMANDS = {"check": cmd_check, "init": cmd_init, "config": cmd_config,
             "audit": cmd_audit, "integration": cmd_integration, "coverage": cmd_coverage,
             "credential-scan": cmd_credential_scan, "accept-directive": cmd_accept_directive,
             "record": cmd_record, "records": cmd_records, "manifest": cmd_manifest, "mutate": cmd_mutate,
-            "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "unit": cmd_unit,
+            "handoff": cmd_handoff, "gate": cmd_gate, "status": cmd_status, "item": cmd_item, "deps": cmd_deps, "unit": cmd_unit,
             "review": cmd_review, "scan": cmd_scan, "currency": cmd_currency, "catalogue": cmd_catalogue,
             "governance": cmd_governance, "disposition": cmd_disposition, "probe": cmd_probe,
             "inventory": cmd_inventory, "undeclared": cmd_undeclared, "truth": cmd_truth, "field": cmd_field, "export": cmd_export, "topology": cmd_topology}

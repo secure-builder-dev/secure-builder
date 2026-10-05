@@ -22,14 +22,15 @@ SCANNERS = {
     "composition": ("syft", "docker.io/anchore/syft:v1.18.1", False),
     # static analysis of the project's own code: two independent analyzers, as for dependencies
     "sast-a": ("semgrep", "docker.io/semgrep/semgrep:1.179.0", False),
-    "sast-b": ("bandit", "ghcr.io/pycqa/bandit/bandit:1.9.4", False),
+    "sast-b-python": ("bandit", "ghcr.io/pycqa/bandit/bandit:1.9.4", False),
+    "sast-b-javascript": ("eslint", "docker.io/library/node:24-alpine", False),
 }
 # the executable each concern runs under the host engine (no container runtime): the image's tool name is
 # not always a program on the path (trivy-config is trivy; the malware scanner is clamscan and freshclam)
 HOST_EXECUTABLES = {"hadolint": "hadolint", "trivy-config": "trivy", "clamav": "clamscan", "trivy": "trivy",
-                    "grype": "grype", "syft": "syft", "semgrep": "semgrep", "bandit": "bandit"}
+                    "grype": "grype", "syft": "syft", "semgrep": "semgrep", "bandit": "bandit", "eslint": "eslint"}
 REQUIRED_CONCERNS = ("container-hygiene", "iac-misconfiguration", "malware", "vulnerabilities-a", "vulnerabilities-b",
-                     "sast-a", "sast-b")
+                     "sast-a", "sast-b", "dast")
 
 DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")
 TAG = re.compile(r":([^/@:]+)$")

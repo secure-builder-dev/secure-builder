@@ -120,9 +120,14 @@ class Pins(unittest.TestCase):
         self.assertTrue(o.blocking)
 
     def test_seven_required_concerns_by_separate_tools(self):
-        tools_ = [images.SCANNERS[c][0] for c in images.REQUIRED_CONCERNS]
-        self.assertEqual(len(images.REQUIRED_CONCERNS), 7, "five plus two static analyzers of the project's own code")
-        self.assertEqual(len(set(tools_)), 7)
+        # sast-b is the second analyzer per language (bandit for Python, eslint for JavaScript), not one tool
+        # dast is the engine's own probe of the running server, not a third-party tool
+        tools_ = [images.SCANNERS[c][0] for c in images.REQUIRED_CONCERNS if c not in ("sast-b", "dast")]
+        self.assertEqual(len(images.REQUIRED_CONCERNS), 8, "five, two static analyzers of the project's own code, and the running probe")
+        self.assertEqual(len(set(tools_)), 6)
+        second = {images.SCANNERS[c][0] for c in ("sast-b-python", "sast-b-javascript")}
+        self.assertEqual(second, {"bandit", "eslint"})
+        self.assertFalse(second & set(tools_), "the second analyzer is independent of the first")
 
 
 class Engine(unittest.TestCase):
@@ -149,7 +154,8 @@ class Run(unittest.TestCase):
             head = project(t)
             sc, r, fake = self.scan(t, baseline(vulns=False))
             self.assertEqual(r["verdict"], "green", r["problems"])
-            self.assertEqual(sorted(r["ran"]), sorted(images.REQUIRED_CONCERNS))
+            self.assertEqual(sorted(c for c in r["ran"] if not c.startswith("sast-b-")), sorted(images.REQUIRED_CONCERNS))
+            self.assertIn("sast-b-python", r["ran"], "the stamp names the analyzer each language got")
             st = stamp.read(t)
             self.assertEqual((st["commit"], st["verdict"], st["digests"], st["mode"]), (head, "green", {"app": "sha256:abc123"}, "local"))
             self.assertEqual(stamp.problems(st), [])
@@ -704,6 +710,18 @@ class InstalledWithoutLockfile(unittest.TestCase):
             inv = self.inventory(t)
         self.assertEqual(inv, [("@babel/traverse", "7.22.0", "pkg:npm/%40babel/traverse@7.22.0"), ("a", "1.0.0", "pkg:npm/a@1.0.0"),
                                ("lodash", "4.17.15", "pkg:npm/lodash@4.17.15"), ("minimist", "1.2.5", "pkg:npm/minimist@1.2.5")])
+
+    def test_a_runtime_install_path_is_inventoried(self):
+        with tree() as t:
+            project(t)
+            write(t, "runtime/node-red/node_modules/express/package.json", json.dumps({"name": "express", "version": "4.17.1"}))
+            c = cfg(runtime_components=[{"name": "python", "version": "3.12.13"},
+                                        {"name": "node-red", "version": "4.1.15", "install_path": "runtime/node-red"},
+                                        {"name": "gone", "version": "1", "install_path": "nowhere"}])
+            sc = runner.Scan(t, c, invoke=Fake(baseline(vulns=False)), engine=("containers", "docker"))
+            inv = sc.installed_without_lockfile()
+        self.assertEqual([(x["name"], x["version"]) for x in inv], [("express", "4.17.1")])
+        self.assertTrue(any("install_path nowhere has no node_modules" in p for p in sc.problems), sc.problems)
 
     def test_they_reach_the_sbom_both_scanners_read(self):
         with tree() as t:

@@ -9,8 +9,8 @@ from engine.scan import dast, runner
 from .helpers import commit, git_repo, tree, write
 from .test_scan import Fake, baseline, cfg
 
-BAD = '''import sys, traceback
-from http.server import BaseHTTPRequestHandler, HTTPServer
+BAD = '''import sys, traceback; import http.server as hs
+BaseHTTPRequestHandler, HTTPServer = hs.BaseHTTPRequestHandler, hs.HTTPServer
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_GET(self):
@@ -23,8 +23,8 @@ class H(BaseHTTPRequestHandler):
         self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
 HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
 '''
-GOOD = '''import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+GOOD = '''import sys; import http.server as hs
+BaseHTTPRequestHandler, ThreadingHTTPServer = hs.BaseHTTPRequestHandler, hs.ThreadingHTTPServer
 class H(BaseHTTPRequestHandler):
     timeout = 5
     def log_message(self, *a): pass
@@ -85,6 +85,12 @@ class Detection(unittest.TestCase):
             self.assertFalse(dast.is_server([t / "b.py"], []))
             self.assertTrue(dast.is_server([t / "c.js"], []))
             self.assertTrue(dast.is_server([], [("flows.json", [])]))
+            write(t, "d.py", "import os, sys; import http.server as hs" + chr(10))
+            write(t, "e.mjs", "import http from 'node:http';" + chr(10))
+            write(t, "f.py", "# the http.server module is not imported here" + chr(10) + "x = 'from flask'" + chr(10))
+            self.assertTrue(dast.is_server([t / "d.py"], []))
+            self.assertTrue(dast.is_server([t / "e.mjs"], []))
+            self.assertFalse(dast.is_server([t / "f.py"], []))
 
     def test_the_scan_requires_a_serve_command_for_a_server(self):
         with tree() as t:

@@ -1,12 +1,12 @@
 # Coverage inventory — the assessed boundary
 
-Generated 2026-10-03 from the gate log. A file is *assessed* because a passing gate-log
+Generated 2026-10-04 from the gate log. A file is *assessed* because a passing gate-log
 row's range contains it — never because it looks reviewed. 'Assessed' means assessed at least once;
 it is not a clean bill of health. *Assessed elsewhere, evidence not available* is code received across
 a boundary without its gate records: neither assessed here nor unassessed.
 
 - assessed by a gate: 0 (0%)
-- never assessed: 139 (100%)
+- never assessed: 145 (100%)
 - assessed elsewhere, evidence not available: 0 (0%)
 
 | file | state | evidence |
@@ -80,7 +80,10 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/engine/scan/__init__.py | never assessed |  |
 | harness/engine/scan/alarm.py | never assessed |  |
 | harness/engine/scan/bundles.py | never assessed |  |
+| harness/engine/scan/dast.py | never assessed |  |
 | harness/engine/scan/images.py | never assessed |  |
+| harness/engine/scan/nodered.py | never assessed |  |
+| harness/engine/scan/offline.py | never assessed |  |
 | harness/engine/scan/runner.py | never assessed |  |
 | harness/engine/sequence.py | never assessed |  |
 | harness/engine/stamp.py | never assessed |  |
@@ -106,6 +109,7 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/selftest/test_cli_commands.py | never assessed |  |
 | harness/selftest/test_config.py | never assessed |  |
 | harness/selftest/test_coverage.py | never assessed |  |
+| harness/selftest/test_dast.py | never assessed |  |
 | harness/selftest/test_declared_control_touch.py | never assessed |  |
 | harness/selftest/test_degradation.py | never assessed |  |
 | harness/selftest/test_distribute.py | never assessed |  |
@@ -123,6 +127,8 @@ a boundary without its gate records: neither assessed here nor unassessed.
 | harness/selftest/test_local_model_reviewer.py | never assessed |  |
 | harness/selftest/test_manifest.py | never assessed |  |
 | harness/selftest/test_net.py | never assessed |  |
+| harness/selftest/test_nodered_sast.py | never assessed |  |
+| harness/selftest/test_offline_packages.py | never assessed |  |
 | harness/selftest/test_outcome.py | never assessed |  |
 | harness/selftest/test_pagecheck.py | never assessed |  |
 | harness/selftest/test_probes.py | never assessed |  |

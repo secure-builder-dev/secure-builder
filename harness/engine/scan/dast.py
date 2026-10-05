@@ -9,18 +9,19 @@ routes the project declares protected must refuse an anonymous request, a Node-R
 must carry the headers that stop content sniffing and script injection. A project with server code and no
 serve_command cannot be probed, and that fails the scan rather than passing it.
 """
-import http.client
 import os
 import re
-import socket
 import subprocess
 import time
 
+from ..net import LOOPBACK_ERRORS, free_loopback_port as free_port, loopback_connection, loopback_request as _request
+
+# a server module named anywhere in an import line (a mid-line `import sys; import http.server as hs` hid a server)
 SERVER_CODE = [
-    (re.compile(r"^\s*(from\s+http\.server\s+import|import\s+http\.server|from\s+(fastapi|flask|aiohttp|starlette|bottle|"
-                r"tornado|sanic|falcon)\b|import\s+(fastapi|flask|aiohttp|tornado|bottle|socketserver)\b)", re.M), (".py",)),
-    (re.compile(r"require\(\s*['\"](http|https|express|fastify|koa|hapi|@hapi/hapi|restify)['\"]\s*\)|"
-                r"from\s+['\"](http|https|express|fastify|koa)['\"]"), (".js", ".mjs", ".cjs")),
+    (re.compile(r"^[ \t]*(?:from|import)\b[^\n]*\b(http\.server|socketserver|wsgiref\.simple_server|fastapi|flask|aiohttp|"
+                r"starlette|bottle|tornado|sanic|falcon|uvicorn|hypercorn|waitress|cherrypy)\b", re.M), (".py",)),
+    (re.compile(r"require\(\s*['\"](node:)?(http|https|express|fastify|koa|@hapi/hapi|hapi|restify|http2)['\"]\s*\)|"
+                r"from\s+['\"](node:)?(http|https|express|fastify|koa|http2)['\"]"), (".js", ".mjs", ".cjs")),
 ]
 LEAK = re.compile(r"Traceback \(most recent call last\)|File \".*\", line \d+|\n\s+at [\w.<>]+ \(.*:\d+:\d+\)|"
                   r"node_modules[\\/]|Werkzeug Debugger|SyntaxError: Unexpected token", re.S)
@@ -42,22 +43,6 @@ def is_server(files, flows):
     return False
 
 
-def free_port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-def _request(port, method, path, body=None, headers=None, timeout=5):
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
-    try:
-        conn.request(method, path, body=body, headers=headers or {})
-        r = conn.getresponse()
-        return r.status, {k.lower(): v for k, v in r.getheaders()}, r.read(200_000).decode("utf-8", "replace")
-    finally:
-        conn.close()
-
-
 def wait_ready(port, proc, path="/", timeout=40):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
@@ -66,7 +51,7 @@ def wait_ready(port, proc, path="/", timeout=40):
         try:
             _request(port, "GET", path, timeout=2)
             return True
-        except (OSError, http.client.HTTPException):
+        except LOOPBACK_ERRORS:
             time.sleep(0.3)
     return False
 
@@ -87,12 +72,12 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
             return [f"dast: the server did not answer on 127.0.0.1:{port}{ready_path} within {start_timeout}s"
                     + (f" (exited: {err.strip()[:160]})" if err else "") + " — it cannot be probed, the scan fails"], []
         # one idle connection must not stall the next client
-        idle = socket.create_connection(("127.0.0.1", port), timeout=5)
+        idle = loopback_connection(port)
         try:
             t0 = time.monotonic()
             try:
                 _request(port, "GET", ready_path, timeout=3)
-            except (OSError, http.client.HTTPException):
+            except LOOPBACK_ERRORS:
                 findings.append(("dast-idle-connection-blocks", "HIGH", f"GET {ready_path}",
                                  "With one client connected and silent, a second request got no answer in 3 s: a single idle "
                                  "connection stalls the server (CWE-400). Serve connections concurrently and time them out."))
@@ -112,7 +97,7 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
                 if headers.get("x-content-type-options", "").lower() != "nosniff":
                     findings.append(("dast-no-nosniff", "MEDIUM", f"GET {ready_path}",
                                      "HTML is served without X-Content-Type-Options: nosniff."))
-        except (OSError, http.client.HTTPException) as e:
+        except LOOPBACK_ERRORS as e:
             problems.append(f"dast: GET {ready_path} failed after the idle-connection probe ({e})")
         # malformed and hostile input must not leak internals
         for method, path, body, hdrs in (("GET", "/%ff%fe%00..%2f..%2fetc%2fpasswd", None, {}),
@@ -121,7 +106,7 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
                                          ("PUT", ready_path + "?x=%00%ff", b"\xff\xfe\x00", {"Content-Type": "text/plain"})):
             try:
                 status, headers, text = _request(port, method, path, body, hdrs)
-            except (OSError, http.client.HTTPException):
+            except LOOPBACK_ERRORS:
                 continue
             if LEAK.search(text):
                 findings.append(("dast-stack-trace-leak", "HIGH", f"{method} {path[:60]}",
@@ -134,7 +119,7 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
         # an oversized body must be refused, not crash the process
         try:
             _request(port, "POST", ready_path, b"x" * BIG_BODY, {"Content-Type": "application/octet-stream"}, timeout=10)
-        except (OSError, http.client.HTTPException):
+        except LOOPBACK_ERRORS:
             pass
         time.sleep(0.3)
         if proc.poll() is not None:
@@ -147,7 +132,7 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
                 try:
                     status, _, _ = _request(port, method, route, b"{}" if method == "POST" else None,
                                             {"Content-Type": "application/json"} if method == "POST" else {})
-                except (OSError, http.client.HTTPException):
+                except LOOPBACK_ERRORS:
                     continue
                 if 200 <= status < 300:
                     findings.append(("dast-protected-route-open", "HIGH", f"{method} {route}",
@@ -156,7 +141,7 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
             for admin in ("/flows", "/settings", "/nodes"):
                 try:
                     status, _, _ = _request(port, "GET", admin, headers={"Accept": "application/json"})
-                except (OSError, http.client.HTTPException):
+                except LOOPBACK_ERRORS:
                     continue
                 if 200 <= status < 300:
                     findings.append(("dast-node-red-admin-open", "HIGH", f"GET {admin}",

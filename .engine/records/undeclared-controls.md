@@ -9,6 +9,7 @@ block; it makes incompleteness visible.
 | harness/engine/distribute.py | sha | cryptography | not-a-control | content hash for placed-file divergence detection; not a security control (path moved by the four-folder layout; disposition carried from engine/distribute.py) |
 | harness/engine/export.py | redaction_problems | redaction | not-a-control | the self-check on EXP-REDACT's output; the control is redact, declared (carried from engine/export.py) |
 | harness/engine/scan/bundles.py | sha256 | cryptography | not-a-control | bundle integrity digest; not a security control (carried from engine/scan/bundles.py) |
+| harness/engine/scan/offline.py | sha256 | cryptography |  |  |
 | harness/engine/topology.py | render_authority | authentication | not-a-control | renders the record-authority table; the word authority is about records, not authentication (carried from engine/topology.py) |
 | engine/distribute.py | sha |  | declared or gone | content hash for placed-file divergence detection; not a security control |
 | engine/export.py | redaction_problems |  | declared or gone | the self-check on EXP-REDACT's output; the control is redact, declared |

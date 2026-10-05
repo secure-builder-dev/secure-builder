@@ -24,6 +24,7 @@ import argparse
 import ast
 import difflib
 import json
+import os
 import pathlib
 import re
 import shlex
@@ -389,6 +390,37 @@ def suite_ran_nothing(output):
     return None
 
 
+def start_check(serve_command, cwd, seconds=10):
+    """Start the project as the gate's dynamic scan will (config serve_command) and report it when it dies on start.
+    A test that only says "failed to start" hides the server's own error: nr-sensor-alert's settings.js crashed Node-RED
+    for eight rounds and no model ever saw why; outbox-dedupe's server crashed on start the same way."""
+    if not serve_command:
+        return None
+    import random
+    import time
+    port = random.randint(20000, 60000)
+    cmd = [str(c).replace("{port}", str(port)) for c in serve_command]
+    env = dict(os.environ, PORT=str(port), APP_TOKEN=os.environ.get("APP_TOKEN") or "start-check-token")
+    try:
+        proc = subprocess.Popen(cmd, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, encoding="utf-8", errors="replace")
+    except OSError as e:
+        return f"SERVER START CHECK: `{' '.join(cmd)}` could not be run ({e})"
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline and proc.poll() is None:
+        time.sleep(0.25)
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        return None
+    out = (proc.stdout.read() if proc.stdout else "")[-2500:]
+    return (f"SERVER START CHECK: `{' '.join(cmd)}` exited with code {proc.returncode} within {seconds}s instead of "
+            f"serving; its own output:\n{out.strip() or '(nothing)'}")
+
+
 def test_guidance(output):
     """Plain advice for the failures local models kept repeating, appended to what the model reads."""
     advice = []
@@ -550,6 +582,11 @@ def main(argv=None):
             print(f"build_model: first error: {errors[0][:240]}")
         notes = ("EDITS REFUSED (nothing of these was written):\n" + "\n".join(refused) + "\n\n") if refused else ""
         hints = static_hints(root, sources)
+        if a.phase == "build":
+            crashed = start_check(cfg.get("serve_command"), root)
+            if crashed:
+                notes += crashed + "\n\n"
+                print(f"build_model: start check: {crashed.splitlines()[0][:200]}")
         if hints:
             notes += "STATIC CHECK OF YOUR SOURCE (fix these first; no test reports them):\n" + "\n".join(hints) + "\n\n"
             if any("is defined again" in h for h in hints):

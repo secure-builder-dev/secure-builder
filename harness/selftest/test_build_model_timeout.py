@@ -76,3 +76,17 @@ class Cwe400Hints(unittest.TestCase):
         self.assertEqual(len(cwe), 2, hints)
         self.assertTrue(any("request handler Bad sets no class attribute `timeout`" in h for h in cwe))
         self.assertTrue(any("src/server.py:7: HTTPServer serves one connection at a time" in h for h in cwe))
+
+
+class StartCheck(unittest.TestCase):
+    def test_a_server_that_dies_on_start_is_reported_with_its_output(self):
+        with tree() as t:
+            msg = build_model.start_check([sys.executable, "-c", "import sys; print('settings.js: bad'); sys.exit(4)"], t, seconds=5)
+        self.assertIn("exited with code 4", msg)
+        self.assertIn("settings.js: bad", msg)
+
+    def test_a_server_that_keeps_running_passes_and_is_stopped(self):
+        with tree() as t:
+            self.assertIsNone(build_model.start_check([sys.executable, "-c", "import time; time.sleep(60)"], t, seconds=2))
+            self.assertIsNone(build_model.start_check(None, t))
+            self.assertIn("could not be run", build_model.start_check(["no-such-program-xyz"], t, seconds=1))

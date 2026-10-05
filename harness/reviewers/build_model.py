@@ -151,6 +151,24 @@ def static_hints(root, dirs):
                         hints.append(f"{p.relative_to(root).as_posix()}:{d.lineno}: {d.name} is defined again (first at line "
                                      f"{first[d.name]}); only this last definition is used — delete one of them")
                     first.setdefault(d.name, d.lineno)
+        # the engine's CWE-400 scan rules, told to the model while it builds instead of at the gate (sitrep-relay,
+        # outbox-dedupe, geofence-check and chunk-verify all passed their tests and were blocked by the scan for this)
+        rel = p.relative_to(root).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and any(
+                    (b.attr if isinstance(b, ast.Attribute) else getattr(b, "id", "")) in ("BaseHTTPRequestHandler", "SimpleHTTPRequestHandler")
+                    for b in node.bases):
+                sets_timeout = any(isinstance(s, (ast.Assign, ast.AnnAssign)) and any(
+                    getattr(t, "id", None) == "timeout" for t in (s.targets if isinstance(s, ast.Assign) else [s.target]))
+                    for s in node.body)
+                if not sets_timeout:
+                    hints.append(f"{rel}:{node.lineno}: request handler {node.name} sets no class attribute `timeout`: one silent "
+                                 "client holds its connection for ever (CWE-400; the security scan blocks this). Add `timeout = 10` "
+                                 "to the class — server.timeout does not do it")
+            if isinstance(node, ast.Call) and (getattr(node.func, "id", None) == "HTTPServer"
+                                               or getattr(node.func, "attr", None) == "HTTPServer"):
+                hints.append(f"{rel}:{node.lineno}: HTTPServer serves one connection at a time (CWE-400; the security scan "
+                             "blocks this): use http.server.ThreadingHTTPServer with daemon_threads = True")
         for node in ast.walk(tree):
             if isinstance(node, ast.Dict):
                 seen = {}
@@ -462,12 +480,16 @@ def main(argv=None):
     system = (role + " You never touch the harness, the records, the manifest, the plan or the tickets, and you never attribute "
               "yourself.\n\n" + EDIT_RULES + ("\n\n" + rules if rules else ""))
     code, output = run_tests(test_cmd, test_cwd)
-    if a.phase == "build" and code == 0:
+    if a.phase == "build" and code == 0 and not a.note:
         # a green suite is not a definition of done: the model would rewrite what exists and be told it passed
         # (seen on the to-do demo: 120 tokens, the empty skeleton, "tests pass"). Construction starts red.
         print("build_model: REFUSED — the test suite already passes; write the failing acceptance tests that express "
               f"the definition of done first (`--phase tests`), then build")
         return 2
+    if a.phase == "build" and code == 0:
+        # a revision: the tests pass but a reviewer or the gate asked for a change (chunk-verify passed its tests and the
+        # scan blocked it; with no way to hand that back the code could never be fixed by the models)
+        print("build_model: revision — the suite passes; the reviewer's note is the change, and the suite must stay green")
     watched = sources + tests
     best_snap, best, best_failing = snapshot(root, watched), score(code, output), failing_tests(output)
     best_error = first_error(output)
@@ -559,10 +581,17 @@ def main(argv=None):
             feedback = notes + output
             stale += 1
         else:
-            if code == 0 and not refused:
+            blocking = [h for h in hints if "CWE-400" in h]
+            if code == 0 and not refused and not blocking:
                 print("build_model: tests pass. Nothing is committed: read the diff, commit as yourself, then scan, hand off and gate.")
                 return 0
-            if now < best:
+            if code == 0 and blocking:
+                # green tests the security scan would still block are not done: keep this state and go round again
+                print(f"build_model: tests pass, but {len(blocking)} defect(s) the security scan blocks remain; another round")
+                best, best_snap, best_failing, best_error = 0, snapshot(root, watched), failing, first_error(output)
+                stale += 1
+                feedback = notes + output
+            elif now < best:
                 best, best_snap, best_failing, best_error, stale = now, snapshot(root, watched), failing, first_error(output), 0
                 feedback = notes + output
             elif now == best and failing and (failing != best_failing or first_error(output) != best_error):

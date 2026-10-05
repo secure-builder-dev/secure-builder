@@ -58,3 +58,21 @@ class NothingRan(unittest.TestCase):
         self.assertIn("pytest", f("==== 4 skipped in 0.12s ===="))
         self.assertIn("mocha", f("  0 passing (3ms)"))
         self.assertIsNone(f("  5 passing (3ms)"))
+
+
+class Cwe400Hints(unittest.TestCase):
+    def test_a_handler_without_timeout_and_a_single_threaded_server_are_named(self):
+        NL = chr(10)
+        with tree() as t:
+            (t / "src").mkdir()
+            (t / "src" / "server.py").write_text(NL.join([
+                "import http.server", "from http.server import BaseHTTPRequestHandler, HTTPServer",
+                "class Bad(BaseHTTPRequestHandler):", "    def do_GET(self): pass",
+                "class Good(http.server.BaseHTTPRequestHandler):", "    timeout = 10",
+                "s = HTTPServer(('127.0.0.1', 0), Bad)", "t = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Good)"]) + NL,
+                encoding="utf-8")
+            hints = build_model.static_hints(t, [t / "src"])
+        cwe = [h for h in hints if "CWE-400" in h]
+        self.assertEqual(len(cwe), 2, hints)
+        self.assertTrue(any("request handler Bad sets no class attribute `timeout`" in h for h in cwe))
+        self.assertTrue(any("src/server.py:7: HTTPServer serves one connection at a time" in h for h in cwe))

@@ -22,3 +22,19 @@ class TestRunBounded(unittest.TestCase):
         with tree() as t:
             code, out = build_model.run_tests([sys.executable, "-c", "print('ok')"], t)
         self.assertEqual((code, out.strip()), (0, "ok"))
+
+
+class Guidance(unittest.TestCase):
+    def test_repeated_model_mistakes_get_plain_advice(self):
+        out = ("ImportError: Failed to import test module: tests.test_geofence" + chr(10) + "ModuleNotFoundError: No module named 'src'" + chr(10)
+               + "TypeError: 'HTTPMessage' object is not callable" + chr(10) + "sqlite3.OperationalError: no such table: reports")
+        g = build_model.test_guidance(out)
+        self.assertIn("Import the code under test inside setUp", g)
+        self.assertIn("never r.headers() or e.headers()", g)
+        self.assertIn("CREATE TABLE IF NOT EXISTS", g)
+        self.assertEqual(build_model.test_guidance("Ran 3 tests" + chr(10) + "OK"), "")
+
+    def test_advice_reaches_the_test_output(self):
+        with tree() as t:
+            code, out = build_model.run_tests([sys.executable, "-c", "raise TypeError(\"'HTTPMessage' object is not callable\")"], t)
+        self.assertIn("ENGINE NOTE: urllib's response and HTTPError headers is an attribute", out)

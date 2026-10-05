@@ -339,7 +339,26 @@ def run_tests(cmd, cwd, timeout=TEST_TIMEOUT):
                      "answers fails the test instead of blocking it. A test server's shutdown() waits for the request "
                      "it is handling: close every client socket the test opened (in a finally block or addCleanup) "
                      "before shutting the server down, or a failing test hangs in tearDown.\n")
-    return res.returncode, (res.stdout + res.stderr)[-6000:]
+    out = (res.stdout + res.stderr)[-6000:]
+    return res.returncode, out + test_guidance(res.stdout + res.stderr)
+
+
+def test_guidance(output):
+    """Plain advice for the failures local models kept repeating, appended to what the model reads."""
+    advice = []
+    # geofence-check: `from src.server import ...` at module top; src/ did not exist yet, so no test ran for 8 rounds
+    if "Failed to import test module" in output and re.search(r"No module named '?(src|app)\b", output):
+        advice.append("A test module that imports the code under test at its top cannot load before that code exists, so "
+                      "none of its tests run. Import the code under test inside setUp or setUpClass.")
+    # sitrep-relay, nav-calc, outbox-dedupe: the request helper called e.headers() on urllib.error.HTTPError
+    if "'HTTPMessage' object is not callable" in output:
+        advice.append("urllib's response and HTTPError headers is an attribute, not a method: read dict(r.headers) or "
+                      "dict(e.headers), never r.headers() or e.headers().")
+    # sitrep-relay: the server thread's traceback said `no such table`, eight rounds never created it
+    if re.search(r"sqlite3\.OperationalError: no such table", output):
+        advice.append("The server thread reported `no such table`: the schema is never created. Create it (CREATE TABLE IF "
+                      "NOT EXISTS) when the server is made, before it serves.")
+    return "".join(f"\nENGINE NOTE: {a}" for a in advice)
 
 
 def main(argv=None):

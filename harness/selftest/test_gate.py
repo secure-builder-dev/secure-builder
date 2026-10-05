@@ -449,6 +449,21 @@ class PrepareRange(unittest.TestCase):
             self.assertNotIn("Traceback", out)
 
 
+class SuiteProvesNothing(unittest.TestCase):
+    def test_an_all_skipped_suite_blocks_the_quality_gate(self):
+        with tree() as t:
+            base = project(t, test_command=["python", "-c",
+                                            "print('Ran 2 tests in 0.0s'); print(); print('OK (skipped=2)')"])
+            head = feature(t, files={"docs/x.md": "hi" + NL})
+            write(t, ".engine/work/coverage.json", json.dumps({"files": {}}))
+            q, s, ctx = gate.prepare(t, cfg(test_command=["python", "-c",
+                                                          "print('Ran 2 tests in 0.0s'); print(); print('OK (skipped=2)')"]),
+                                     "epic-7", "1", base, head)
+        suite = next(o for o in q if o.check == "test-suite")
+        self.assertTrue(suite.blocking)
+        self.assertIn("every test was skipped (2 of 2)", suite.line() + " ".join(suite.findings))
+
+
 class Submit(unittest.TestCase):
     def prepared(self, t, control_shaped=False):
         base = project(t)

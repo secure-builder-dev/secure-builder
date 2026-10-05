@@ -153,6 +153,29 @@ def mutation_evidence(root, cfg):
     return Outcome.clean(name, f"{len(controls)} declared control(s) each have a recorded mutation that failed the suite")
 
 
+def suite_ran_nothing(output):
+    """Why a passing exit code proves nothing, or None. A suite that ran no test, or skipped every test it found,
+    exits 0 having checked nothing (nr-cot-builder: setUpClass skipped the class when APP_TOKEN was unset, and the
+    tests phase and the gate both read 'OK' as passing)."""
+    import re as _re
+    ran = _re.findall(r"^Ran (\d+) tests? in", output, _re.M)
+    if ran:
+        n = int(ran[-1])
+        skipped = _re.search(r"^OK \(skipped=(\d+)\)", output, _re.M)
+        if n == 0:
+            return "the suite ran no test (unittest: Ran 0 tests)"
+        if skipped and int(skipped.group(1)) >= n:
+            return f"every test was skipped ({skipped.group(1)} of {n}): a skipped test checks nothing"
+        return None
+    if _re.search(r"collected 0 items|no tests ran", output):
+        return "the suite ran no test (pytest)"
+    if _re.search(r"^=+ (\d+) skipped(?: in [\d.]+s)? =+$", output, _re.M):
+        return "every test was skipped (pytest)"
+    if _re.search(r"^\s*0 passing\b", output, _re.M):
+        return "the suite ran no test (mocha: 0 passing)"
+    return None
+
+
 def quality_gate(root, cfg, base, head):
     outs = [coverage_range.run(root, cfg, base, head), negative_test_set(root, cfg, base, head), mutation_evidence(root, cfg)]
     cmd = cfg.get("test_command")
@@ -163,6 +186,9 @@ def quality_gate(root, cfg, base, head):
             outs.append(Outcome.could_not_run("test-suite", f"test command '{cmd[0]}' is not on the search path"))
         elif res.exit_code != 0:
             outs.append(Outcome.found("test-suite", f"project suite exited {res.exit_code}", [(res.stdout + res.stderr).strip().splitlines()[-1:] or ["(no output)"]][0], blocking=True))
+        elif suite_ran_nothing(res.stdout + res.stderr):
+            outs.append(Outcome.found("test-suite", "project suite exited 0 but proved nothing",
+                                      [suite_ran_nothing(res.stdout + res.stderr)], blocking=True))
         else:
             outs.append(Outcome.clean("test-suite", f"project suite exited 0 ({' '.join(cmd)})"))
     else:

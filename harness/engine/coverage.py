@@ -80,7 +80,8 @@ def evaluate(changed_files, report, thresholds):
             continue
         assessed += 1
         need = threshold_for(f, thresholds)
-        pct = report.get(f)
+        # a split project (backend/app, frontend/src) is reported with paths the normaliser shortens: match both ways
+        pct = report.get(f, report.get(_norm(f)))
         if pct is None:
             findings.append(f"{f}: changed in range but absent from the coverage report (needs {need:.0f}%)")
         elif pct < need:

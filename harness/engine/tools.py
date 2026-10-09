@@ -13,6 +13,7 @@ Exit codes are returned exactly. Callers assert the specific value that means
 success or detection; every other value is "the tool fell over" (REQ-4.2).
 """
 import os
+import pathlib
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -39,7 +40,9 @@ def resolve(name, path=None):
 
 
 def run_tool(name, args, *, cwd=None, path=None, timeout=600, env=None):
-    exe = resolve(name, path)
+    # a project-relative program ('backend/.venv/Scripts/python.exe') is the project's own, not one on the search path
+    local = pathlib.Path(cwd or ".") / name if ("/" in name or "\\" in name) and not pathlib.Path(name).is_absolute() else None
+    exe = str(local.resolve()) if local is not None and local.is_file() else resolve(name, path)
     if not exe:
         return Result(name, list(args), -1, "", f"{name}: not found on the search path", "")
     run_env = dict(os.environ)

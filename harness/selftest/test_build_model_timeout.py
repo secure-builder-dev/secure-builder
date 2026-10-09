@@ -90,3 +90,44 @@ class StartCheck(unittest.TestCase):
             self.assertIsNone(build_model.start_check([sys.executable, "-c", "import time; time.sleep(60)"], t, seconds=2))
             self.assertIsNone(build_model.start_check(None, t))
             self.assertIn("could not be run", build_model.start_check(["no-such-program-xyz"], t, seconds=1))
+
+
+class NoteActedOn(unittest.TestCase):
+    """A reviewer note on the tests counts as acted on only when a test function changes, not the imports."""
+
+    def test_an_import_edit_leaves_the_test_bodies_unchanged(self):
+        with tree() as t:
+            p = t / "tests" / "test_x.py"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("from src import x\n\ndef test_a():\n    assert x.f() == 1\n", encoding="utf-8")
+            before = build_model.test_bodies(t, ["tests"])
+            p.write_text("import src.x as x\n\ndef test_a():\n    assert x.f() == 1\n", encoding="utf-8")
+            self.assertEqual(build_model.test_bodies(t, ["tests"]), before)
+            p.write_text("import src.x as x\n\ndef test_a():\n    assert x.f() == 2\n", encoding="utf-8")
+            self.assertNotEqual(build_model.test_bodies(t, ["tests"]), before)
+
+
+class PytestAndVitest(unittest.TestCase):
+    """The build driver reads pytest and vitest output, not only unittest's (ticketer: FastAPI + React)."""
+
+    def test_failures_from_both_summaries_are_counted(self):
+        out = ("FAILED backend/tests/test_rules.py::test_dashboard - assert 1 == 2\n"
+               "========== 2 failed, 5 passed in 1.20s ==========\n"
+               " FAIL  tests/App.test.tsx > App > shows three columns\n"
+               "      Tests  1 failed | 3 passed (4)\n")
+        self.assertEqual(build_model.score(1, out), 3)
+        names = build_model.failing_tests(out)
+        self.assertIn("backend/tests/test_rules.py::test_dashboard", names)
+        self.assertIn("tests/App.test.tsx > App > shows three columns", names)
+
+    def test_a_collection_error_scores_as_uncollectable(self):
+        out = "ERROR collecting backend/tests/test_rules.py\n========== 1 error in 0.30s ==========\n"
+        self.assertGreaterEqual(build_model.score(1, out), 5_000)
+        self.assertEqual(build_model.score(1, "something unparseable"), 10_000)
+
+    def test_typescript_test_names_are_found(self):
+        with tree() as t:
+            p = t / "frontend" / "tests" / "App.test.tsx"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("it('shows three columns', () => {})\ntest(\"files a ticket\", () => {})\n", encoding="utf-8")
+            self.assertEqual(build_model.test_names(t, ["frontend/tests"]), {"shows three columns", "files a ticket"})

@@ -10,6 +10,7 @@ must carry the headers that stop content sniffing and script injection. A projec
 serve_command cannot be probed, and that fails the scan rather than passing it.
 """
 import os
+import pathlib
 import re
 import subprocess
 import time
@@ -60,6 +61,8 @@ def probe(root, serve_command, protected=(), node_red=False, ready_path="/", sta
     """(problems, findings): findings are (rule, severity, where, message)."""
     port = free_port()
     cmd = [str(a).replace("{port}", str(port)) for a in serve_command]
+    if cmd and ("/" in cmd[0] or "\\" in cmd[0]) and (pathlib.Path(root) / cmd[0]).is_file():
+        cmd[0] = str((pathlib.Path(root) / cmd[0]).resolve())     # the project's own program (honey-do's virtualenv)
     env = dict(os.environ, PORT=str(port), HOST="127.0.0.1", NODE_ENV="production")
     try:
         proc = subprocess.Popen(cmd, cwd=str(root), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)

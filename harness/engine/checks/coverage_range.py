@@ -31,7 +31,11 @@ def run(root, cfg, base=None, head=None):
     skipped = [f for f in changed if vendored(f)]
     changed = [f for f in changed if not vendored(f)]
     report_path = (cfg.get("coverage_report") if cfg else None) or DEFAULT_REPORT
-    report = coverage.read_report(root / report_path if not str(report_path).startswith("/") else report_path)
+    # one report per tool: a project with a Python backend and a TypeScript frontend lists both (ticketer)
+    paths = report_path if isinstance(report_path, list) else [report_path]
+    parts = [coverage.read_report(root / p if not str(p).startswith("/") else p) for p in paths]
+    report = None if any(r is None for r in parts) else {k: v for r in parts for k, v in r.items()}
+    report_path = ", ".join(map(str, paths))
     thresholds = (cfg.get("coverage_thresholds") if cfg else None) or coverage.DEFAULT_THRESHOLDS
     assessed, findings = coverage.evaluate(changed, report or {}, thresholds)
     if assessed == 0:

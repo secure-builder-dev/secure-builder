@@ -34,7 +34,7 @@ import urllib.error
 import urllib.request
 
 LOOPBACK = ("http://127.0.0.1", "http://localhost", "http://[::1]")
-TEXT_EXT = (".py", ".html", ".htm", ".js", ".mjs", ".css", ".json", ".md", ".txt", ".toml", ".cfg", ".svg")
+TEXT_EXT = (".py", ".html", ".htm", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".css", ".json", ".md", ".txt", ".toml", ".cfg", ".svg")  # TypeScript and React: the ticketer frontend
 MAX_CONTEXT_FILE = 40_000
 WHOLE_FILE = "<<WHOLE FILE>>"
 WHOLE_FILE_MAX_LINES = 300
@@ -120,7 +120,28 @@ def test_names(root, dirs):
     for p in files_under(root, dirs):
         if p.suffix == ".py":
             names.update(re.findall(r"^\s*def (test_\w+)\s*\(", read(p), re.M))
+        elif p.suffix in (".ts", ".tsx", ".js", ".jsx"):     # vitest/jest: it('name', ...) or test('name', ...)
+            names.update(re.findall(r"(?<![\w.])(?:it|test)\(\s*['\"`]([^'\"`]+)['\"`]", read(p)))
     return names
+
+
+def test_bodies(root, dirs):
+    """{test function name: its source as the parser sees it} under the test directories. A reviewer note on the tests
+    is acted on only when this changes: an edit to the imports alone is not a rewrite (ticketer TK-1a: two tests made
+    the same call and expected different exceptions; the note said so, the model changed one import line, and the
+    phase reported the tests written)."""
+    bodies = {}
+    for p in files_under(root, dirs):
+        if p.suffix != ".py":
+            continue
+        try:
+            tree = ast.parse(read(p))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
+                bodies[f"{p.name}:{node.name}"] = ast.dump(node)
+    return bodies
 
 
 def uncovered(clauses, covered, names):
@@ -295,6 +316,20 @@ def score(code, output):
         if "unittest.loader._FailedTest" in output or re.search(r"^(ImportError|ModuleNotFoundError)\b", output, re.M):
             return 5_000 + n
         return n or 1
+    # pytest and vitest (ticketer: a FastAPI backend and a React frontend run in one test command): every failure
+    # counts, and a file that cannot be collected or imported hides its tests, so it scores as uncollectable
+    n, seen, broken = 0, False, False
+    for m in re.finditer(r"^=+ (.*?) in [\d.]+s(?: \([^)]*\))? =+$", output, re.M):           # pytest summary line
+        seen = True
+        n += sum(int(x) for x in re.findall(r"(\d+) (?:failed|errors?)", m.group(1)))
+    for m in re.finditer(r"^\s*Tests\s+(.*)$", output, re.M):                                  # vitest summary line
+        seen = True
+        n += sum(int(x) for x in re.findall(r"(\d+) failed", m.group(1)))
+    if re.search(r"errors? during collection|^ERROR collecting|^\s*Test Files\s+.*\d+ failed.*\(\d+\)\s*$(?![\s\S]*^\s*Tests\s)",
+                 output, re.M) or re.search(r"Failed Suites \d+|Error: Failed to (?:load|resolve)", output):
+        broken = True
+    if seen or broken:
+        return (5_000 if broken else 0) + (n or (0 if broken else 1))
     return 10_000
 
 
@@ -308,7 +343,11 @@ def first_error(output):
 
 def failing_tests(output):
     """The names of the failing tests in unittest output ('test_x (module.Class.test_x)' -> 'module.Class.test_x')."""
-    return frozenset(m.group(2) or m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\S+)(?: \(([^)]*)\))?", output, re.M))
+    names = {m.group(2) or m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\S+)(?: \(([^)]*)\))?", output, re.M)}
+    # pytest short summary ('FAILED backend/tests/test_x.py::test_y - ...') and vitest ('FAIL  tests/a.test.tsx > App > y')
+    names |= {m.group(1) for m in re.finditer(r"^(?:FAILED|ERROR) (\S+::\S+)", output, re.M)}
+    names |= {m.group(1).strip() for m in re.finditer(r"^\s*FAIL\s+(\S+\.(?:test|spec)\.[jt]sx?\s+>.*?)\s*$", output, re.M)}
+    return frozenset(names)
 
 
 def snapshot(root, dirs):
@@ -345,11 +384,20 @@ def ask(endpoint, model, system, user, num_ctx, temperature=0.1, think=False, re
 TEST_TIMEOUT = 600
 
 
+def local_program(cmd, cwd):
+    """The command with a project-relative program path made absolute: Windows does not resolve
+    'backend/.venv/Scripts/python.exe' against the child's working directory (honey-do: every model phase died at once)."""
+    cmd = [str(c) for c in cmd]
+    if cmd and ("/" in cmd[0] or "\\" in cmd[0]) and not pathlib.Path(cmd[0]).is_absolute() and (pathlib.Path(cwd) / cmd[0]).exists():
+        cmd[0] = str((pathlib.Path(cwd) / cmd[0]).resolve())
+    return cmd
+
+
 def run_tests(cmd, cwd, timeout=TEST_TIMEOUT):
     # a bounded run: a test that waits on a server that never answers (the CWE-400 fix's own acceptance test,
     # against the unfixed server) hung the suite, and the loop with it, for half an hour
     try:
-        res = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
+        res = subprocess.run(local_program(cmd, cwd), cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
                              timeout=timeout)
     except subprocess.TimeoutExpired as e:
         out = "".join(x.decode("utf-8", "replace") if isinstance(x, bytes) else (x or "") for x in (e.stdout, e.stderr))
@@ -399,7 +447,7 @@ def start_check(serve_command, cwd, seconds=10):
     import random
     import time
     port = random.randint(20000, 60000)
-    cmd = [str(c).replace("{port}", str(port)) for c in serve_command]
+    cmd = local_program([str(c).replace("{port}", str(port)) for c in serve_command], cwd)
     env = dict(os.environ, PORT=str(port), APP_TOKEN=os.environ.get("APP_TOKEN") or "start-check-token")
     try:
         proc = subprocess.Popen(cmd, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -478,8 +526,10 @@ def main(argv=None):
             print(f"build_model: COULD NOT RUN — no ticket tickets/{a.item}.md; create the item first (`item new`)")
             return 2
         h = header(ticket)
-        if h.get("state") != "claimed":     # an open item is unowned: claim it first (A-2 was built while still open)
-            print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item")
+        # an open item is unowned: claim it first (A-2 was built while still open). An item in review is rework after
+        # a blocked gate ("address the gate findings, then re-run the handoff"): refusing it left the ticketer gate unfixable
+        if h.get("state") not in ("claimed", "in review"):
+            print(f"build_model: REFUSED — item {a.item} is in state '{h.get('state')}'; construction happens on a claimed item, or one in review after a gate")
             return 2
         goal = f"Definition of done: {h.get('done_when', '(none)')}"
         clauses = split_clauses(h.get('done_when', ''))
@@ -526,6 +576,7 @@ def main(argv=None):
     best_snap, best, best_failing = snapshot(root, watched), score(code, output), failing_tests(output)
     best_error = first_error(output)
     start_files = set(best_snap)
+    start_bodies = test_bodies(root, tests)
     first_hints = static_hints(root, sources)
     feedback = (("STATIC CHECK OF THE SOURCE (no test reports these):" + chr(10) + chr(10).join(first_hints) + chr(10) * 2)
                 if first_hints else "") + output
@@ -546,9 +597,16 @@ def main(argv=None):
                     + "".join(f"{i}. {c}\n" for i, c in enumerate(clauses, 1))) if a.phase == "tests" and clauses else "")
                 + (f"\nCurrent test output:\n{feedback}\n" if feedback else ""))
         print(f"build_model: round {rnd} with {model}; prompt {len(user)} chars")
+        # every prompt and answer is kept, so a human can tell a weak model from a weak instruction (ticketer)
+        transcript = root / ".engine" / "work" / "prompts" / f"{name}-{a.phase}-round{rnd}.md"
+        transcript.parent.mkdir(parents=True, exist_ok=True)
+        transcript.write_text(f"# {name} {a.phase} round {rnd} — {model}, temperature {temperature:.2f}\n\n## System prompt\n\n"
+                              f"{system}\n\n## User prompt\n\n{user}\n", encoding="utf-8", newline="\n")
         try:
             out, raw = ask(a.endpoint, model, system, user, a.num_ctx, temperature, a.think,
                            require_coverage=a.phase == "tests" and bool(clauses))
+            with transcript.open("a", encoding="utf-8", newline="\n") as f:
+                f.write("\n## Model answer\n\n```json\n" + json.dumps(out, indent=1)[:200_000] + "\n```\n")
         except urllib.error.URLError as e:
             if not isinstance(e, urllib.error.HTTPError):
                 print(f"build_model: COULD NOT RUN — the model endpoint did not answer ({e})")
@@ -607,7 +665,12 @@ def main(argv=None):
                 notes += ("CLAUSES WITH NO TEST (name an existing test function for each in `coverage`, writing the test "
                           "first if it does not exist):\n" + "\n".join(f"{i}. {clauses[i - 1]}" for i in missing) + "\n")
                 print(f"build_model: {len(missing)} of {len(clauses)} clause(s) have no test yet: {missing}")
-            if written and not refused and not missing and code != 0 and now < 10_000:
+            unrevised = bool(a.note) and test_bodies(root, tests) == start_bodies
+            if unrevised:
+                notes += ("THE REVIEWER NOTE WAS NOT ACTED ON: no test function changed (an import edit is not a rewrite). "
+                          "Change the tests the note names, and add the tests it asks for.\n")
+                print("build_model: the reviewer note was not acted on: no test function changed")
+            if written and not refused and not missing and not unrevised and code != 0 and now < 10_000:
                 print(f"build_model: acceptance tests written and failing as they must ({now} failing; new files: {sorted(new_tests) or 'edits to existing files'}). "
                       "Read them before construction: they are the specification.")
                 return 0

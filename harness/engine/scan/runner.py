@@ -33,7 +33,8 @@ SEVERITY_RANK = {"UNKNOWN": 0, "NEGLIGIBLE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3
 SKIP_DIRS = (".engine", ".git")
 # static analysis reads the project's own code: not the placed harness, git internals, vendored third-party code
 # (scanned by version instead) or the tests (assertions and fixtures are not shipped code)
-SAST_EXCLUDES = (".engine", ".git", "vendor", "vendored", "third_party", "node_modules", "tests")
+# a virtualenv and the offline package source hold third-party code the dependency scanners cover (honey-do: bandit read site-packages)
+SAST_EXCLUDES = (".engine", ".git", "vendor", "vendored", "third_party", "node_modules", "tests", ".venv", "venv", "offline-packages")
 SAST_SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM", "INFO": "LOW"}
 
 
@@ -132,7 +133,8 @@ LOCKFILES_FOR = {"package.json": ("package-lock.json", "npm-shrinkwrap.json", "y
 CODE_LANGUAGES = {".py": "python", ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".ts": "typescript",
                   ".tsx": "typescript", ".jsx": "javascript", ".kt": "kotlin", ".kts": "kotlin", ".java": "java", ".go": "go",
                   ".rb": "ruby", ".php": "php", ".cs": "csharp", ".rs": "rust", ".swift": "swift", ".scala": "scala"}
-SECOND_ANALYZERS = {"python": "bandit", "javascript": "eslint"}
+# TypeScript goes through the same eslint run; the configuration gives it the typescript-eslint parser
+SECOND_ANALYZERS = {"python": "bandit", "javascript": "eslint", "typescript": "eslint"}
 FLOW_CODE_DIR = ".engine/work/flow-code"
 # eslint-plugin-security rules whose finding is a defect, not a smell: they block; the rest are carried
 ESLINT_HIGH = frozenset({"detect-eval-with-expression", "detect-child-process", "detect-pseudoRandomBytes",
@@ -680,6 +682,8 @@ class Scan:
             if set(pathlib.PurePosixPath(rel).parts) & skip:
                 continue
             name = f.name
+            if REQUIREMENTS_FILE.match(name) and name.lower().endswith(".in") and f.with_suffix(".txt").is_file():
+                continue    # pip-tools / `deps lock` input: the .txt beside it is what installs, and it is checked (honey-do)
             if REQUIREMENTS_FILE.match(name):
                 out += self._requirements(f, rel)
             elif name in LOCKFILES_FOR:
@@ -820,8 +824,8 @@ class Scan:
             complete = complete and found is not None
             out += [f for f in found or [] if f.severity != "LOW"]
             info += [f for f in found or [] if f.severity == "LOW"]
-        if "javascript" in langs:
-            found = self._eslint(langs.get("javascript", []), mounts)
+        if "javascript" in langs or "typescript" in langs:
+            found = self._eslint(langs.get("javascript", []) + langs.get("typescript", []), mounts)
             complete = complete and found is not None
             out += [f for f in found or [] if f.severity != "LOW"]
             info += [f for f in found or [] if f.severity == "LOW"]

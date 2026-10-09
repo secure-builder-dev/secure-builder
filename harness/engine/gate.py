@@ -377,6 +377,8 @@ def _dependency_lead_time(root, cfg, diff):
             current = line[6:]
         elif line.startswith("+") and not line.startswith("+++"):
             m = None
+            if line[1:].lstrip().startswith(("-", "#")):
+                continue    # a pip option or comment ('--hash=sha256:...' under a `deps lock` pin), not a package
             if current.endswith(("package.json",)):
                 m = re.match(r'\s*"([\w@./-]+)"\s*:\s*"[^"]+"', line[1:])
             elif current.endswith(("requirements.txt", "requirements-dev.txt", "pyproject.toml", "build.gradle", "build.gradle.kts")):

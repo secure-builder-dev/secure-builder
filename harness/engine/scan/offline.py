@@ -36,6 +36,20 @@ def requirement_pins(path):
     return out
 
 
+def _this_platform(entry):
+    """Whether npm installs this lockfile entry on this machine: its os/cpu lists (with '!' exclusions) admit it."""
+    plat = {"win32": "win32", "darwin": "darwin"}.get(sys.platform, "linux" if sys.platform.startswith("linux") else sys.platform)
+    cpu = {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(__import__("platform").machine().lower(), "x64")
+    for field, here in (("os", plat), ("cpu", cpu)):
+        allowed = entry.get(field)
+        if not allowed:
+            continue
+        allowed = [allowed] if isinstance(allowed, str) else allowed
+        if f"!{here}" in allowed or (any(not a.startswith("!") for a in allowed) and here not in allowed):
+            return False
+    return True
+
+
 def npm_entries(lock):
     """[(name, version, integrity or None)] for each registry package in a package-lock.json (v1, v2 or v3)."""
     try:
@@ -50,6 +64,8 @@ def npm_entries(lock):
         if resolved and not resolved.startswith(("http://", "https://")):
             continue                             # a local file or git dependency is project code, not a registry package
         name = entry.get("name") or key.split("node_modules/")[-1]
+        if entry.get("optional") and not _this_platform(entry):
+            continue        # a native build for another OS or CPU (rolldown's android/darwin bindings): npm never fetches it here
         out.append((name, entry.get("version", ""), entry.get("integrity")))
     if not out and isinstance(data.get("dependencies"), dict):
         stack = list(data["dependencies"].items())
@@ -77,8 +93,9 @@ def cache_holds(cache, integrity):
             digest = base64.b64decode(b64).hex()
         except ValueError:
             continue
-        if (cache / "content-v2" / algo / digest[:2] / digest[2:4] / digest[4:]).is_file():
-            return True
+        for base in (cache, cache / "_cacache"):      # npm puts cacache under _cacache/ inside the --cache folder
+            if (base / "content-v2" / algo / digest[:2] / digest[2:4] / digest[4:]).is_file():
+                return True
     return False
 
 
@@ -144,8 +161,12 @@ def fetch_npm(root, source_dir=DEFAULT_DIR, npm="npm", run=subprocess.run):
     root = pathlib.Path(root)
     cache = root / source_dir / "npm-cache"
     cache.mkdir(parents=True, exist_ok=True)
-    res = run([npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--cache", str(cache)], cwd=str(root),
-              capture_output=True, text=True, shell=sys.platform == "win32")
-    if res.returncode != 0:
-        return False, (res.stderr or res.stdout)[-400:]
-    return True, f"npm cache filled at {source_dir}/npm-cache"
+    # every package-lock.json in the project, not only one at the root (honey-do keeps its frontend in frontend/)
+    homes = sorted({p.parent for p in root.rglob("package-lock.json")
+                    if "node_modules" not in p.parts and source_dir not in p.relative_to(root).parts}) or [root]
+    for home in homes:
+        res = run([npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--cache", str(cache)], cwd=str(home),
+                  capture_output=True, text=True, shell=sys.platform == "win32")
+        if res.returncode != 0:
+            return False, (res.stderr or res.stdout)[-400:]
+    return True, f"npm cache filled at {source_dir}/npm-cache from {len(homes)} lockfile folder(s)"

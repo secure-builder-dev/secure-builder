@@ -5,6 +5,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from fastapi import Request
+import sys
+import json
 
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(

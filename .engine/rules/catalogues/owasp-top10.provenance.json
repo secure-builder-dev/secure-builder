@@ -1,0 +1,9 @@
+{
+  "file": "owasp-top10.json",
+  "redistribution": "CC BY-SA 4.0; attribution: OWASP Foundation",
+  "retrieved": "2026-09-20",
+  "sha256": "8a151437f83e20d5c5c19f4bc09adbdf304a588e4d688d1f900eaac2ce1efd1f",
+  "source": "OWASP Top 10:2021 category identifiers and titles",
+  "source_sha256": "seed-transcription",
+  "version": "OWASP Top 10 2021"
+}

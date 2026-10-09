@@ -1,0 +1,43 @@
+# © 2026 Casey Houle. All rights reserved.
+# ENGINE-OWNED: local edits to this file are discarded on update
+# The engine's own static-analysis rules, run with the vendored registry rules on every scan.
+# Each one exists because a real defect got past the registry rules (see the build log).
+rules:
+  - id: engine-http-handler-without-timeout
+    languages: [python]
+    severity: ERROR
+    message: >-
+      This request handler sets no `timeout`, so a client that connects and sends nothing holds the
+      connection open for ever; on a single-threaded server it blocks every other client (CWE-400,
+      slowloris). Set a class attribute such as `timeout = 10` (seconds) on the handler.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      found-in: "antipode and daynight, 2026-10-03: one idle connection blocked the server"
+    patterns:
+      - pattern: |
+          class $HANDLER(..., $BASE, ...):
+              ...
+      - metavariable-regex:
+          metavariable: $BASE
+          regex: ^(http\.server\.)?(BaseHTTPRequestHandler|SimpleHTTPRequestHandler)$
+      - pattern-not: |
+          class $HANDLER(..., $BASE, ...):
+              ...
+              timeout = $T
+              ...
+
+  - id: engine-single-threaded-http-server
+    languages: [python]
+    severity: ERROR
+    message: >-
+      `HTTPServer` handles one connection at a time: one slow or idle client stalls every other one
+      (CWE-400). Use `ThreadingHTTPServer` (with daemon threads) together with a handler timeout.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      found-in: "antipode and daynight, 2026-10-03"
+    # the qualified pattern follows imports and aliases: `from http.server import HTTPServer` is caught, while
+    # `ThreadingHTTPServer as HTTPServer` (Devstral's first fix) is threaded and is not; a bare HTTPServer(...)
+    # matched the name, not the class
+    pattern: http.server.HTTPServer(...)

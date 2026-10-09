@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "track": "web",
+  "tier": "IL4",
+  "provider": "tactical",
+  "app_type": "n/a",
+  "mode": "local",
+  "topology": "single",
+  "side": "local",
+  "operators": 1,
+  "protected_branch": "demo/honey-do",
+  "timezone": "UTC",
+  "clock": "workstation clock (Windows 11, NTP-synced)",
+  "not_applicable_threshold": 0.5,
+  "consistency_blocks": [
+    "verdict-block"
+  ],
+  "obligation_ceiling": 5,
+  "obligation_max_age_days": 30,
+  "test_command": [
+    "backend/.venv/Scripts/python.exe",
+    "scripts/test_all.py"
+  ],
+  "lint_command": [
+    "backend/.venv/Scripts/python.exe",
+    "-m",
+    "compileall",
+    "-q",
+    "backend/app"
+  ],
+  "coverage_report": [
+    "backend/coverage.json",
+    "frontend/coverage/coverage-summary.json"
+  ],
+  "runtime_components": [
+    {
+      "name": "python",
+      "version": "3.12.13",
+      "cpe": "cpe:2.3:a:python:python:3.12.13:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/python@3.12.13"
+    },
+    {
+      "name": "node.js",
+      "version": "24.16.0",
+      "cpe": "cpe:2.3:a:nodejs:node.js:24.16.0:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/node@24.16.0"
+    },
+    {
+      "name": "postgresql",
+      "version": "17.6",
+      "cpe": "cpe:2.3:a:postgresql:postgresql:17.6:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/postgresql@17.6"
+    }
+  ],
+  "serve_command": [
+    "backend/.venv/Scripts/python.exe",
+    "-m",
+    "uvicorn",
+    "--app-dir",
+    "backend",
+    "app.main:app",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "{port}"
+  ],
+  "protected_routes": [
+    "/api/tickets",
+    "/api/dashboard",
+    "/api/filed"
+  ],
+  "public_routes": [
+    "GET /health"
+  ]
+}

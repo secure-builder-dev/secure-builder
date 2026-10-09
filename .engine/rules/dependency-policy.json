@@ -1,0 +1,170 @@
+{
+ "lead_time": "none: single workstation, packages fetched at setup",
+ "target_requires_approval": false,
+ "dependencies": {
+  "@testing-library/dom": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "@testing-library/react": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "@types/react": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "@types/react-dom": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "@vitejs/plugin-react": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "@vitest/coverage-v8": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "annotated-doc": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "annotated-types": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "anyio": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "certifi": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "click": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "colorama": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "coverage": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "fastapi": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "h11": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "httpcore": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "httpx": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "idna": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "iniconfig": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "jsdom": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "opentelemetry-api": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "packaging": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pluggy": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "psycopg": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "psycopg-binary": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pydantic": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pydantic-core": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pygments": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pytest": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "pytest-cov": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "react": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "react-dom": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "sqlalchemy": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "starlette": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "typescript": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "typing-extensions": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "typing-inspection": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "tzdata": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "uvicorn": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "vite": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  },
+  "vitest": {
+   "approval": "approved",
+   "available_on_target": "2026-10-08"
+  }
+ }
+}

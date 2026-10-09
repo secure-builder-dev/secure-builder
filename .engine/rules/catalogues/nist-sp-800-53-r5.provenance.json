@@ -1,0 +1,9 @@
+{
+  "file": "nist-sp-800-53-r5.json",
+  "redistribution": "public domain; redistributable",
+  "retrieved": "2026-09-20",
+  "sha256": "2b6028f40e3b7157b29ec93386e0ff036ab1af3e332c391df2447fd4b3ded418",
+  "source": "NIST SP 800-53 Rev 5 (US Government work, public domain); seed transcribed by the author",
+  "source_sha256": "seed-transcription",
+  "version": "NIST SP 800-53 Rev 5"
+}

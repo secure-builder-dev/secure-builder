@@ -1,0 +1,4 @@
+# definitions placed by the harness; one simple filename per line
+README.md
+quality-gate.md
+security-gate.md

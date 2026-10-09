@@ -1,0 +1,9 @@
+{
+  "agent_editable_zones": [
+    {
+      "file": "AGENTS.md",
+      "section": "## Project rules"
+    }
+  ],
+  "note": "Sections an automated agent may append grounded entries to. Everything not listed is human-authored only. Adding a zone is itself a governance change."
+}

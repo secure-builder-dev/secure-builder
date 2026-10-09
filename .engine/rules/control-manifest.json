@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "scope_statement": "This manifest covers system-specific controls and the system-specific portion of hybrid controls. Fully inherited controls are implemented by the hosting platform, are tracked in the platform's system security plan, and are outside this harness's verification scope.",
+  "controls": [
+    {
+      "id": "CTRL-EXAMPLE",
+      "placeholder": true,
+      "description": "Replace this placeholder with a real control. A manifest holding only placeholders is reported as template-only, never as passing.",
+      "location": {"file": "src/example.py", "symbol": "require_auth"},
+      "required_artifact": null,
+      "test_pattern": "tests/test_auth*",
+      "status": "system-specific",
+      "counterpart": null,
+      "mutation": null
+    }
+  ]
+}

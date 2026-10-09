@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+backend/.venv/
+backend/coverage.json
+backend/.coverage
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+.engine/work/flow-code/
+offline-packages/

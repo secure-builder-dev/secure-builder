@@ -1,0 +1,19 @@
+{
+ "key": "owasp-top10",
+ "publication": "OWASP Top 10",
+ "revision": "2021",
+ "published_revisions": ["2017", "2021"],
+ "coverage": "the ordered list's current edition; a citation carrying an older edition's numbering is stale, because the same number now carries a different title.",
+ "entries": {
+  "A01": {"status": "active", "title": "Broken Access Control"},
+  "A02": {"status": "active", "title": "Cryptographic Failures"},
+  "A03": {"status": "active", "title": "Injection"},
+  "A04": {"status": "active", "title": "Insecure Design"},
+  "A05": {"status": "active", "title": "Security Misconfiguration"},
+  "A06": {"status": "active", "title": "Vulnerable and Outdated Components"},
+  "A07": {"status": "active", "title": "Identification and Authentication Failures"},
+  "A08": {"status": "active", "title": "Software and Data Integrity Failures"},
+  "A09": {"status": "active", "title": "Security Logging and Monitoring Failures"},
+  "A10": {"status": "active", "title": "Server-Side Request Forgery"}
+ }
+}

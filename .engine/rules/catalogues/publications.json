@@ -1,0 +1,14 @@
+{
+ "key": "publications",
+ "publication": "publication index",
+ "revision": "seed",
+ "published_revisions": ["seed"],
+ "coverage": "seed: the publications this harness's own checklist cites, with their current revision and superseded editions.",
+ "entries": {
+  "NIST SP 800-52": {"status": "active", "title": "Guidelines for the Selection, Configuration, and Use of Transport Layer Security (TLS) Implementations", "current_revision": "Rev 2", "published_revisions": ["Rev 1", "Rev 2"]},
+  "NIST SP 800-53": {"status": "active", "title": "Security and Privacy Controls for Information Systems and Organizations", "current_revision": "Rev 5", "published_revisions": ["Rev 4", "Rev 5"]},
+  "NIST SP 800-163": {"status": "active", "title": "Vetting the Security of Mobile Applications", "current_revision": "Rev 1", "published_revisions": ["Rev 1"]},
+  "FIPS 140-3": {"status": "active", "title": "Security Requirements for Cryptographic Modules"},
+  "FIPS 140-2": {"status": "withdrawn", "title": "Security Requirements for Cryptographic Modules", "superseded_by": ["FIPS 140-3"]}
+ }
+}

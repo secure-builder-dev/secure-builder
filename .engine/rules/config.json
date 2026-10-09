@@ -47,9 +47,9 @@
     },
     {
       "name": "postgresql",
-      "version": "17.6",
-      "cpe": "cpe:2.3:a:postgresql:postgresql:17.6:*:*:*:*:*:*:*",
-      "purl": "pkg:generic/postgresql@17.6"
+      "version": "17.8",
+      "cpe": "cpe:2.3:a:postgresql:postgresql:17.8:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/postgresql@17.8"
     }
   ],
   "serve_command": [

@@ -33,7 +33,8 @@ SEVERITY_RANK = {"UNKNOWN": 0, "NEGLIGIBLE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3
 SKIP_DIRS = (".engine", ".git")
 # static analysis reads the project's own code: not the placed harness, git internals, vendored third-party code
 # (scanned by version instead) or the tests (assertions and fixtures are not shipped code)
-SAST_EXCLUDES = (".engine", ".git", "vendor", "vendored", "third_party", "node_modules", "tests")
+# a virtualenv and the offline package source hold third-party code the dependency scanners cover (honey-do: bandit read site-packages)
+SAST_EXCLUDES = (".engine", ".git", "vendor", "vendored", "third_party", "node_modules", "tests", ".venv", "venv", "offline-packages")
 SAST_SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM", "INFO": "LOW"}
 
 

@@ -1,5 +1,5 @@
 {
-  "commit": "a8493ce4602d76fecfa37c343a65f4fce62ab063",
+  "commit": "f0b630976a8c1ca6d1752aa1b1048d45cf041da1",
   "detection_data_date": "2026-10-02",
   "digests": {},
   "mode": "local",
@@ -12,8 +12,9 @@
     "sast-a",
     "sast-b-python",
     "sast-b-javascript",
-    "sast-b"
+    "sast-b",
+    "dast"
   ],
-  "timestamp": "2026-10-09T05:31:54+00:00",
+  "timestamp": "2026-10-09T21:59:42+00:00",
   "verdict": "red"
 }

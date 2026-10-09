@@ -333,6 +333,26 @@ def score(code, output):
     return 10_000
 
 
+def runner_broken(code, output, root, sources, tests):
+    """The test command crashed before any test framework ran, and the traceback names no file the model may edit:
+    the runner itself is broken and no round can mend it (honey-do: a comment in the middle of a list in
+    scripts/test_all.py was a SyntaxError for 32 rounds, each scored '10000 failing' and handed to the model)."""
+    if code == 0 or score(code, output) != 10_000:
+        return ""
+    named = sorted({m.replace("\\", "/") for m in re.findall(r'File "([^"]+)"', output)})
+    editable = {p.name for p in files_under(root, sources) + files_under(root, tests)}
+    if any(n.rsplit("/", 1)[-1] in editable for n in named):
+        return ""
+    # a crash that names a source or test folder is the model's to mend: in the tests phase the tests folder may not
+    # exist yet ("Start directory is not importable"), and the first round creates it
+    flat = output.replace("\\\\", "/").replace("\\", "/")
+    if any((root / d).resolve().as_posix() in flat or d.rstrip("/") in flat for d in sources + tests):
+        return ""
+    return ("the test command crashed before any test framework ran" +
+            (f", in {', '.join(named)}" if named else "") + "; that is not a source or test file the model may edit, "
+            "so no build round can fix it. Repair the test command (or the file it runs) and start again")
+
+
 def first_error(output):
     """The first exception line of a test run, e.g. 'AssertionError: 404 != 200'; empty when there is none."""
     m = re.search(r"^\w*(?:Error|Exception):.*$", output, re.M)
@@ -562,6 +582,11 @@ def main(argv=None):
     system = (role + " You never touch the harness, the records, the manifest, the plan or the tickets, and you never attribute "
               "yourself.\n\n" + EDIT_RULES + ("\n\n" + rules if rules else ""))
     code, output = run_tests(test_cmd, test_cwd)
+    broken = runner_broken(code, output, root, sources, tests)
+    if broken:
+        print(f"build_model: COULD NOT RUN — {broken}")
+        print(output[-1500:])
+        return 2
     if a.phase == "build" and code == 0 and not a.note:
         # a green suite is not a definition of done: the model would rewrite what exists and be told it passed
         # (seen on the to-do demo: 120 tokens, the empty skeleton, "tests pass"). Construction starts red.

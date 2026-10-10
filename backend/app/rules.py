@@ -123,8 +123,10 @@ def dashboard(session, user, today):
 
     for ticket in tickets:
         if ticket.status in ("open", "acknowledged"):
-            # Determine group based on due date
-            if ticket.due is None:
+            # Determine group based on due date and priority
+            if ticket.priority == "urgent":
+                group = 0
+            elif ticket.due is None:
                 group = 2
             elif ticket.due < today:
                 group = 0
@@ -147,8 +149,10 @@ def dashboard(session, user, today):
                 "group": group
             })
         elif ticket.status == "in_progress":
-            # Determine group based on due date
-            if ticket.due is None:
+            # Determine group based on due date and priority
+            if ticket.priority == "urgent":
+                group = 0
+            elif ticket.due is None:
                 group = 2
             elif ticket.due < today:
                 group = 0
@@ -172,7 +176,7 @@ def dashboard(session, user, today):
             })
         elif ticket.status in ("done", "closed"):
             updated_date = ticket.updated_at.date()
-            if today - timedelta(days=7) <= updated_date <= today:
+            if updated_date >= today - timedelta(days=7):
                 completed.append({
                     "id": ticket.id,
                     "title": ticket.title,

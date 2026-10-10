@@ -6,6 +6,11 @@ import Menu from './Menu';
 import Directions from './Directions';
 import HoverCard from './HoverCard';
 
+// The current App.tsx uses HoverCard as a wrapper with a 'content' prop,
+// but HoverCard.tsx expects a 'ticket' prop. We must align them.
+// Since HoverCard.tsx is the source of truth for the tooltip content,
+// we should pass the ticket object to it.
+
 
 const App: React.FC = () => {
   const [token, setToken] = useState('');
@@ -101,12 +106,9 @@ const App: React.FC = () => {
           <h2>To Do</h2>
           {dashboard.todo.map((ticket) => (
             <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-              <HoverCard content={<div>
-                        <p>{ticket.details}</p>
-                        <p>Filed by {ticket.filed_by}</p>
-                      </div>}>
-                      <h3>{ticket.title}</h3>
-                    </HoverCard>
+              <HoverCard ticket={ticket}>
+                <h3>{ticket.title}</h3>
+              </HoverCard>
                     <p>Priority: {ticket.priority}</p>
                     <p>Due: {ticket.due}</p>
                     {ticket.status === 'open' && (
@@ -122,12 +124,9 @@ const App: React.FC = () => {
           <h2>In Progress</h2>
           {dashboard.in_progress.map((ticket) => (
             <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-              <HoverCard content={<div>
-                        <p>{ticket.details}</p>
-                        <p>Assigned to {ticket.assigned_to}</p>
-                      </div>}>
-                      <h3>{ticket.title}</h3>
-                    </HoverCard>
+              <HoverCard ticket={ticket}>
+                <h3>{ticket.title}</h3>
+              </HoverCard>
                     <p>Priority: {ticket.priority}</p>
                     <p>Due: {ticket.due}</p>
                     <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>
@@ -138,12 +137,9 @@ const App: React.FC = () => {
           <h2>Completed</h2>
           {dashboard.completed.map((ticket) => (
             <div key={ticket.id} className='card'>
-              <HoverCard content={<div>
-                        <p>{ticket.details}</p>
-                        <p>Created {ticket.created_at}</p>
-                      </div>}>
-                      <h3>{ticket.title}</h3>
-                    </HoverCard>
+              <HoverCard ticket={ticket}>
+                <h3>{ticket.title}</h3>
+              </HoverCard>
                     <p>Priority: {ticket.priority}</p>
                     <p>Due: {ticket.due}</p>
             </div>

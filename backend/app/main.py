@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import sessionmaker
 from app.db import engine, init_db
 from app.rules import create_ticket, change_status, dashboard, filed
+from app.household import household_board
 
 app = FastAPI()
 
@@ -183,6 +184,16 @@ async def filed_endpoint(request: Request):
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"tickets": tickets}
+    )
+
+@app.get("/api/board")
+async def board_endpoint(request: Request):
+    caller = get_caller(request)
+    today = date.today()
+    board = household_board(request.state.db, today)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=board
     )
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])

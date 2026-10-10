@@ -83,6 +83,17 @@ def change_status(session, ticket_id, user, new_status):
         ("closed", "open"): "filed_by"
     }
 
+    # Determine the correct user based on the move
+    if move in allowed_moves:
+        required_user = allowed_moves[move]
+        if required_user == "assigned_to":
+            required_user = ticket.assigned_to
+        elif required_user == "filed_by":
+            required_user = ticket.filed_by
+        
+        if user != required_user:
+            raise PermissionError("User cannot make this move")
+
     move = (ticket.status, new_status)
     if move not in allowed_moves:
         raise ValueError("Invalid status move")
@@ -117,10 +128,12 @@ def dashboard(session, user, today):
 
     for ticket in tickets:
         if ticket.status in ("open", "acknowledged"):
-            group = 0
-            if ticket.due and ticket.due < today:
+            # Determine group based on due date
+            if ticket.due is None:
+                group = 2
+            elif ticket.due < today:
                 group = 0
-            elif ticket.due and ticket.due <= today + timedelta(days=3):
+            elif ticket.due <= today + timedelta(days=3):
                 group = 1
             else:
                 group = 2
@@ -139,10 +152,12 @@ def dashboard(session, user, today):
                 "group": group
             })
         elif ticket.status == "in_progress":
-            group = 0
-            if ticket.due and ticket.due < today:
+            # Determine group based on due date
+            if ticket.due is None:
+                group = 2
+            elif ticket.due < today:
                 group = 0
-            elif ticket.due and ticket.due <= today + timedelta(days=3):
+            elif ticket.due <= today + timedelta(days=3):
                 group = 1
             else:
                 group = 2
@@ -176,6 +191,7 @@ def dashboard(session, user, today):
                     "updated_at": ticket.updated_at.isoformat()
                 })
 
+    # Sort todo and in_progress by group, then due date (None last), then created_at
     todo.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date.max, x["created_at"]))
     in_progress.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date.max, x["created_at"]))
     completed.sort(key=lambda x: x["updated_at"], reverse=True)

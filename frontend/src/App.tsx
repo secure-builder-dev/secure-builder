@@ -34,6 +34,10 @@ const App = () => {
   });
 
   const handleLoad = async () => {
+    if (!token) {
+      setError('Token is required');
+      return;
+    }
     try {
       const dash = await fetchDashboard(token);
       const filed = await fetchFiled(token);

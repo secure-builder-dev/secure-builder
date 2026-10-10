@@ -83,22 +83,17 @@ def change_status(session, ticket_id, user, new_status):
         ("closed", "open"): "filed_by"
     }
 
-    # Determine the correct user based on the move
-    if move in allowed_moves:
-        required_user = allowed_moves[move]
-        if required_user == "assigned_to":
-            required_user = ticket.assigned_to
-        elif required_user == "filed_by":
-            required_user = ticket.filed_by
-        
-        if user != required_user:
-            raise PermissionError("User cannot make this move")
-
     move = (ticket.status, new_status)
     if move not in allowed_moves:
         raise ValueError("Invalid status move")
 
-    if allowed_moves[move] != user:
+    required_user = allowed_moves[move]
+    if required_user == "assigned_to":
+        required_user = ticket.assigned_to
+    elif required_user == "filed_by":
+        required_user = ticket.filed_by
+    
+    if user != required_user:
         raise PermissionError("User cannot make this move")
 
     ticket.status = new_status
@@ -192,8 +187,8 @@ def dashboard(session, user, today):
                 })
 
     # Sort todo and in_progress by group, then due date (None last), then created_at
-    todo.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date.max, x["created_at"]))
-    in_progress.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date.max, x["created_at"]))
+    todo.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date(9999, 12, 31), x["created_at"]))
+    in_progress.sort(key=lambda x: (x["group"], x["due"] if x["due"] else date(9999, 12, 31), x["created_at"]))
     completed.sort(key=lambda x: x["updated_at"], reverse=True)
 
     return {

@@ -196,6 +196,14 @@ async def board_endpoint(request: Request):
         content=board
     )
 
+@app.get("/api/me")
+async def me_endpoint(request: Request):
+    caller = get_caller(request)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"user": caller}
+    )
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def catch_all(path: str, request: Request):
     if request.method == "GET":

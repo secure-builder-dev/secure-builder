@@ -65,16 +65,16 @@ describe('HouseholdBoard Component', () => {
 
     // To Do
     expect(screen.getByText('Fix Sink')).toBeInTheDocument();
-    expect(screen.getByText('him')).toBeInTheDocument();
+    expect(screen.getByText('for him')).toBeInTheDocument();
     expect(screen.getByText('Buy Milk')).toBeInTheDocument();
-    expect(screen.getByText('her')).toBeInTheDocument();
+    expect(screen.getByText('for her')).toBeInTheDocument();
 
     // In Progress
     expect(screen.getByText('Paint Wall')).toBeInTheDocument();
-    expect(screen.getByText('him')).toBeInTheDocument();
+    expect(screen.getByText('for him')).toBeInTheDocument();
 
     // Completed
     expect(screen.getByText('Mow Lawn')).toBeInTheDocument();
-    expect(screen.getByText('her')).toBeInTheDocument();
+    expect(screen.getByText('for her')).toBeInTheDocument();
   });
 });

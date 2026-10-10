@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus } from './api';
+import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus, fetchBoard } from './api';
 import './styles.css';
+import HouseholdBoard from './HouseholdBoard';
 
 const App: React.FC = () => {
   const [token, setToken] = useState('');
   const [dashboard, setDashboard] = useState<{ todo: any[], in_progress: any[], completed: any[] }>({ todo: [], in_progress: [], completed: [] });
   const [filedTickets, setFiledTickets] = useState([]);
   const [error, setError] = useState('');
+  const [householdBoard, setHouseholdBoard] = useState(null);
 
   const loadData = async () => {
     if (!token) return;
@@ -16,6 +18,8 @@ const App: React.FC = () => {
       setDashboard(dashboardData);
       const filedData = await fetchFiled(token);
       setFiledTickets(filedData.tickets);
+      const boardData = await fetchBoard(token);
+      setHouseholdBoard(boardData);
     } catch (err) {
       if (err.message === '401') {
         setError('Wrong token');
@@ -48,6 +52,7 @@ const App: React.FC = () => {
         <button onClick={loadData}>Load</button>
       </div>
       {error && <p>{error}</p>}
+      {householdBoard && <HouseholdBoard board={householdBoard} />}
       <div>
         <h2>New ticket</h2>
         <form

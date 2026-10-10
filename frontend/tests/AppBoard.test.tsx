@@ -47,7 +47,7 @@ describe('App Household Board', () => {
 
     expect(await screen.findByText('Household board')).toBeInTheDocument();
     expect(screen.getByText('Household Task 1')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
+    expect(screen.getAllByText('for him')).toHaveLength(2);
     expect(screen.getByText('Household Task 2')).toBeInTheDocument();
     expect(screen.getByText('for her')).toBeInTheDocument();
     expect(screen.getByText('Household Task 3')).toBeInTheDocument();

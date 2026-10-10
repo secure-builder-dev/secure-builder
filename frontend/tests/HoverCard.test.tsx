@@ -26,7 +26,7 @@ describe('HoverCard', () => {
         <span>Target Text</span>
       </HoverCard>
     );
-    const target = screen.getByText('Target Text').closest('span');
+    const target = screen.getByText('Target Text').parentElement;
     expect(target).toHaveClass('hover-target');
   });
 

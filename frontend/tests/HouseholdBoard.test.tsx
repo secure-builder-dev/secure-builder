@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { fetchBoard } from '../src/api';
 import HouseholdBoard from '../src/HouseholdBoard';
@@ -64,17 +64,18 @@ describe('HouseholdBoard Component', () => {
     render(<HouseholdBoard board={mockBoard} />);
 
     // To Do
-    expect(screen.getByText('Fix Sink')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
-    expect(screen.getByText('Buy Milk')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
+    const fixSink = screen.getByText('Fix Sink');
+    expect(within(fixSink.parentElement!).getByText('for him')).toBeInTheDocument();
+    
+    const buyMilk = screen.getByText('Buy Milk');
+    expect(within(buyMilk.parentElement!).getByText('for her')).toBeInTheDocument();
 
     // In Progress
-    expect(screen.getByText('Paint Wall')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
+    const paintWall = screen.getByText('Paint Wall');
+    expect(within(paintWall.parentElement!).getByText('for him')).toBeInTheDocument();
 
     // Completed
-    expect(screen.getByText('Mow Lawn')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
+    const mowLawn = screen.getByText('Mow Lawn');
+    expect(within(mowLawn.parentElement!).getByText('for her')).toBeInTheDocument();
   });
 });

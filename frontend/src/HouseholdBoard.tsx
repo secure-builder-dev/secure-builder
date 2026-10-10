@@ -9,7 +9,7 @@ export default function HouseholdBoard({ board }: { board: { todo: Array<{ id: n
         {board.todo.map((ticket) => (
           <div key={ticket.id}>
             <div>{ticket.title}</div>
-            <div>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
+            <div data-assigned={ticket.assigned_to}>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
           </div>
         ))}
       </div>
@@ -18,7 +18,7 @@ export default function HouseholdBoard({ board }: { board: { todo: Array<{ id: n
         {board.in_progress.map((ticket) => (
           <div key={ticket.id}>
             <div>{ticket.title}</div>
-            <div>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
+            <div data-assigned={ticket.assigned_to}>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
           </div>
         ))}
       </div>
@@ -27,7 +27,7 @@ export default function HouseholdBoard({ board }: { board: { todo: Array<{ id: n
         {board.completed.map((ticket) => (
           <div key={ticket.id}>
             <div>{ticket.title}</div>
-            <div>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
+            <div data-assigned={ticket.assigned_to}>{ticket.assigned_to === 'her' ? 'for her' : 'for him'}</div>
           </div>
         ))}
       </div>

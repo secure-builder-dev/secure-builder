@@ -65,16 +65,15 @@ describe('HouseholdBoard', () => {
     
     // To Do
     expect(screen.getByText('Task 1')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
+    // Use getAllByText because 'for her' appears multiple times in the board
+    expect(screen.getAllByText('for her')).toHaveLength(2);
     expect(screen.getByText('Task 2')).toBeInTheDocument();
     expect(screen.getByText('for him')).toBeInTheDocument();
 
     // In Progress
     expect(screen.getByText('Task 3')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
 
     // Completed
     expect(screen.getByText('Task 4')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
   });
 });

@@ -7,7 +7,8 @@ export const fetchMe = async (token: string) => {
   if (!response.ok) {
     throw new Error(response.status.toString());
   }
-  return response.json();
+  const data = await response.json();
+  return data;
 }
 
 export const fetchDashboard = async (token: string) => {

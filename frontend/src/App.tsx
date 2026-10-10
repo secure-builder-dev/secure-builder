@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus, fetchBoard } from './api';
+import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus, fetchBoard, fetchMe } from './api';
 import './styles.css';
 import HouseholdBoard from './HouseholdBoard';
 import Menu from './Menu';
@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [error, setError] = useState('');
   const [householdBoard, setHouseholdBoard] = useState(null);
   const [showDirections, setShowDirections] = useState(false);
+  const [user, setUser] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!token) return;
@@ -23,6 +24,8 @@ const App: React.FC = () => {
       setFiledTickets(filedData.tickets);
       const boardData = await fetchBoard(token);
       setHouseholdBoard(boardData);
+      const userData = await fetchMe(token);
+      setUser(userData.user);
     } catch (err) {
       if (err.message === '401') {
         setError('Wrong token');
@@ -55,13 +58,14 @@ const App: React.FC = () => {
         />
         <button onClick={loadData}>Load</button>
       </div>
-    
+
       {error && <p>{error}</p>}
-    
+
+      {user && <p>Signed in as {user}</p>}
       {householdBoard && <HouseholdBoard board={householdBoard} />}
       {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       <div>
-        <h2>New ticket</h2>
+        <h2>New ticket{user === 'her' ? ' for him' : user === 'him' ? ' for her' : ''}</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();

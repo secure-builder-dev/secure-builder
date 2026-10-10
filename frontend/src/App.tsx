@@ -143,7 +143,7 @@ const App = () => {
                 <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
                   <h4>{ticket.title}</h4>
                   <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? new Date(ticket.due).toLocaleDateString() : 'No due date'}</p>
+                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
                   {ticket.status === 'open' && (
                     <button onClick={() => handleStatusUpdate(ticket.id, 'acknowledged')}>Acknowledge</button>
                   )}
@@ -159,7 +159,7 @@ const App = () => {
                 <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
                   <h4>{ticket.title}</h4>
                   <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? new Date(ticket.due).toLocaleDateString() : 'No due date'}</p>
+                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
                   <button onClick={() => handleStatusUpdate(ticket.id, 'done')}>Done</button>
                 </div>
               ))}
@@ -170,7 +170,7 @@ const App = () => {
                 <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
                   <h4>{ticket.title}</h4>
                   <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? new Date(ticket.due).toLocaleDateString() : 'No due date'}</p>
+                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
                 </div>
               ))}
             </div>

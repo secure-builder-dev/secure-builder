@@ -13,7 +13,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # captured stdout is cp1252 on Windows; Vitest prints '❯'
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-env = dict(os.environ, NO_COLOR="1", FORCE_COLOR="0")
+# COLORS/DEBUG_PRINT_LIMIT: Testing Library ignores NO_COLOR and prints up to 7000 characters of colored DOM per failure;
+# eight of them filled the build driver's whole feedback and no failing test's name or assertion reached the model
+env = dict(os.environ, NO_COLOR="1", FORCE_COLOR="0", COLORS="false", DEBUG_PRINT_LIMIT="600")
 env.setdefault("TICKETER_DATABASE_URL", "postgresql+psycopg://postgres@127.0.0.1:55432/ticketer_test")
 venv_python = ROOT / "backend" / ".venv" / "Scripts" / "python.exe"
 SUMMARY = re.compile(r"^(?:=+ .*? in [\d.]+s(?: \([^)]*\))? =+|(?:FAILED|ERROR) \S+::\S+.*|.*errors? during collection.*"

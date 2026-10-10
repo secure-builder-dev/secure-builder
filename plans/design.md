@@ -65,3 +65,28 @@ response.
 The user pastes their token into a field (kept in React state only, never in localStorage). The page shows the
 new-ticket form, the board as three columns (To Do, In Progress, Completed), and "Tickets I filed" with Close and Reopen
 on done tickets. Text from the API is rendered as React text, never as HTML.
+
+## TK-2 additions (unit TK-2: styling, hover cards, household board, signed-in user, menu with directions)
+
+Built in small beads; each bead names the only files it may change. New code goes in new files where it can.
+
+| Part | Files |
+| --- | --- |
+| Styles | `frontend/src/styles.css`, imported once by `App.tsx` (`import './styles.css';`) |
+| Hover card | `frontend/src/HoverCard.tsx` (default export `HoverCard`) |
+| Household board | `backend/app/household.py` (`household_board(session, today)`), `GET /api/board` in `main.py`, `frontend/src/HouseholdBoard.tsx` |
+| Signed-in user | `GET /api/me` in `main.py`, shown by `App.tsx` |
+| Menu and directions | `frontend/src/Menu.tsx`, `frontend/src/Directions.tsx` |
+
+Household board: every ticket of both users, in the same three columns as the personal board (To Do = open or
+acknowledged, In Progress = in_progress, Completed = done or closed with `updated_at` within the 7 days ending today).
+To Do and In Progress are oldest `created_at` first; Completed is newest `updated_at` first. Each ticket dict is the
+usual one (it carries `filed_by` and `assigned_to`). Both users see the same board.
+
+`GET /api/board` and `GET /api/me` need the bearer token like every other `/api` route (401 `{"error": "unauthorized"}`
+without it). `/api/me` answers `{"user": "her"}` or `{"user": "him"}`.
+
+Frontend tests: every test file imports `'@testing-library/jest-dom/vitest'` and calls `afterEach(cleanup)` (nothing
+else sets them up), and a test that renders `App` replaces `globalThis.fetch` with a `vi.fn()` that answers by URL
+(`/api/dashboard`, `/api/filed`, `/api/board`, `/api/me`), so that adding a request never breaks an older test. `App`
+treats a failed or malformed answer from `/api/board` or `/api/me` as empty and still shows the rest of the page.

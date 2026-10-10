@@ -9,8 +9,28 @@ const App: React.FC = () => {
   const [filedTickets, setFiledTickets] = useState([]);
   const [error, setError] = useState('');
   const [householdBoard, setHouseholdBoard] = useState(null);
+const [user, setUser] = useState(null);
 
   const loadData = async () => {
+  if (!token) return;
+  setError('');
+  try {
+    const userData = await fetchMe(token);
+    setUser(userData.user);
+    const dashboardData = await fetchDashboard(token);
+    setDashboard(dashboardData);
+    const filedData = await fetchFiled(token);
+    setFiledTickets(filedData.tickets);
+    const boardData = await fetchBoard(token);
+    setHouseholdBoard(boardData);
+  } catch (err) {
+    if (err.message === '401') {
+      setError('Wrong token');
+    } else {
+      setError('Something went wrong');
+    }
+  }
+};
     if (!token) return;
     setError('');
     try {
@@ -52,9 +72,10 @@ const App: React.FC = () => {
         <button onClick={loadData}>Load</button>
       </div>
       {error && <p>{error}</p>}
+      {user && <p>Signed in as {user}</p>}
       {householdBoard && <HouseholdBoard board={householdBoard} />}
       <div>
-        <h2>New ticket</h2>
+        <h2>New ticket{user && ` for ${user === 'her' ? 'him' : 'her'}`}</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();

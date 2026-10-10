@@ -20,4 +20,3 @@
 
 - B404-blacklist [LOW] scripts/test_all.py (sast; no fix available; reported by bandit)
 - B603-subprocess_without_shell_equals_true [LOW] scripts/test_all.py (sast; no fix available; reported by bandit)
-- B603-subprocess_without_shell_equals_true [LOW] scripts/test_all.py (sast; no fix available; reported by bandit)

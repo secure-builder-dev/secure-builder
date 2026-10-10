@@ -92,6 +92,10 @@ async def board_endpoint(caller: str = Depends(get_caller), db: Session = Depend
     from .household import household_board
     return JSONResponse(content=household_board(db, today), status_code=status.HTTP_200_OK)
 
+@app.get('/api/me', response_model=dict)
+async def me_endpoint(caller: str = Depends(get_caller)):
+    return JSONResponse(content={'user': caller}, status_code=status.HTTP_200_OK)
+
 @app.get('/api/filed', response_model=dict)
 async def filed_endpoint(caller: str = Depends(get_caller), db: Session = Depends(get_db)):
     return JSONResponse(content={'tickets': filed(db, caller)}, status_code=status.HTTP_200_OK)

@@ -20,6 +20,9 @@ env.setdefault("TICKETER_DATABASE_URL", "postgresql+psycopg://postgres@127.0.0.1
 venv_python = ROOT / "backend" / ".venv" / "Scripts" / "python.exe"
 SUMMARY = re.compile(r"^(?:=+ .*? in [\d.]+s(?: \([^)]*\))? =+|(?:FAILED|ERROR) \S+::\S+.*|.*errors? during collection.*"
                      r"|\s*(?:Test Files|Tests|Errors)\s+.*|.*Failed Suites \d+.*)$", re.M)
+# a side whose runner printed no summary did not run: say so in the words the build driver scores as uncollectable,
+# not as one failure (run 2: 'vitest' was briefly off the path, the frontend ran nothing, and the round scored 1)
+NOT_RUN = "ERROR collecting {0}: {1} printed no summary, so none of its tests ran"
 
 
 def run(cmd, cwd):
@@ -38,7 +41,7 @@ npx = "npx.cmd" if os.name == "nt" else "npx"
 frontend_rc, frontend_out = run([npx, "vitest", "run", "--coverage"], ROOT / "frontend")
 print("\n==== suite summary ====")
 print(f"backend (pytest) exit {backend_rc}")
-print("\n".join(m.group(0) for m in SUMMARY.finditer(backend_out)) or "(no pytest summary line)")
+print("\n".join(m.group(0) for m in SUMMARY.finditer(backend_out)) or NOT_RUN.format("backend", "pytest"))
 print(f"frontend (vitest) exit {frontend_rc}")
-print("\n".join(m.group(0) for m in SUMMARY.finditer(frontend_out)) or "(no vitest summary line)")
+print("\n".join(m.group(0) for m in SUMMARY.finditer(frontend_out)) or NOT_RUN.format("frontend", "vitest"))
 sys.exit(1 if backend_rc or frontend_rc else 0)

@@ -65,16 +65,16 @@ describe('HouseholdBoard', () => {
     
     // To Do
     expect(screen.getByText('Task 1')).toBeInTheDocument();
-    expect(screen.getByText('her')).toBeInTheDocument();
+    expect(screen.getByText('for her')).toBeInTheDocument();
     expect(screen.getByText('Task 2')).toBeInTheDocument();
-    expect(screen.getByText('him')).toBeInTheDocument();
+    expect(screen.getByText('for him')).toBeInTheDocument();
 
     // In Progress
     expect(screen.getByText('Task 3')).toBeInTheDocument();
-    expect(screen.getByText('her')).toBeInTheDocument();
+    expect(screen.getByText('for her')).toBeInTheDocument();
 
     // Completed
     expect(screen.getByText('Task 4')).toBeInTheDocument();
-    expect(screen.getByText('him')).toBeInTheDocument();
+    expect(screen.getByText('for him')).toBeInTheDocument();
   });
 });

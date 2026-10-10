@@ -1,16 +1,12 @@
-export async function fetchDashboard(token: string): Promise<any> {
-  const response = await fetch('/api/dashboard', {
+export async function fetchBoard(token: string): Promise<any> {
+  const response = await fetch('/api/board', {
     headers: {
       'Authorization': `Bearer ${token}`
     }
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Wrong token');
-    } else {
-      throw new Error('Something went wrong');
-    }
+    throw new Error(response.status.toString());
   }
 
   return await response.json();

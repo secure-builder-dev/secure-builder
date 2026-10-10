@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import App from '../src/App';
@@ -67,14 +67,12 @@ describe('Layout', () => {
     
     render(<App />);
     
-    // App needs a token and a click on Load to trigger fetchDashboard
     const tokenInput = screen.getByLabelText(/token/i);
     const loadButton = screen.getByRole('button', { name: /load/i });
     
-    tokenInput.fireEvent.change({ target: { value: 'valid-token' } });
-    loadButton.click();
+    fireEvent.change(tokenInput, { target: { value: 'valid-token' } });
+    fireEvent.click(loadButton);
 
-    // Wait for async render
     await vi.waitFor(() => {
       expect(screen.getByText('Urgent Ticket')).toBeInTheDocument();
     });
@@ -94,8 +92,6 @@ describe('Layout', () => {
     
     mockFetch(dataMap);
     
-    // This test verifies the mockFetch implementation matches the requirement
-    // by checking if it returns a Response object for the specified URLs
     return Promise.all(endpoints.map(url => 
       fetch(url).then(res => {
         expect(res).toBeInstanceOf(Response);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard, fetchFiled, createTicket, updateStatus } from './api';
+import './styles.css';
 
 interface Ticket {
   id: number;
@@ -75,9 +76,8 @@ const App = () => {
 
   return (
     <div>
-      <h1>Honey-Do Tickets</h1>
-      
-      <div>
+      <div className="topbar">
+        <h1 className="brand">~/honey-do</h1>
         <label htmlFor="token">Token</label>
         <input
           id="token"
@@ -87,9 +87,9 @@ const App = () => {
         />
         <button id="load-button" onClick={handleLoad}>Load</button>
       </div>
-
+      
       {error && <div>{error}</div>}
-
+      
       <div>
         <h2>New ticket</h2>
         <form onSubmit={(e) => {
@@ -136,56 +136,54 @@ const App = () => {
           <button type="submit" id="file-ticket-button">File ticket</button>
         </form>
       </div>
-
+      
       {dashboard && (
-        <div>
-          <h2>Board</h2>
-          <div>
-            <div>
-              <h3>To Do</h3>
-              {dashboard.todo.map((ticket) => (
-                <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
-                  <h4>{ticket.title}</h4>
-                  <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
-                  {ticket.status === 'open' && (
-                    <button onClick={() => handleStatusUpdate(ticket.id, 'acknowledged')}>Acknowledge</button>
-                  )}
-                  {ticket.status === 'acknowledged' && (
-                    <button onClick={() => handleStatusUpdate(ticket.id, 'in_progress')}>Start</button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div>
-              <h3>In Progress</h3>
-              {dashboard.in_progress.map((ticket) => (
-                <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
-                  <h4>{ticket.title}</h4>
-                  <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
-                  <button onClick={() => handleStatusUpdate(ticket.id, 'done')}>Done</button>
-                </div>
-              ))}
-            </div>
-            <div>
-              <h3>Completed</h3>
-              {dashboard.completed.map((ticket) => (
-                <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
-                  <h4>{ticket.title}</h4>
-                  <p>Priority: {ticket.priority}</p>
-                  <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
-                </div>
-              ))}
-            </div>
+        <div className="board">
+          <div className="column">
+            <h3>Board</h3>
+            <h3>To Do</h3>
+            {dashboard.todo.map((ticket) => (
+              <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
+                <h4>{ticket.title}</h4>
+                <p>Priority: {ticket.priority}</p>
+                <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
+                {ticket.status === 'open' && (
+                  <button onClick={() => handleStatusUpdate(ticket.id, 'acknowledged')}>Acknowledge</button>
+                )}
+                {ticket.status === 'acknowledged' && (
+                  <button onClick={() => handleStatusUpdate(ticket.id, 'in_progress')}>Start</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="column">
+            <h3>In Progress</h3>
+            {dashboard.in_progress.map((ticket) => (
+              <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
+                <h4>{ticket.title}</h4>
+                <p>Priority: {ticket.priority}</p>
+                <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
+                <button onClick={() => handleStatusUpdate(ticket.id, 'done')}>Done</button>
+              </div>
+            ))}
+          </div>
+          <div className="column">
+            <h3>Completed</h3>
+            {dashboard.completed.map((ticket) => (
+              <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
+                <h4>{ticket.title}</h4>
+                <p>Priority: {ticket.priority}</p>
+                <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
-
+      
       <div>
         <h2>Tickets I filed</h2>
         {filedTickets.map((ticket) => (
-          <div key={ticket.id}>
+          <div key={ticket.id} className="card">
             <h4>{ticket.title}</h4>
             <p>Priority: {ticket.priority}</p>
             <p>Due: {ticket.due ? new Date(ticket.due).toLocaleDateString() : 'No due date'}</p>
@@ -200,6 +198,8 @@ const App = () => {
       </div>
     </div>
   );
+
+
 };
 
 export default App;

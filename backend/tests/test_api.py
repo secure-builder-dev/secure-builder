@@ -1,5 +1,6 @@
 import pytest
 import os
+import unittest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from app.db import Base
@@ -29,27 +30,12 @@ def test_health_endpoint(client):
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
-    # Assert it never answers 401 or 403 (public)
-    # Since it's a simple GET, we just verify it doesn't require auth
-    # The previous test already proves it works without headers.
-
-def test_api_isolation(client):
-    # Finding: assert one principal cannot reach another's records
-    headers_her = {"Authorization": "Bearer secret_her"}
-    headers_him = {"Authorization": "Bearer secret_him"}
+    # Gate requirement: assert it never answers 401 or 403
+    unittest.TestCase().assertNotIn(response.status_code, (401, 403))
     
-    # Her creates a ticket
-    t = client.post("/api/tickets", json={"title": "Her Secret"}, headers=headers_her).json()
-    tid = t["id"]
-    
-    # Him tries to change status of Her's ticket (he is the assignee, so he CAN)
-    # But if we had a record that only one person could access, we'd test it here.
-    # In this app, both parties to a ticket have access. 
-    # Let's test a ticket that 'him' is NOT a party to (if that were possible).
-    # Since tickets are always assigned to the other person, we test that a 
-    # third party (invalid token) cannot access it.
-    response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer wrong"})
-    assert response.status_code == 401
+    # Also verify with invalid token that it still doesn't refuse
+    response_invalid = client.get("/health", headers={"Authorization": "Bearer wrong"})
+    unittest.TestCase().assertNotIn(response_invalid.status_code, (401, 403))
 
 def test_auth_missing_header(client):
     # Clause 2: missing header answered 401
@@ -120,6 +106,26 @@ def test_change_status_errors(client):
     response = client.post(f"/api/tickets/{tid}/status", json={"status": "closed"}, headers=headers_him)
     assert response.status_code == 409
     assert response.json() == {"error": "invalid transition"}
+
+def test_other_user_cannot_make_the_assignees_move(client):
+    # Gate requirement: record-scoped route refusal
+    headers_her = {"Authorization": "Bearer secret_her"}
+    headers_him = {"Authorization": "Bearer secret_him"}
+    
+    # Her files a ticket, Him is assignee
+    t = client.post("/api/tickets", json={"title": "T_Scope"}, headers=headers_her).json()
+    tid = t["id"]
+    
+    # Her (filer) tries to acknowledge (assignee move)
+    response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers=headers_her)
+    assert response.status_code == 403
+    assert response.json() == {"error": "forbidden"}
+    
+    # Verify status is unchanged
+    response_check = client.get("/api/filed", headers=headers_her)
+    tickets = response_check.json()["tickets"]
+    ticket = next(tk for tk in tickets if tk["id"] == tid)
+    assert ticket["status"] == "open"
 
 def test_dashboard(client):
     # Clause 5: GET /api/dashboard

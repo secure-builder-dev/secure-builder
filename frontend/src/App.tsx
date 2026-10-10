@@ -3,7 +3,7 @@ import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus } from './
 
 const App: React.FC = () => {
   const [token, setToken] = useState('');
-  const [dashboard, setDashboard] = useState({ todo: [], in_progress: [], completed: [] });
+  const [dashboard, setDashboard] = useState<{ todo: any[], in_progress: any[], completed: any[] }>({ todo: [], in_progress: [], completed: [] });
   const [filedTickets, setFiledTickets] = useState([]);
   const [error, setError] = useState('');
 
@@ -120,8 +120,10 @@ const App: React.FC = () => {
             <p>Priority: {ticket.priority}</p>
             <p>Due: {ticket.due}</p>
             {ticket.status === 'done' && (
-              <button onClick={() => handleStatusChange(ticket.id, 'closed')}>Close</button>
-              <button onClick={() => handleStatusChange(ticket.id, 'open')}>Reopen</button>
+              <>
+                <button onClick={() => handleStatusChange(ticket.id, 'closed')}>Close</button>
+                <button onClick={() => handleStatusChange(ticket.id, 'open')}>Reopen</button>
+              </>
             )}
           </div>
         ))}

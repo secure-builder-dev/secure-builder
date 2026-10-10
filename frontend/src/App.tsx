@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, updateStatus } from './api';
+import { fetchDashboard, fetchFiled, createTicket, updateStatus, fetchMe } from './api';
 import HoverCard from './HoverCard';
 import './styles.css';
 
@@ -53,6 +53,29 @@ const App = () => {
     }
   };
 
+  const [me, setMe] = useState<string | null>(null);
+  const [meError, setMeError] = useState<string | null>(null);
+
+  const fetchMeData = async () => {
+    if (!token) {
+      setMe(null);
+      setMeError(null);
+      return;
+    }
+    try {
+      const data = await fetchMe(token);
+      setMe(data.user);
+      setMeError(null);
+    } catch (err) {
+      setMe(null);
+      setMeError(err instanceof Error ? err.message : 'Failed to fetch user');
+    }
+  };
+
+  useEffect(() => {
+    fetchMeData();
+  }, [token]);
+
   const handleCreateTicket = async () => {
     try {
       await createTicket(token, newTicket);
@@ -92,7 +115,7 @@ const App = () => {
       {error && <div>{error}</div>}
       
       <div>
-        <h2>New ticket</h2>
+        <h2>New ticket for {me === 'her' ? 'him' : me === 'him' ? 'her' : 'someone'}</h2>
         <form onSubmit={(e) => {
           e.preventDefault();
           handleCreateTicket();
@@ -136,6 +159,10 @@ const App = () => {
           </div>
           <button type="submit" id="file-ticket-button">File ticket</button>
         </form>
+      </div>
+      
+      <div>
+        {me && <p>Signed in as {me}</p>}
       </div>
       
       {dashboard && (

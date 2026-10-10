@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard, fetchFiled, createTicket, updateStatus } from './api';
+import HoverCard from './HoverCard';
 import './styles.css';
 
 interface Ticket {
@@ -144,7 +145,7 @@ const App = () => {
             <h3>To Do</h3>
             {dashboard.todo.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-                <h4>{ticket.title}</h4>
+                <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
                 {ticket.status === 'open' && (
@@ -160,7 +161,7 @@ const App = () => {
             <h3>In Progress</h3>
             {dashboard.in_progress.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-                <h4>{ticket.title}</h4>
+                <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
                 <button onClick={() => handleStatusUpdate(ticket.id, 'done')}>Done</button>
@@ -171,7 +172,7 @@ const App = () => {
             <h3>Completed</h3>
             {dashboard.completed.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-                <h4>{ticket.title}</h4>
+                <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due ? ticket.due : 'No due date'}</p>
               </div>

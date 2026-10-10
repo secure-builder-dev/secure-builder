@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import App from '../src/App.tsx';
 
 const mockToken = 'test-token';
@@ -31,13 +32,17 @@ describe('App', () => {
     vi.stubGlobal('sessionStorage', { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() });
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('clause 1: sends token as Bearer to all API endpoints', async () => {
     render(<App />);
     const tokenInput = screen.getByLabelText(/Token/i);
     const loadButton = screen.getByRole('button', { name: /Load/i });
     fireEvent.change(tokenInput, { target: { value: mockToken } });
 
-    (globalThis.fetch as any).mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    (globalThis.fetch as any).mockResolvedValue(new Response(JSON.stringify(mockDashboard), { status: 200 }));
     fireEvent.click(loadButton);
 
     await waitFor(() => {

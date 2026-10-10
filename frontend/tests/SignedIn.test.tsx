@@ -34,7 +34,6 @@ describe('Signed In User', () => {
       json: () => Promise.resolve(mockUser),
     });
 
-    // @ts-ignore - testing existence of fetchMe
     const result = await api.fetchMe(token);
 
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/me', expect.objectContaining({
@@ -48,12 +47,11 @@ describe('Signed In User', () => {
       '/api/me': { user: 'her' },
       '/api/dashboard': { todo: [], in_progress: [], completed: [] },
       '/api/filed': { tickets: [] },
-      '/api/board': {},
+      '/api/board': { todo: [], in_progress: [], completed: [] },
     });
 
     render(<App />);
     
-    // Initial state check: New ticket heading before Load
     expect(screen.getByText('New ticket')).toBeInTheDocument();
 
     const tokenInput = screen.getByLabelText(/Token/i);
@@ -69,7 +67,7 @@ describe('Signed In User', () => {
       '/api/me': { user: 'him' },
       '/api/dashboard': { todo: [], in_progress: [], completed: [] },
       '/api/filed': { tickets: [] },
-      '/api/board': {},
+      '/api/board': { todo: [], in_progress: [], completed: [] },
     });
 
     render(<App />);
@@ -97,9 +95,7 @@ describe('Signed In User', () => {
     fireEvent.change(tokenInput, { target: { value: 'bad-token' } });
     fireEvent.click(screen.getByText('Load'));
 
-    // Should not show signed in text
     expect(screen.queryByText(/Signed in as/i)).not.toBeInTheDocument();
-    // Page should still be working (e.g., form is present)
     expect(screen.getByText(/New ticket/i)).toBeInTheDocument();
   });
 });

@@ -1,3 +1,15 @@
+export const fetchMe = async (token: string) => {
+  const response = await fetch('/api/me', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(response.status.toString());
+  }
+  return response.json();
+}
+
 export const fetchDashboard = async (token: string) => {
   const response = await fetch('/api/dashboard', {
     headers: {

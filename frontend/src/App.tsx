@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard, fetchFiled, createTicket, updateStatus, fetchMe } from './api';
 import HoverCard from './HoverCard';
+import Menu from './Menu';
+import Directions from './Directions';
 import './styles.css';
 
 interface Ticket {
@@ -55,6 +57,7 @@ const App = () => {
 
   const [me, setMe] = useState<string | null>(null);
   const [meError, setMeError] = useState<string | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
 
   const fetchMeData = async () => {
     if (!token) {
@@ -102,6 +105,7 @@ const App = () => {
     <div>
       <div className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <label htmlFor="token">Token</label>
         <input
           id="token"
@@ -111,6 +115,7 @@ const App = () => {
         />
         <button id="load-button" onClick={handleLoad}>Load</button>
       </div>
+      {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       
       {error && <div>{error}</div>}
       
@@ -168,7 +173,6 @@ const App = () => {
       {dashboard && (
         <div className="board">
           <div className="column">
-            <h3>Board</h3>
             <h3>To Do</h3>
             {dashboard.todo.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>

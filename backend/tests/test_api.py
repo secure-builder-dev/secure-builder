@@ -1,5 +1,6 @@
 import pytest
 import os
+import unittest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db import Base, engine, init_db
@@ -127,11 +128,21 @@ def test_filed_endpoint(client, monkeypatch):
     assert response.status_code == 200
     assert "tickets" in response.json()
 
-def test_health_endpoint(client):
-    # Clause 7: GET /health answers 200 with {"status": "ok"}
+def test_health_endpoint(client, monkeypatch):
+    # Clause 7: GET /health answers 200 with {"status": "ok"} and needs no credential
+    monkeypatch.setenv("TOKEN_HER", "secret_her")
+    monkeypatch.setenv("TOKEN_HIM", "secret_him")
+    
+    # No credential
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    unittest.TestCase().assertNotIn(response.status_code, (401, 403))
+
+    # Invalid token
+    response = client.get("/health", headers={"Authorization": "Bearer wrong"})
+    assert response.status_code == 200
+    unittest.TestCase().assertNotIn(response.status_code, (401, 403))
 
 def test_malformed_json(client, monkeypatch):
     # Clause 8: malformed JSON answered 400
@@ -191,3 +202,35 @@ def test_security_headers(client, monkeypatch):
     assert response.headers["Content-Security-Policy"] == "default-src 'none'"
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["Referrer-Policy"] == "no-referrer"
+
+def test_other_user_cannot_make_the_assignees_move(client, monkeypatch):
+    # Record-scoped route: assert one principal cannot reach another's records/actions
+    # Filer (her) cannot acknowledge a ticket (only assignee him can)
+    monkeypatch.setenv("TOKEN_HER", "secret_her")
+    monkeypatch.setenv("TOKEN_HIM", "secret_him")
+    headers_her = {"Authorization": "Bearer secret_her"}
+    
+    res = client.post("/api/tickets", json={"title": "T1"}, headers=headers_her)
+    tid = res.json()["id"]
+    
+    # Her attempts to acknowledge her own ticket
+    res = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers=headers_her)
+    assert res.status_code == 403
+    assert res.json() == {"error": "forbidden"}
+    
+    # Verify status is still 'open'
+    # We use /api/dashboard or /api/filed to check, but since we need to verify the record
+    # and we are in the API test, we can check the filed list
+    res = client.get("/api/filed", headers=headers_her)
+    ticket = next(t for t in res.json()["tickets"] if t["id"] == tid)
+    assert ticket["status"] == "open"
+
+def test_other_user_cannot_reach_unknown_path(client, monkeypatch):
+    # Record-scoped route: GET /{path:path} should not leak info
+    monkeypatch.setenv("TOKEN_HER", "secret_her")
+    monkeypatch.setenv("TOKEN_HIM", "secret_him")
+    headers_her = {"Authorization": "Bearer secret_her"}
+    
+    response = client.get("/api/some-private-resource", headers=headers_her)
+    assert response.status_code == 404
+    assert response.json() == {"error": "not found"}

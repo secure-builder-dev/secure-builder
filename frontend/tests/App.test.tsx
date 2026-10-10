@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import App from '../src/App';
 
 const mockToken = 'test-token';
@@ -30,6 +31,10 @@ describe('App', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('clause 1: sends Authorization header to correct endpoints', async () => {

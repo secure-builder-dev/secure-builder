@@ -38,11 +38,12 @@ describe('App Menu and Directions', () => {
 
     render(<App />);
     
-    const topbar = screen.getByLabelText('Menu').parentElement;
+    const menuButton = screen.getByLabelText('Menu');
+    const topbar = menuButton.parentElement;
     expect(topbar).toHaveClass('topbar');
-    expect(screen.getByLabelText('Menu')).toBeInTheDocument();
+    expect(menuButton).toBeInTheDocument();
     expect(screen.queryByText('Directions')).not.toBeInTheDocument();
-    expect(screen.queryByText('Paste your token into the Token field')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Paste your token into the Token field/)).not.toBeInTheDocument();
   });
 
   it('shows Directions when chosen in menu and hides it when Close is clicked', () => {
@@ -62,14 +63,15 @@ describe('App Menu and Directions', () => {
     fireEvent.click(screen.getByText('Directions'));
     
     // Verify Directions component is visible
+    // Use a regex or function matcher because the text is inside an <li>
     expect(screen.getByText('Directions')).toBeInTheDocument();
-    expect(screen.getByText('Paste your token into the Token field')).toBeInTheDocument();
+    expect(screen.getByText(/Paste your token into the Token field/)).toBeInTheDocument();
     
     // Click Close
     fireEvent.click(screen.getByText('Close'));
     
     // Verify Directions component is hidden
     expect(screen.queryByText('Directions')).not.toBeInTheDocument();
-    expect(screen.queryByText('Paste your token into the Token field')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Paste your token into the Token field/)).not.toBeInTheDocument();
   });
 });

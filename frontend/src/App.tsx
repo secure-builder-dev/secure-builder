@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { fetchDashboard, fetchFiled, createTicket, updateTicketStatus, fetchBoard } from './api';
 import './styles.css';
 import HouseholdBoard from './HouseholdBoard';
+import Menu from './Menu';
+import Directions from './Directions';
 
 const App: React.FC = () => {
   const [token, setToken] = useState('');
@@ -9,6 +11,7 @@ const App: React.FC = () => {
   const [filedTickets, setFiledTickets] = useState([]);
   const [error, setError] = useState('');
   const [householdBoard, setHouseholdBoard] = useState(null);
+  const [showDirections, setShowDirections] = useState(false);
 
   const loadData = async () => {
     if (!token) return;
@@ -42,6 +45,7 @@ const App: React.FC = () => {
   return (
     <div>
       <div className='topbar'>
+        <Menu onDirections={() => setShowDirections(true)} />
         <label htmlFor='token'>Token</label>
         <input
           id='token'
@@ -51,8 +55,11 @@ const App: React.FC = () => {
         />
         <button onClick={loadData}>Load</button>
       </div>
+    
       {error && <p>{error}</p>}
+    
       {householdBoard && <HouseholdBoard board={householdBoard} />}
+      {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       <div>
         <h2>New ticket</h2>
         <form

@@ -6,7 +6,7 @@ export default function HouseholdBoard({ board }) {
       <h2>Household board</h2>
       <div>
         <h3>To Do</h3>
-        {board.todo.map(ticket => (
+        {board.todo && board.todo.map(ticket => (
           <div key={ticket.id}>
             <h4>{ticket.title}</h4>
             <p>{ticket.assigned_to === 'him' ? 'for him' : 'for her'}</p>
@@ -15,7 +15,7 @@ export default function HouseholdBoard({ board }) {
       </div>
       <div>
         <h3>In Progress</h3>
-        {board.in_progress.map(ticket => (
+        {board.in_progress && board.in_progress.map(ticket => (
           <div key={ticket.id}>
             <h4>{ticket.title}</h4>
             <p>{ticket.assigned_to === 'him' ? 'for him' : 'for her'}</p>
@@ -24,7 +24,7 @@ export default function HouseholdBoard({ board }) {
       </div>
       <div>
         <h3>Completed</h3>
-        {board.completed.map(ticket => (
+        {board.completed && board.completed.map(ticket => (
           <div key={ticket.id}>
             <h4>{ticket.title}</h4>
             <p>{ticket.assigned_to === 'him' ? 'for him' : 'for her'}</p>

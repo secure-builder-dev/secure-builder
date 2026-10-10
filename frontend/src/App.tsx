@@ -4,6 +4,8 @@ import './styles.css';
 import HouseholdBoard from './HouseholdBoard';
 import Menu from './Menu';
 import Directions from './Directions';
+import HoverCard from './HoverCard';
+
 
 const App: React.FC = () => {
   const [token, setToken] = useState('');
@@ -13,6 +15,7 @@ const App: React.FC = () => {
   const [householdBoard, setHouseholdBoard] = useState(null);
   const [showDirections, setShowDirections] = useState(false);
   const [user, setUser] = useState<string | null>(null);
+  const [menu, setMenu] = useState('');
 
   const loadData = async () => {
     if (!token) return;
@@ -49,6 +52,7 @@ const App: React.FC = () => {
     <div>
       <div className='topbar'>
         <Menu onDirections={() => setShowDirections(true)} />
+        <input type='hidden' id='menu' value={menu} />
         <label htmlFor='token'>Token</label>
         <input
           id='token'
@@ -97,15 +101,20 @@ const App: React.FC = () => {
           <h2>To Do</h2>
           {dashboard.todo.map((ticket) => (
             <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-              <h3>{ticket.title}</h3>
-              <p>Priority: {ticket.priority}</p>
-              <p>Due: {ticket.due}</p>
-              {ticket.status === 'open' && (
-                <button onClick={() => handleStatusChange(ticket.id, 'acknowledged')}>Acknowledge</button>
-              )}
-              {ticket.status === 'acknowledged' && (
-                <button onClick={() => handleStatusChange(ticket.id, 'in_progress')}>Start</button>
-              )}
+              <HoverCard content={<div>
+                        <p>{ticket.details}</p>
+                        <p>Filed by {ticket.filed_by}</p>
+                      </div>}>
+                      <h3>{ticket.title}</h3>
+                    </HoverCard>
+                    <p>Priority: {ticket.priority}</p>
+                    <p>Due: {ticket.due}</p>
+                    {ticket.status === 'open' && (
+                      <button onClick={() => handleStatusChange(ticket.id, 'acknowledged')}>Acknowledge</button>
+                    )}
+                    {ticket.status === 'acknowledged' && (
+                      <button onClick={() => handleStatusChange(ticket.id, 'in_progress')}>Start</button>
+                    )}
             </div>
           ))}
         </div>
@@ -113,10 +122,15 @@ const App: React.FC = () => {
           <h2>In Progress</h2>
           {dashboard.in_progress.map((ticket) => (
             <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
-              <h3>{ticket.title}</h3>
-              <p>Priority: {ticket.priority}</p>
-              <p>Due: {ticket.due}</p>
-              <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>
+              <HoverCard content={<div>
+                        <p>{ticket.details}</p>
+                        <p>Assigned to {ticket.assigned_to}</p>
+                      </div>}>
+                      <h3>{ticket.title}</h3>
+                    </HoverCard>
+                    <p>Priority: {ticket.priority}</p>
+                    <p>Due: {ticket.due}</p>
+                    <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>
             </div>
           ))}
         </div>
@@ -124,9 +138,14 @@ const App: React.FC = () => {
           <h2>Completed</h2>
           {dashboard.completed.map((ticket) => (
             <div key={ticket.id} className='card'>
-              <h3>{ticket.title}</h3>
-              <p>Priority: {ticket.priority}</p>
-              <p>Due: {ticket.due}</p>
+              <HoverCard content={<div>
+                        <p>{ticket.details}</p>
+                        <p>Created {ticket.created_at}</p>
+                      </div>}>
+                      <h3>{ticket.title}</h3>
+                    </HoverCard>
+                    <p>Priority: {ticket.priority}</p>
+                    <p>Due: {ticket.due}</p>
             </div>
           ))}
         </div>

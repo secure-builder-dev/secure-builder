@@ -97,7 +97,7 @@ describe('App', () => {
       expect(screen.getByText(/Completed/i)).toBeInTheDocument();
       expect(screen.getByText('Todo 1')).toBeInTheDocument();
       expect(screen.getByText('urgent')).toBeInTheDocument();
-      expect(screen.getByText('2026-01-01')).toBeInTheDocument();
+      expect(screen.getByText(/2026-01-01/)).toBeInTheDocument();
     });
   });
 

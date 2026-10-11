@@ -79,7 +79,7 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard} aria-label="Load">Load</button>
+        <button onClick={loadBoard}>Load</button>
       </div>
 
       {error && <p>{error}</p>}
@@ -113,7 +113,7 @@ export default function App() {
           value={due}
           onChange={(e) => setDue(e.target.value)}
         />
-        <button onClick={handleFileTicket} aria-label="File ticket">File ticket</button>
+        <button onClick={handleFileTicket}>File ticket</button>
       </fieldset>
 
       {dashboardData && (

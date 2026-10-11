@@ -183,6 +183,7 @@ function App() {
 
       {dashboardData && (
         <main>
+          <h2>Household board</h2>
           <div className="board">
             <div className="column">
               <h3>To Do</h3>

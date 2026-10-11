@@ -24,7 +24,8 @@ const mockFiled = {
   ],
 };
 
-describe('App', () => {n  beforeEach(() => {
+describe('App', () => {
+  beforeEach(() => {
     globalThis.fetch = vi.fn();
     vi.clearAllMocks();
     localStorage.clear();

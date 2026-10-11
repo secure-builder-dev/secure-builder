@@ -319,6 +319,20 @@ def filed_endpoint(request: Request):
         session.close()
 
 
+@app.get("/api/me")
+def me_endpoint(request: Request):
+    caller = get_caller(request)
+    return JSONResponse(
+        content={"user": caller},
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer"
+        }
+    )
+
+
 @app.get("/api/board")
 def board_endpoint(request: Request):
     caller = get_caller(request)

@@ -1,12 +1,8 @@
 import unittest
 import os
-import hmac
-from datetime import date
 from fastapi.testclient import TestClient
-from fastapi import FastAPI
 import pytest
 
-# We import the app here, but it will fail until main.py is implemented
 try:
     from app.main import app
 except ImportError:
@@ -17,8 +13,6 @@ class TestTicketerAPI(unittest.TestCase):
         if app is None:
             self.fail("app.main.app not found")
         self.client = TestClient(app)
-        # These will be set via monkeypatch in pytest, 
-        # but for unittest we set them in env
         os.environ["TOKEN_HER"] = "secret_her"
         os.environ["TOKEN_HIM"] = "secret_him"
         os.environ["TICKETER_DATABASE_URL"] = "postgresql://user:pass@localhost/test_db"
@@ -28,22 +22,27 @@ class TestTicketerAPI(unittest.TestCase):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
+        # Assert it doesn't refuse (no 401/403)
+        self.assertNotIn(response.status_code, (401, 403))
+
+    def test_health_endpoint_with_invalid_token(self):
+        # Clause 7: GET /health needs no credential (should not be blocked by wrong token)
+        response = self.client.get("/health", headers={"Authorization": "Bearer wrong"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(response.status_code, (401, 403))
 
     def test_unauthorized_access(self):
         # Clause 2: Missing header, wrong token, or empty env var -> 401
-        # Missing header
         response = self.client.get("/api/filed")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json(), {"error": "unauthorized"})
 
-        # Wrong token
         response = self.client.get("/api/filed", headers={"Authorization": "Bearer wrong"})
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json(), {"error": "unauthorized"})
 
     def test_authentication_success(self):
         # Clause 2: Valid tokens identify caller
-        # This test assumes the endpoint exists; it will 404 if not, but 401 if auth fails
         response = self.client.get("/api/filed", headers={"Authorization": "Bearer secret_her"})
         self.assertNotEqual(response.status_code, 401)
 
@@ -55,13 +54,34 @@ class TestTicketerAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["title"], "Test Ticket")
 
-    def test_change_status_api(self):
-        # Clause 4: POST /api/tickets/{id}/status
+    def test_change_status_api_not_found(self):
+        # Clause 4: POST /api/tickets/{id}/status -> 404 on LookupError
         headers = {"Authorization": "Bearer secret_him"}
-        # Test 404 Not Found
         response = self.client.post("/api/tickets/999/status", json={"status": "acknowledged"}, headers=headers)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"error": "not found"})
+
+    def test_other_user_cannot_make_the_assignees_move(self):
+        # Clause 4: POST /api/tickets/{id}/status -> 403 on PermissionError
+        # Setup: Her files a ticket, Him is assignee. Her tries to acknowledge it.
+        headers_her = {"Authorization": "Bearer secret_her"}
+        headers_him = {"Authorization": "Bearer secret_him"}
+        
+        # Create ticket
+        create_res = self.client.post("/api/tickets", json={"title": "Authz Test"}, headers=headers_her)
+        ticket_id = create_res.json()["id"]
+        
+        # Filer (her) tries to move to acknowledged (assignee move)
+        response = self.client.post(f"/api/tickets/{ticket_id}/status", json={"status": "acknowledged"}, headers=headers_her)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {"error": "forbidden"})
+        
+        # Verify status is still open
+        # We use dashboard or filed to check status since there is no GET /api/tickets/{id}
+        dash_res = self.client.get("/api/dashboard", headers=headers_him)
+        todo = dash_res.json()["todo"]
+        ticket = next(t for t in todo if t["id"] == ticket_id)
+        self.assertEqual(ticket["status"], "open")
 
     def test_dashboard_api(self):
         # Clause 5: GET /api/dashboard
@@ -80,12 +100,10 @@ class TestTicketerAPI(unittest.TestCase):
     def test_invalid_request_handling(self):
         # Clause 8: Malformed JSON or invalid fields -> 400
         headers = {"Authorization": "Bearer secret_her"}
-        # Non-JSON object (sending a list)
         response = self.client.post("/api/tickets", json=[1, 2, 3], headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {"error": "invalid request"})
         
-        # Non-integer ID
         response = self.client.post("/api/tickets/abc/status", json={"status": "done"}, headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {"error": "invalid request"})

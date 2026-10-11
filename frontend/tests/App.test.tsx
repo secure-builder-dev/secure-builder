@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import App from '../src/App';
 
 const mockTickets = [
@@ -47,12 +48,15 @@ const mockFiledTickets = [
   },
 ];
 
-describe('App', () => {n  beforeEach(() => {
+describe('App', () => {
+  beforeEach(() => {
     globalThis.fetch = vi.fn();
     vi.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
   });
+
+  afterEach(cleanup);
 
   it('clause 1 & 2: requires token and Load button to fetch', async () => {
     render(<App />);
@@ -173,9 +177,6 @@ describe('App', () => {n  beforeEach(() => {
   });
 
   it('clause 9: does not use dangerouslySetInnerHTML', async () => {
-    // This is a static analysis check in reality, but we can check if the DOM
-    // contains elements that look like they were injected via innerHTML
-    // by providing a payload with HTML tags and ensuring they are rendered as text
     const payload = { 
       todo: [{ id: 9, title: '<b>Bold</b>', priority: 'low', due: null, status: 'open', group: 2 }],
       in_progress: [],

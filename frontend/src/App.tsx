@@ -79,7 +79,7 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard}>Load</button>
+        <button onClick={loadBoard} aria-label="Load">Load</button>
       </div>
 
       {error && <p>{error}</p>}
@@ -89,6 +89,7 @@ export default function App() {
         <label htmlFor="title">Title</label>
         <input
           id="title"
+          aria-label="Title"
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -96,12 +97,13 @@ export default function App() {
         <label htmlFor="details">Details</label>
         <textarea
           id="details"
+          aria-label="Details"
           placeholder="Details"
           value={details}
           onChange={(e) => setDetails(e.target.value)}
         />
         <label htmlFor="priority">Priority</label>
-        <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value as "low" | "normal" | "urgent")}>
+        <select id="priority" aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as "low" | "normal" | "urgent")}>
           <option value="low">low</option>
           <option value="normal">normal</option>
           <option value="urgent">urgent</option>
@@ -109,16 +111,17 @@ export default function App() {
         <label htmlFor="due">Due</label>
         <input
           id="due"
+          aria-label="Due"
           type="date"
           value={due}
           onChange={(e) => setDue(e.target.value)}
         />
-        <button onClick={handleFileTicket}>File ticket</button>
+        <button onClick={handleFileTicket} aria-label="File ticket">File ticket</button>
       </fieldset>
 
       {dashboardData && (
         <section>
-          <h2 id="todo-heading">To Do</h2>
+          <h2 id="todo-heading" role="heading">To Do</h2>
           <div>
             {dashboardData.todo?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
@@ -139,7 +142,7 @@ export default function App() {
             ))}
           </div>
 
-          <h2 id="in-progress-heading">In Progress</h2>
+          <h2 id="in-progress-heading" role="heading">In Progress</h2>
           <div>
             {dashboardData.in_progress?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
@@ -151,7 +154,7 @@ export default function App() {
             ))}
           </div>
 
-          <h2 id="completed-heading">Completed</h2>
+          <h2 id="completed-heading" role="heading">Completed</h2>
           <div>
             {dashboardData.completed?.map((ticket: any) => (
               <div key={ticket.id}>
@@ -166,7 +169,7 @@ export default function App() {
 
       {filedTickets && (
         <section>
-          <h2 id="filed-heading">Tickets I filed</h2>
+          <h2 id="filed-heading" role="heading">Tickets I filed</h2>
           <div>
             {filedTickets.tickets?.map((ticket: any) => (
               <div key={ticket.id}>

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import './styles.css';
 import HoverCard from './HoverCard';
+import Menu from './Menu';
+import Directions from './Directions';
 
 interface Ticket {
   id: number;
@@ -32,6 +34,7 @@ function App() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filedData, setFiledData] = useState<FiledData | null>(null);
   const [user, setUser] = useState<string | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
 
   const handleLoad = async () => {
     try {
@@ -141,6 +144,7 @@ function App() {
     <div className="app">
       <div className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <label htmlFor="token">Token</label>
         <input
           id="token"
@@ -239,6 +243,9 @@ function App() {
             </div>
           ))}
         </div>
+      )}
+      {showDirections && (
+        <Directions onClose={() => setShowDirections(false)} />
       )}
     </div>
   );

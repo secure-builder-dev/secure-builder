@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, updateStatus, fetchMe } from './api';
+import { fetchFiled, createTicket, updateStatus, fetchMe, fetchBoard } from './api';
 import HoverCard from './HoverCard';
 import Menu from './Menu';
 import Directions from './Directions';
@@ -44,12 +44,12 @@ const App = () => {
       return;
     }
     try {
-      const dash = await fetchDashboard(token);
       const filed = await fetchFiled(token);
       const meData = await fetchMe(token);
-      setDashboard(dash);
+      const boardData = await fetchBoard(token);
       setFiledTickets(filed.tickets);
       setMe(meData.user);
+      setBoardData(boardData);
       setError(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -190,11 +190,11 @@ const App = () => {
         {me && <p>Signed in as {me}</p>}
       </div>
       
-      {dashboard && (
+      {boardData && (
         <div className="board">
           <div className="column">
             <h3>To Do</h3>
-            {dashboard.todo.map((ticket) => (
+            {boardData.todo?.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
                 <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
@@ -210,7 +210,7 @@ const App = () => {
           </div>
           <div className="column">
             <h3>In Progress</h3>
-            {dashboard.in_progress.map((ticket) => (
+            {boardData.in_progress?.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
                 <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
@@ -221,7 +221,7 @@ const App = () => {
           </div>
           <div className="column">
             <h3>Completed</h3>
-            {dashboard.completed.map((ticket) => (
+            {boardData.completed?.map((ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? 'urgent' : ''}`}>
                 <h4><HoverCard ticket={ticket}>{ticket.title}</HoverCard></h4>
                 <p>Priority: {ticket.priority}</p>
@@ -237,7 +237,7 @@ const App = () => {
           <div className="board">
             <div className="column">
               <h3>To Do</h3>
-              {boardData.todo.map((ticket) => (
+              {boardData.todo?.map((ticket) => (
                 <div key={ticket.id} className="card">
                   <h4>{ticket.title}</h4>
                   <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
@@ -246,7 +246,7 @@ const App = () => {
             </div>
             <div className="column">
               <h3>In Progress</h3>
-              {boardData.in_progress.map((ticket) => (
+              {boardData.in_progress?.map((ticket) => (
                 <div key={ticket.id} className="card">
                   <h4>{ticket.title}</h4>
                   <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
@@ -255,7 +255,7 @@ const App = () => {
             </div>
             <div className="column">
               <h3>Completed</h3>
-              {boardData.completed.map((ticket) => (
+              {boardData.completed?.map((ticket) => (
                 <div key={ticket.id} className="card">
                   <h4>{ticket.title}</h4>
                   <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
@@ -268,7 +268,7 @@ const App = () => {
       
       <div>
         <h2>Tickets I filed</h2>
-        {filedTickets.map((ticket) => (
+        {filedTickets?.map((ticket) => (
           <div key={ticket.id} className="card">
             <h4>{ticket.title}</h4>
             <p>Priority: {ticket.priority}</p>

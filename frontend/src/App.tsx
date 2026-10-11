@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import './styles.css';
 
 const App = () => {
   const [token, setToken] = useState('');
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [data, setData] = useState<{ dash: any; filed: any } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [priority, setPriority] = useState('normal');
@@ -36,7 +37,7 @@ const App = () => {
     }
   };
 
-  const createTicket = async (e) => {
+  const createTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/tickets', {
@@ -61,7 +62,7 @@ const App = () => {
     }
   };
 
-  const changeStatus = async (ticketId, newStatus) => {
+  const changeStatus = async (ticketId: number, newStatus: string) => {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/status`, {
         method: 'POST',
@@ -83,8 +84,8 @@ const App = () => {
 
   return (
     <div>
-      <h1>Honey-Do Tickets</h1>
-      <div>
+      <div className="topbar">
+        <h1 className="brand">~/honey-do</h1>
         <label>
           Token:
           <input
@@ -136,50 +137,51 @@ const App = () => {
           <button type="submit">File Ticket</button>
         </form>
       </div>
-      <div>
-        <h2>Board</h2>
-        <div>
-          <h3>To Do</h3>
-          {data?.dash.todo.map((t) => (
-            <div key={t.id} className={t.group === 0 ? 'urgent' : ''}>
-              <div>{t.title}</div>
-              <div>{t.priority}</div>
-              <div>{t.due}</div>
-              {t.status === 'open' && (
-                <button onClick={() => changeStatus(t.id, 'acknowledged')}>Acknowledge</button>
-              )}
-              {t.status === 'acknowledged' && (
-                <button onClick={() => changeStatus(t.id, 'in_progress')}>Start</button>
-              )}
-            </div>
-          ))}
+      <main>
+        <div className="board">
+          <div className="column">
+            <h3>To Do</h3>
+            {data?.dash.todo.map((t: any) => (
+              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
+                <div>{t.title}</div>
+                <div>{t.priority}</div>
+                <div>{t.due}</div>
+                {t.status === 'open' && (
+                  <button onClick={() => changeStatus(t.id, 'acknowledged')}>Acknowledge</button>
+                )}
+                {t.status === 'acknowledged' && (
+                  <button onClick={() => changeStatus(t.id, 'in_progress')}>Start</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="column">
+            <h3>In Progress</h3>
+            {data?.dash.in_progress.map((t: any) => (
+              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
+                <div>{t.title}</div>
+                <div>{t.priority}</div>
+                <div>{t.due}</div>
+                <button onClick={() => changeStatus(t.id, 'done')}>Done</button>
+              </div>
+            ))}
+          </div>
+          <div className="column">
+            <h3>Completed</h3>
+            {data?.dash.completed.map((t: any) => (
+              <div key={t.id} className="card">
+                <div>{t.title}</div>
+                <div>{t.priority}</div>
+                <div>{t.due}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div>
-          <h3>In Progress</h3>
-          {data?.dash.in_progress.map((t) => (
-            <div key={t.id} className={t.group === 0 ? 'urgent' : ''}>
-              <div>{t.title}</div>
-              <div>{t.priority}</div>
-              <div>{t.due}</div>
-              <button onClick={() => changeStatus(t.id, 'done')}>Done</button>
-            </div>
-          ))}
-        </div>
-        <div>
-          <h3>Completed</h3>
-          {data?.dash.completed.map((t) => (
-            <div key={t.id}>
-              <div>{t.title}</div>
-              <div>{t.priority}</div>
-              <div>{t.due}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      </main>
       <div>
         <h2>Tickets I Filed</h2>
-        {data?.filed.tickets.map((t) => (
-          <div key={t.id}>
+        {data?.filed.tickets?.map((t: any) => (
+          <div key={t.id} className="card">
             <div>{t.title}</div>
             <div>{t.priority}</div>
             <div>{t.due}</div>

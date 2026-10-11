@@ -6,7 +6,8 @@ import {
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
 } from "./api";
-import type { DashboardData, FiledTicketsData } from "./api";
+import type { DashboardData, FiledTicketsData, Ticket } from "./api";
+import HoverCard from "./HoverCard";
 
 export default function App() {
   const [token, setToken] = useState("");
@@ -125,9 +126,13 @@ export default function App() {
         <section className="board">
           <div className="column">
             <h2 id="todo-heading" role="heading">To Do</h2>
-            {dashboardData.todo?.map((ticket: any) => (
+            {dashboardData.todo?.map((ticket: Ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? "urgent" : ""}`}>
-                <p>{ticket.title}</p>
+                <p>
+                  <HoverCard ticket={ticket}>
+                    {ticket.title}
+                  </HoverCard>
+                </p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
                 {ticket.status === "open" && (
@@ -146,9 +151,13 @@ export default function App() {
 
           <div className="column">
             <h2 id="in-progress-heading" role="heading">In Progress</h2>
-            {dashboardData.in_progress?.map((ticket: any) => (
+            {dashboardData.in_progress?.map((ticket: Ticket) => (
               <div key={ticket.id} className={`card ${ticket.group === 0 ? "urgent" : ""}`}>
-                <p>{ticket.title}</p>
+                <p>
+                  <HoverCard ticket={ticket}>
+                    {ticket.title}
+                  </HoverCard>
+                </p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
                 <button onClick={() => handleStatusChange(ticket.id, "done")}>Done</button>
@@ -158,9 +167,13 @@ export default function App() {
 
           <div className="column">
             <h2 id="completed-heading" role="heading">Completed</h2>
-            {dashboardData.completed?.map((ticket: any) => (
+            {dashboardData.completed?.map((ticket: Ticket) => (
               <div key={ticket.id} className="card">
-                <p>{ticket.title}</p>
+                <p>
+                  <HoverCard ticket={ticket}>
+                    {ticket.title}
+                  </HoverCard>
+                </p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
               </div>

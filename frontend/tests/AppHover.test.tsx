@@ -102,14 +102,12 @@ describe('App HoverCards', () => {
     fireEvent.change(tokenInput, { target: { value: 'valid-token' } });
     fireEvent.click(screen.getByRole('button', { name: /Load/i }));
 
-    // Verify basic form elements still exist
     expect(screen.getByLabelText(/Title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Details/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Priority/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Due/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /File ticket/i })).toBeInTheDocument();
 
-    // Verify board headings still exist
     expect(await screen.findByRole('heading', { name: /To Do/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /In Progress/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Completed/i })).toBeInTheDocument();

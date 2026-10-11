@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import './App.css';
+import './styles.css';
 
 interface Ticket {
   id: number;
@@ -124,9 +124,8 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Honey-Do Tickets</h1>
-      
-      <div className="token-section">
+      <div className="topbar">
+        <h1 className="brand">~/honey-do</h1>
         <label htmlFor="token">Token</label>
         <input
           id="token"
@@ -163,47 +162,49 @@ function App() {
       </div>
 
       {dashboardData && (
-        <div className="board">
-          <div className="column">
-            <h3>To Do</h3>
-            {dashboardData.todo.map((ticket: Ticket) => (
-              <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
-                <h4>{ticket.title}</h4>
-                <p>Priority: {ticket.priority}</p>
-                <p>Due: {ticket.due || 'No due date'}</p>
-                {ticket.status === 'open' && (
-                  <button onClick={() => handleStatusChange(ticket.id, 'acknowledged')}>Acknowledge</button>
-                )}
-                {ticket.status === 'acknowledged' && (
-                  <button onClick={() => handleStatusChange(ticket.id, 'in_progress')}>Start</button>
-                )}
-              </div>
-            ))}
+        <main>
+          <div className="board">
+            <div className="column">
+              <h3>To Do</h3>
+              {dashboardData.todo.map((ticket: Ticket) => (
+                <div key={ticket.id} className={"card " + (ticket.group === 0 ? 'urgent' : '')}>
+                  <h4>{ticket.title}</h4>
+                  <p>Priority: {ticket.priority}</p>
+                  <p>Due: {ticket.due || 'No due date'}</p>
+                  {ticket.status === 'open' && (
+                    <button onClick={() => handleStatusChange(ticket.id, 'acknowledged')}>Acknowledge</button>
+                  )}
+                  {ticket.status === 'acknowledged' && (
+                    <button onClick={() => handleStatusChange(ticket.id, 'in_progress')}>Start</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <div className="column">
+              <h3>In Progress</h3>
+              {dashboardData.in_progress.map((ticket: Ticket) => (
+                <div key={ticket.id} className={"card " + (ticket.group === 0 ? 'urgent' : '')}>
+                  <h4>{ticket.title}</h4>
+                  <p>Priority: {ticket.priority}</p>
+                  <p>Due: {ticket.due || 'No due date'}</p>
+                  <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="column">
+              <h3>Completed</h3>
+              {dashboardData.completed.map((ticket: Ticket) => (
+                <div key={ticket.id} className="card">
+                  <h4>{ticket.title}</h4>
+                  <p>Priority: {ticket.priority}</p>
+                  <p>Due: {ticket.due || 'No due date'}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="column">
-            <h3>In Progress</h3>
-            {dashboardData.in_progress.map((ticket: Ticket) => (
-              <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
-                <h4>{ticket.title}</h4>
-                <p>Priority: {ticket.priority}</p>
-                <p>Due: {ticket.due || 'No due date'}</p>
-                <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>
-              </div>
-            ))}
-          </div>
-          
-          <div className="column">
-            <h3>Completed</h3>
-            {dashboardData.completed.map((ticket: Ticket) => (
-              <div key={ticket.id}>
-                <h4>{ticket.title}</h4>
-                <p>Priority: {ticket.priority}</p>
-                <p>Due: {ticket.due || 'No due date'}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        </main>
       )}
 
       {filedData?.tickets && (

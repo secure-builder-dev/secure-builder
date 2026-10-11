@@ -4,16 +4,17 @@ import {
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
 } from "./api";
+import HoverCard from "./HoverCard";
 import "./styles.css";
 
 type DashboardData = {
-  todo: Array<{ id: number; title: string; priority: string; due: string | null; status: string; group: number }>;
-  in_progress: Array<{ id: number; title: string; priority: string; due: string | null; status: string; group: number }>;
-  completed: Array<{ id: number; title: string; priority: string; due: string | null; status: string }>;
+  todo: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string; group: number }>;
+  in_progress: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string; group: number }>;
+  completed: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;
 };
 
 type FiledData = {
-  tickets: Array<{ id: number; title: string; priority: string; due: string | null; status: string }>;
+  tickets: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;
 };
 
 export default function App() {
@@ -101,7 +102,7 @@ export default function App() {
 
 
       <fieldset>
-        <legend>New ticket</legend>
+        <legend>New Ticket</legend>
         <div>
           <label htmlFor="title-input">Title:</label>
           <input
@@ -148,7 +149,7 @@ export default function App() {
             <h3>To Do</h3>
             {dashboardData.todo.map((ticket) => (
               <div key={ticket.id} className={`card${ticket.group === 0 ? " urgent" : ""}`}>
-                <p>{ticket.title}</p>
+                <p><HoverCard ticket={ticket}>{ticket.title}</HoverCard></p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
                 {ticket.status === "open" && (
@@ -168,7 +169,7 @@ export default function App() {
             <h3>In Progress</h3>
             {dashboardData?.in_progress && dashboardData.in_progress.map((ticket) => (
               <div key={ticket.id} className={`card${ticket.group === 0 ? " urgent" : ""}`}>
-                <p>{ticket.title}</p>
+                <p><HoverCard ticket={ticket}>{ticket.title}</HoverCard></p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
                 <button onClick={() => handleStatusChange(ticket.id, "done")}>
@@ -181,7 +182,7 @@ export default function App() {
             <h3>Completed</h3>
             {dashboardData?.completed && dashboardData.completed.map((ticket) => (
               <div key={ticket.id} className="card">
-                <p>{ticket.title}</p>
+                <p><HoverCard ticket={ticket}>{ticket.title}</HoverCard></p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
               </div>
@@ -190,10 +191,10 @@ export default function App() {
         </div>
       )}
 
-      {filedData?.tickets && (
+      {filedData && (
         <div>
-          <h2>Tickets I filed</h2>
-          {filedData.tickets.map((ticket) => (
+          <h2>Tickets I Filed</h2>
+          {filedData.tickets?.map((ticket) => (
             <div key={ticket.id}>
               <p>{ticket.title}</p>
               <p>Priority: {ticket.priority}</p>

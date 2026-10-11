@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 
 from app.db import SessionLocal, init_db
 from app.rules import create_ticket, change_status, dashboard, filed, USERS
+from app.household import household_board
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -189,6 +190,19 @@ async def filed_endpoint(request: Request):
     try:
         tickets = filed(session, caller)
         return JSONResponse(status_code=200, content={"tickets": tickets})
+    finally:
+        session.close()
+
+
+@app.get("/api/board")
+async def board_endpoint(request: Request):
+    caller = get_caller(request)
+    today = date.today()
+    
+    session = SessionLocal()
+    try:
+        result = household_board(session, today)
+        return JSONResponse(status_code=200, content=result)
     finally:
         session.close()
 

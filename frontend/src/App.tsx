@@ -113,7 +113,7 @@ const App = () => {
         </div>
       )}
       <div>
-        <h2>New ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
+        <h2>New Ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
         <form onSubmit={createTicket}>
           <label>
             Title:

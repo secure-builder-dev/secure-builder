@@ -15,7 +15,24 @@ export async function getDashboard(token: string) {
   return res.json();
 }
 
-export async function getFiled(token: string) {
+export async function getDashboardAndFiled(token: string) {
+  const [dashRes, filedRes] = await Promise.all([
+    fetchWithAuth('/api/dashboard', token),
+    fetchWithAuth('/api/filed', token)
+  ]);
+  
+  if (!dashRes.ok || !filedRes.ok) {
+    if (dashRes.status === 401 || filedRes.status === 401) {
+      throw new Error('WRONG_TOKEN');
+    }
+    throw new Error('ERROR');
+  }
+  
+  const [dashData, filedData] = await Promise.all([dashRes.json(), filedRes.json()]);
+  return { dashboard: dashData, filed: filedData };
+}
+
+export async function getMyFiled(token: string) {
   const res = await fetchWithAuth('/api/filed', token);
   if (!res.ok) {
     if (res.status === 401) throw new Error('WRONG_TOKEN');

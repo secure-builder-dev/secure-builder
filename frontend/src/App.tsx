@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
-  getDashboard,
-  getFiled,
+  getDashboardAndFiled,
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
 } from "./api";
@@ -30,9 +29,9 @@ export default function App() {
   const loadBoard = async () => {
     setError(null);
     try {
-      const [dash, filed] = await Promise.all([getDashboard(token), getFiled(token)]);
-      setDashboardData(dash);
-      setFiledData(filed);
+      const result = await getDashboardAndFiled(token);
+      setDashboardData(result.dashboard);
+      setFiledData(result.filed);
     } catch (e: unknown) {
       const err = e as Error;
       if (err.message === "WRONG_TOKEN") {
@@ -97,7 +96,9 @@ export default function App() {
         <button onClick={loadBoard}>Load</button>
       </div>
 
-      {error && <p>{error}</p>}
+      {error && <p data-testid="error-message">{error}</p>}
+
+
 
       <div>
         <h2>New ticket</h2>

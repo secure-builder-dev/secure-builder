@@ -31,6 +31,7 @@ function App() {
   const [error, setError] = useState('');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filedData, setFiledData] = useState<FiledData | null>(null);
+  const [user, setUser] = useState<string | null>(null);
 
   const handleLoad = async () => {
     try {
@@ -52,6 +53,19 @@ function App() {
       
       if (!filedResponse.ok) {
         throw new Error(filedResponse.status.toString());
+      }
+      
+      const meResponse = await fetch('/api/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!meResponse.ok) {
+        setUser(null);
+      } else {
+        const me = await meResponse.json();
+        setUser(me.user);
       }
       
       const dash = await dashResponse.json();
@@ -140,7 +154,8 @@ function App() {
       {error && <div className="error">{error}</div>}
 
       <div className="new-ticket-form">
-        <h2>New Ticket</h2>
+        <h2>{user ? `New ticket for ${user === 'her' ? 'him' : 'her'}` : 'New Ticket'}</h2>
+        {user && <div>Signed in as {user}</div>}
         <form onSubmit={handleCreateTicket}>
           <label htmlFor="title">Title</label>
           <input id="title" name="title" required />

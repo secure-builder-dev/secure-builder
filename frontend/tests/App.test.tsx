@@ -97,6 +97,9 @@ describe('App', () => {
     expect(screen.getByLabelText(/priority/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/due/i)).toBeInTheDocument();
     
+    const titleInput = screen.getByLabelText(/title/i);
+    fireEvent.change(titleInput, { target: { value: 'New Task' } });
+
     const fileButton = screen.getByRole('button', { name: /file ticket/i });
     fireEvent.click(fileButton);
     
@@ -119,7 +122,8 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/to do/i)).toBeInTheDocument();
-      expect(screen.getByText(/in progress/i)).toBeInTheDocument();
+      // Use getByRole('heading') to avoid collision with ticket text
+      expect(screen.getByRole('heading', { name: /in progress/i })).toBeInTheDocument();
       expect(screen.getByText(/completed/i)).toBeInTheDocument();
     });
 

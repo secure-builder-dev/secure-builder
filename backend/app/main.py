@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
 from app.rules import create_ticket, change_status, dashboard, filed
+from app.household import household_board
 
 
 @asynccontextmanager
@@ -307,6 +308,27 @@ def filed_endpoint(request: Request):
         tickets = filed(session, caller)
         return JSONResponse(
             content={"tickets": tickets},
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "default-src 'none'",
+                "Cache-Control": "no-store",
+                "Referrer-Policy": "no-referrer"
+            }
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/board")
+def board_endpoint(request: Request):
+    caller = get_caller(request)
+    today = date.today()
+    
+    session: Session = SessionLocal()
+    try:
+        result = household_board(session, today)
+        return JSONResponse(
+            content=result,
             headers={
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'",

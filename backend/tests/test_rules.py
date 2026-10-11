@@ -2,44 +2,42 @@ import unittest
 import os
 from datetime import datetime, date, timedelta, timezone
 from unittest import mock
+from sqlalchemy import text
 
-# We import these inside tests or use mock because the files don't exist yet
-# but the prompt requires tests that FAIL against current code.
-# Since the files don't exist, these imports will fail, which is a form of failing.
-
-try:
-    from app.db import Base, SessionLocal, init_db
-    from app.models import Ticket
-    from app.rules import USERS, create_ticket, change_status, dashboard, filed
-except ImportError:
-    Base = SessionLocal = init_db = Ticket = USERS = create_ticket = change_status = dashboard = filed = None
+# Import the components under test
+from app.db import Base, SessionLocal, init_db
+from app.models import Ticket
+from app.rules import USERS, create_ticket, change_status, dashboard, filed
 
 class TestTicketRules(unittest.TestCase):
     def setUp(self):
-        if TICKETER_DATABASE_URL := os.getenv("TICKETER_DATABASE_URL"):
-            if init_db:
-                init_db()
-            self.session = SessionLocal()
-        else:
-            self.session = None
+        self.db_url = os.getenv("TICKETER_DATABASE_URL")
+        if not self.db_url:
+            self.skipTest("TICKETER_DATABASE_URL not set")
+        
+        init_db()
+        self.session = SessionLocal()
 
     def tearDown(self):
         if self.session:
             self.session.close()
-            # In a real scenario, we'd drop tables here
+            # Drop all tables to ensure isolation between tests
+            self.session.execute(text("DROP TABLE IF EXISTS tickets"))
+            self.session.commit()
 
     def test_db_config_raises_runtime_error_when_url_missing(self):
         """Clause 1: RuntimeError when TICKETER_DATABASE_URL is unset or empty"""
+        # We must use a fresh process or reload the module because db.py 
+        # executes the check at the module level during import.
+        import importlib
+        import app.db
+        
         with mock.patch.dict(os.environ, {}, clear=True):
-            # This should trigger the RuntimeError in db.py during engine creation
-            from app import db
             with self.assertRaises(RuntimeError):
-                # Trigger engine access
-                _ = db.engine
+                importlib.reload(app.db)
 
     def test_ticket_model_columns(self):
         """Clause 2: Ticket model has correct columns and table name"""
-        self.assertIsNotNone(Ticket)
         self.assertEqual(Ticket.__tablename__, "tickets")
         cols = Ticket.__table__.columns.keys()
         expected = ['id', 'title', 'details', 'priority', 'due', 'status', 'filed_by', 'assigned_to', 'created_at', 'updated_at']
@@ -54,6 +52,7 @@ class TestTicketRules(unittest.TestCase):
         self.assertEqual(ticket['assigned_to'], "him")
         self.assertEqual(ticket['status'], "open")
         self.assertIsInstance(ticket['created_at'], str)
+        self.assertEqual(ticket['due'], "2026-01-01")
 
     def test_create_ticket_invalid_inputs(self):
         """Clause 4: create_ticket raises ValueError for bad inputs"""
@@ -112,9 +111,33 @@ class TestTicketRules(unittest.TestCase):
     def test_dashboard_completed_window(self):
         """Clause 8: completed tickets within 7 day window"""
         today = date(2026, 1, 10)
-        # This would require setting updated_at manually on the model
-        # Logic: only tickets updated between Jan 4 and Jan 10 should appear
-        pass
+        # Ticket 1: Updated today (In window)
+        t1 = create_ticket(self.session, "her", {"title": "T1"})
+        ticket1 = self.session.get(Ticket, t1['id'])
+        ticket1.status = "done"
+        ticket1.updated_at = datetime(2026, 1, 10, tzinfo=timezone.utc)
+        self.session.commit()
+
+        # Ticket 2: Updated 7 days ago (In window)
+        t2 = create_ticket(self.session, "her", {"title": "T2"})
+        ticket2 = self.session.get(Ticket, t2['id'])
+        ticket2.status = "done"
+        ticket2.updated_at = datetime(2026, 1, 3, tzinfo=timezone.utc)
+        self.session.commit()
+
+        # Ticket 3: Updated 8 days ago (Out of window)
+        t3 = create_ticket(self.session, "her", {"title": "T3"})
+        ticket3 = self.session.get(Ticket, t3['id'])
+        ticket3.status = "done"
+        ticket3.updated_at = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        self.session.commit()
+
+        dash = dashboard(self.session, "him", today)
+        completed_titles = [t['title'] for t in dash['completed']]
+        self.assertIn("T1", completed_titles)
+        self.assertIn("T2", completed_titles)
+        self.assertNotIn("T3", completed_titles)
+        self.assertEqual(completed_titles[0], "T1") # Newest first
 
     def test_filed_tickets(self):
         """Clause 9: filed(session, user) returns tickets user filed"""

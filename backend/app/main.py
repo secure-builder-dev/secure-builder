@@ -96,6 +96,9 @@ async def change_status_endpoint(ticket_id: int, request: Request, caller: str =
     
     if not isinstance(data, dict) or "status" not in data:
         return JSONResponse(content={"error": "invalid request"}, status_code=status.HTTP_400_BAD_REQUEST)
+
+    if not isinstance(data["status"], str):
+        return JSONResponse(content={"error": "invalid request"}, status_code=status.HTTP_400_BAD_REQUEST)
     
     try:
         updated = change_status(db, ticket_id, caller, data["status"])

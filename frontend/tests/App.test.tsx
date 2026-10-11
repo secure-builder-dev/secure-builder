@@ -201,4 +201,106 @@ describe('App', () => {
       expect(element.textContent).toBe('<b>Bold</b>');
     });
   });
+
+  it('clause 3: reloads board after filing ticket', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ todo: [], in_progress: [], completed: [], tickets: [] }),
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText(/token/i), { target: { value: 'tok' } });
+    
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Reload Test' } });
+    fireEvent.click(screen.getByRole('button', { name: /file ticket/i }));
+
+    await waitFor(() => {
+      // Should call /api/tickets then /api/dashboard and /api/filed
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/tickets', expect.any(Object));
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard', expect.any(Object));
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/filed', expect.any(Object));
+    });
+  });
+
+  it('clause 6: reloads board after status change', async () => {
+    (globalThis.fetch as any).mockImplementation((url) => {
+      if (url.includes('/status')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.resolve({ ok: true, json: async () => ({ todo: mockTickets.slice(0, 1), in_progress: [], completed: [], tickets: [] }) });
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText(/token/i), { target: { value: 'tok' } });
+    fireEvent.click(screen.getByRole('button', { name: /load/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /acknowledge/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /acknowledge/i }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/status'), expect.any(Object));
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard', expect.any(Object));
+    });
+  });
+
+  it('clause 7: reloads board after filed ticket status change', async () => {
+    (globalThis.fetch as any).mockImplementation((url) => {
+      if (url.includes('/status')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      if (url === '/api/filed') return Promise.resolve({ ok: true, json: async () => ({ tickets: mockFiledTickets }) });
+      return Promise.resolve({ ok: true, json: async () => ({ todo: [], in_progress: [], completed: [] }) });
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText(/token/i), { target: { value: 'tok' } });
+    fireEvent.click(screen.getByRole('button', { name: /load/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/status'), expect.any(Object));
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard', expect.any(Object));
+    });
+  });
+
+  it('clause 8: handles errors during ticket filing', async () => {
+    (globalThis.fetch as any).mockImplementation((url) => {
+      if (url === '/api/tickets') return Promise.resolve({ ok: false, status: 500 });
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText(/token/i), { target: { value: 'tok' } });
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Error Task' } });
+    fireEvent.click(screen.getByRole('button', { name: /file ticket/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+    });
+  });
+
+  it('clause 8: handles 401 during status change', async () => {
+    (globalThis.fetch as any).mockImplementation((url) => {
+      if (url.includes('/status')) return Promise.resolve({ ok: false, status: 401 });
+      return Promise.resolve({ ok: true, json: async () => ({ todo: mockTickets.slice(0, 1), in_progress: [], completed: [], tickets: [] }) });
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText(/token/i), { target: { value: 'tok' } });
+    fireEvent.click(screen.getByRole('button', { name: /load/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /acknowledge/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /acknowledge/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/wrong token/i)).toBeInTheDocument();
+    });
+  });
 });

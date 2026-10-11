@@ -69,9 +69,11 @@ describe('App', () => {
     const loadButton = screen.getByRole('button', { name: /load/i });
     fireEvent.click(loadButton);
     
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard', expect.objectContaining({
-      headers: { 'Authorization': 'Bearer test-token' }
-    }));
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard', expect.objectContaining({
+        headers: { 'Authorization': 'Bearer test-token' }
+      }));
+    });
   });
 
   it('clause 2: does not use localStorage or sessionStorage', async () => {
@@ -98,9 +100,11 @@ describe('App', () => {
     const fileButton = screen.getByRole('button', { name: /file ticket/i });
     fireEvent.click(fileButton);
     
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/tickets', expect.objectContaining({
-      method: 'POST'
-    }));
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/tickets', expect.objectContaining({
+        method: 'POST'
+      }));
+    });
   });
 
   it('clause 4 & 5: renders board columns and urgent class', async () => {

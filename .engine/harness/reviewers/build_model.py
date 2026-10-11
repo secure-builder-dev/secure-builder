@@ -109,8 +109,11 @@ def tree_text(root, dirs):
 
 def split_clauses(done_when):
     """The clauses of a definition of done: its semicolon-separated parts, each one observable outcome."""
-    # "every case has a test" is a rule about the tests, not an outcome a single test can express
-    meta = re.compile(r"^(and\s+)?every\s+(case|clause|one)\s+(of\s+these\s+)?has\s+(a|its\s+own)\s+test\.?$", re.I)
+    # "every case has a test" is a rule about the tests, not an outcome a single test can express; so is the long form
+    # "every clause has a Vitest test in tests/x.test.tsx that imports ... and calls afterEach(cleanup)" (honey-do TK-2:
+    # ten beads looped the tests phase for eight rounds each, Gemma rewriting the same file to cover a clause no test
+    # can be named for). The text still reaches the model in the definition of done; it is only left out of the clause list.
+    meta = re.compile(r"^(and\s+)?every\s+(case|clause|one)\s+(of\s+these\s+)?has\s+(a|its\s+own)\s+(\w+\s+)?test\b", re.I)
     return [c.strip() for c in done_when.split(";") if c.strip() and not meta.match(c.strip())]
 
 
@@ -200,7 +203,47 @@ def static_hints(root, dirs):
                             hints.append(f"{p.relative_to(root).as_posix()}:{k.lineno}: dict key {k.value!r} is repeated "
                                          f"(first at line {seen[k.value]}); only the last value is kept")
                         seen.setdefault(k.value, k.lineno)
-    return hints
+    return hints + typescript_hints(root, dirs)
+
+
+TSC_TIMEOUT = 240
+
+
+def typescript_hints(root, dirs):
+    """The TypeScript compiler's errors in the model's own .ts/.tsx files, found with the project's tsconfig.json. Vite
+    strips types without checking them, so an import of a name a module no longer exports is undefined at run time and
+    the tests say only that the page did not render (honey-do DV-2: api.ts lost fetchDashboard in one bead, four later
+    beads and every gate revision failed on it, and `tsc` would have named it in one line). A CSS side-effect import has
+    no type declarations and is not reported."""
+    ts_files = {p.relative_to(root).as_posix(): p for p in files_under(root, dirs) if p.suffix in (".ts", ".tsx")}
+    projects = []
+    for p in ts_files.values():
+        d = p.parent
+        while True:
+            if (d / "tsconfig.json").is_file():
+                if d not in projects:
+                    projects.append(d)
+                break
+            if d == root or d == d.parent:
+                break
+            d = d.parent
+    hints = []
+    npx = "npx.cmd" if os.name == "nt" else "npx"
+    for d in projects:
+        try:
+            res = subprocess.run([npx, "tsc", "--noEmit", "-p", "."], cwd=str(d), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=TSC_TIMEOUT)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        for m in re.finditer(r"^(\S+?\.tsx?)\((\d+),\d+\): error (TS\d+): (.*)$", res.stdout + res.stderr, re.M):
+            try:
+                rel = (d / m.group(1)).resolve().relative_to(root).as_posix()
+            except ValueError:
+                continue
+            if rel in ts_files and ".css'" not in m.group(4):
+                hints.append(f"{rel}:{m.group(2)}: {m.group(4)[:200]} (the TypeScript compiler, {m.group(3)}; Vite strips "
+                             "types, so at run time this is undefined and the page does not render)")
+    return hints[:10]
 
 
 def occurrences(text, search):
@@ -413,26 +456,40 @@ def local_program(cmd, cwd):
     return cmd
 
 
+def kill_tree(proc):
+    """End a test command and everything it started. On Windows, Popen.kill() reaches only the process it started (a
+    venv's python.exe launcher, npx.cmd), the test process itself keeps the pipes open, and the driver waited on them for
+    ever behind a 600 s timeout (honey-do DV-1a: pytest blocked on a table lock for an hour)."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
+    else:
+        proc.kill()
+
+
 def run_tests(cmd, cwd, timeout=TEST_TIMEOUT):
     # a bounded run: a test that waits on a server that never answers (the CWE-400 fix's own acceptance test,
     # against the unfixed server) hung the suite, and the loop with it, for half an hour
+    proc = subprocess.Popen(local_program(cmd, cwd), cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="replace")
     try:
-        res = subprocess.run(local_program(cmd, cwd), cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                             timeout=timeout)
-    except subprocess.TimeoutExpired as e:
-        out = "".join(x.decode("utf-8", "replace") if isinstance(x, bytes) else (x or "") for x in (e.stdout, e.stderr))
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        kill_tree(proc)
+        stdout, stderr = proc.communicate()
+        out = (stdout or "") + (stderr or "")
         return 124, (out[-5000:] + f"\nFAIL: the test command did not finish within {timeout}s and was stopped. A test hung: "
                      "every network read or connection in a test needs its own timeout, so that a server that never "
                      "answers fails the test instead of blocking it. A test server's shutdown() waits for the request "
                      "it is handling: close every client socket the test opened (in a finally block or addCleanup) "
                      "before shutting the server down, or a failing test hangs in tearDown.\n")
-    out = (res.stdout + res.stderr)[-6000:]
-    nothing = suite_ran_nothing(res.stdout + res.stderr) if res.returncode == 0 else None
+    full = (stdout or "") + (stderr or "")
+    out = full[-6000:]
+    nothing = suite_ran_nothing(full) if proc.returncode == 0 else None
     if nothing:
         # an all-skipped suite is not a passing one: the round failed, and the model is told why
         return 1, out + (f"\nFAIL: {nothing}. A test that skips when the environment lacks a value must set that value "
-                         "itself (setUp / setUpClass), never skip." + test_guidance(res.stdout + res.stderr))
-    return res.returncode, out + test_guidance(res.stdout + res.stderr)
+                         "itself (setUp / setUpClass), never skip." + test_guidance(full))
+    return proc.returncode, out + test_guidance(full)
 
 
 def suite_ran_nothing(output):

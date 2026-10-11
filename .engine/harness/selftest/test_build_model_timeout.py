@@ -131,3 +131,18 @@ class PytestAndVitest(unittest.TestCase):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text("it('shows three columns', () => {})\ntest(\"files a ticket\", () => {})\n", encoding="utf-8")
             self.assertEqual(build_model.test_names(t, ["frontend/tests"]), {"shows three columns", "files a ticket"})
+
+
+class WholeTree(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "the process-tree kill is Windows-specific (taskkill /T)")
+    def test_a_hung_child_of_the_test_command_is_stopped_too(self):
+        # the launcher (a venv's python.exe, npx.cmd) starts the real test process, which inherits the pipes: killing
+        # the launcher alone left the driver waiting on the child for an hour (honey-do DV-1a)
+        import time
+        child = "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); time.sleep(60)"
+        with tree() as t:
+            t0 = time.monotonic()
+            code, out = build_model.run_tests([sys.executable, "-c", child], t, timeout=2)
+        self.assertEqual(code, 124)
+        self.assertLess(time.monotonic() - t0, 30)
+        self.assertIn("did not finish within 2s", out)

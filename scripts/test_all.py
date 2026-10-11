@@ -15,5 +15,7 @@ backend = subprocess.run([str(venv_python), "-m", "pytest", "-rfE", "--cov=app",
                           "--cov-report=term"], cwd=ROOT / "backend", env=env)
 npx = "npx.cmd" if os.name == "nt" else "npx"
 # nosemgrep: dangerous-subprocess-use-audit
-frontend = subprocess.run([npx, "vitest", "run", "--coverage"], cwd=ROOT / "frontend", env=env)
+# --passWithNoTests: before the first frontend item exists, Vitest exits 1 on "No test files found" and a fully green
+# backend scored as one failing test, so no backend-only item could ever converge (TK-1a, TK-1b, DV-1a, DV-1b)
+frontend = subprocess.run([npx, "vitest", "run", "--coverage", "--passWithNoTests"], cwd=ROOT / "frontend", env=env)
 sys.exit(1 if backend.returncode or frontend.returncode else 0)

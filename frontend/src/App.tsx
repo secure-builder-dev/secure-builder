@@ -118,6 +118,7 @@ const App = () => {
       {data?.me && (
         <div>
           <p>Signed in as {data.me.user}</p>
+          <p>New ticket for {data.me.user === 'her' ? 'him' : 'her'}</p>
         </div>
       )}
       {data?.board && <HouseholdBoard board={data.board} />}
@@ -166,7 +167,7 @@ const App = () => {
           <div className="column">
             <h3>To Do</h3>
             {data?.dash.todo.map((t: any) => (
-              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
+              <div key={t.id} className={`card ${t.priority === 'urgent' ? 'urgent' : ''}`}>
                 <HoverCard ticket={t}>
                   <div>{t.title}</div>
                 </HoverCard>

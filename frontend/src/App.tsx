@@ -28,6 +28,7 @@ interface Dashboard {
 const App = () => {
   const [token, setToken] = useState('');
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [board, setBoard] = useState<Dashboard | null>(null);
   const [filedTickets, setFiledTickets] = useState<Ticket[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [newTicket, setNewTicket] = useState({
@@ -45,8 +46,10 @@ const App = () => {
     try {
       const dash = await fetchDashboard(token);
       const filed = await fetchFiled(token);
+      const meData = await fetchMe(token);
       setDashboard(dash);
       setFiledTickets(filed.tickets);
+      setMe(meData.user);
       setError(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -58,6 +61,7 @@ const App = () => {
   const [me, setMe] = useState<string | null>(null);
   const [meError, setMeError] = useState<string | null>(null);
   const [showDirections, setShowDirections] = useState(false);
+  const [boardData, setBoardData] = useState<Dashboard | null>(null);
 
   const fetchMeData = async () => {
     if (!token) {
@@ -76,8 +80,22 @@ const App = () => {
   };
 
   useEffect(() => {
-    fetchMeData();
+    const fetchBoardData = async () => {
+      if (!token) {
+        setBoardData(null);
+        return;
+      }
+      try {
+        const data = await fetchBoard(token);
+        setBoardData(data);
+      } catch (err) {
+        setBoardData(null);
+      }
+    };
+    fetchBoardData();
   }, [token]);
+
+
 
   const handleCreateTicket = async () => {
     try {
@@ -114,10 +132,11 @@ const App = () => {
           onChange={(e) => setToken(e.target.value)}
         />
         <button id="load-button" onClick={handleLoad}>Load</button>
+        <div id="error" aria-live="assertive">{error}</div>
       </div>
       {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       
-      {error && <div>{error}</div>}
+      {error && <div id="error" aria-live="assertive">{error}</div>}
       
       <div>
         <h2>New ticket for {me === 'her' ? 'him' : me === 'him' ? 'her' : 'someone'}</h2>
@@ -165,6 +184,7 @@ const App = () => {
           <button type="submit" id="file-ticket-button">File ticket</button>
         </form>
       </div>
+      {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       
       <div>
         {me && <p>Signed in as {me}</p>}
@@ -210,6 +230,40 @@ const App = () => {
             ))}
           </div>
         </div>
+      )}
+      {boardData && (
+        <section>
+          <h2>Household board</h2>
+          <div className="board">
+            <div className="column">
+              <h3>To Do</h3>
+              {boardData.todo.map((ticket) => (
+                <div key={ticket.id} className="card">
+                  <h4>{ticket.title}</h4>
+                  <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
+                </div>
+              ))}
+            </div>
+            <div className="column">
+              <h3>In Progress</h3>
+              {boardData.in_progress.map((ticket) => (
+                <div key={ticket.id} className="card">
+                  <h4>{ticket.title}</h4>
+                  <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
+                </div>
+              ))}
+            </div>
+            <div className="column">
+              <h3>Completed</h3>
+              {boardData.completed.map((ticket) => (
+                <div key={ticket.id} className="card">
+                  <h4>{ticket.title}</h4>
+                  <p>Assigned to: {ticket.assigned_to === 'her' ? 'her' : 'him'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
       
       <div>

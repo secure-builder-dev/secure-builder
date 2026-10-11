@@ -23,7 +23,7 @@ describe('HoverCard', () => {
   it('renders children inside a span with class hover-target', () => {
     render(
       <HoverCard ticket={mockTicket}>
-        <span data-testid="child">Target Text</span>
+        <div>Target Text</div>
       </HoverCard>
     );
     const target = screen.getByText('Target Text').closest('span');
@@ -36,7 +36,7 @@ describe('HoverCard', () => {
         <span>Target</span>
       </HoverCard>
     );
-    const target = screen.getByText('Target');
+    const target = screen.getByText('Target').closest('span');
     
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     
@@ -54,7 +54,7 @@ describe('HoverCard', () => {
         <span>Target</span>
       </HoverCard>
     );
-    const target = screen.getByText('Target');
+    const target = screen.getByText('Target').closest('span');
     
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     
@@ -71,7 +71,7 @@ describe('HoverCard', () => {
         <span>Target</span>
       </HoverCard>
     );
-    fireEvent.mouseEnter(screen.getByText('Target'));
+    fireEvent.mouseEnter(screen.getByText('Target').closest('span')!);
     
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent('Fix the leaky faucet');
@@ -86,7 +86,7 @@ describe('HoverCard', () => {
         <span>Target</span>
       </HoverCard>
     );
-    fireEvent.mouseEnter(screen.getByText('Target'));
+    fireEvent.mouseEnter(screen.getByText('Target').closest('span')!);
     
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent('No details');

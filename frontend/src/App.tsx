@@ -6,6 +6,8 @@ import {
   fetchMe,
 } from "./api";
 import HoverCard from "./HoverCard";
+import Menu from "./Menu";
+import Directions from "./Directions";
 import "./styles.css";
 
 type DashboardData = {
@@ -30,6 +32,8 @@ export default function App() {
   const [newDetails, setNewDetails] = useState("");
   const [newPriority, setNewPriority] = useState("normal");
   const [newDue, setNewDue] = useState("");
+
+  const [showDirections, setShowDirections] = useState(false);
 
   const loadBoard = async () => {
     setLoading(true);
@@ -114,6 +118,7 @@ export default function App() {
     <div>
       <div className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <label htmlFor="token-input">Token</label>
         <input
           id="token-input"
@@ -127,6 +132,10 @@ export default function App() {
       {error && <p className="error">{error}</p>}
       
       {currentUser && <p>Signed in as {currentUser}</p>}
+
+      {showDirections && (
+        <Directions onClose={() => setShowDirections(false)} />
+      )}
 
       <fieldset>
         <legend>New Ticket{currentUser ? ` for ${currentUser === 'her' ? 'him' : 'her'}` : ''}</legend>

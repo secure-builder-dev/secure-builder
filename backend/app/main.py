@@ -72,6 +72,10 @@ async def generic_exception_handler(request, exc):
 async def health():
     return {"status": "ok"}
 
+@app.get("/api/me")
+async def me_endpoint(caller: str = Depends(get_caller)):
+    return JSONResponse(content={"user": caller}, status_code=status.HTTP_200_OK)
+
 @app.get("/api/board")
 async def board_endpoint(caller: str = Depends(get_caller), db = Depends(get_db)):
     today = date.today()

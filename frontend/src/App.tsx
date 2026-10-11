@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import './styles.css';
 import HoverCard from './HoverCard';
+import Menu from './Menu';
+import Directions from './Directions';
 
 const App = () => {
   const [token, setToken] = useState('');
-  const [data, setData] = useState<{ dash: any; filed: any } | null>(null);
+  const [data, setData] = useState<{ dash: any; filed: any; me: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [priority, setPriority] = useState('normal');
   const [due, setDue] = useState('');
+  const [showDirections, setShowDirections] = useState(false);
 
   const loadData = async () => {
     try {
@@ -91,6 +94,7 @@ const App = () => {
     <div>
       <div className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <label>
           Token:
           <input
@@ -101,6 +105,7 @@ const App = () => {
         </label>
         <button onClick={loadData}>Load</button>
       </div>
+      {showDirections && <Directions onClose={() => setShowDirections(false)} />}
       {error && <div>{error}</div>}
       {data?.me && (
         <div>
@@ -108,7 +113,7 @@ const App = () => {
         </div>
       )}
       <div>
-        <h2>New ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
+        <h2>New Ticket</h2>
         <form onSubmit={createTicket}>
           <label>
             Title:
@@ -170,7 +175,7 @@ const App = () => {
           <div className="column">
             <h3>In Progress</h3>
             {data?.dash.in_progress.map((t: any) => (
-              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
+              <div key={t.id} className={`card ${t.priority === 'urgent' ? 'urgent' : ''}`}>
                 <HoverCard ticket={t}>
                   <div>{t.title}</div>
                 </HoverCard>

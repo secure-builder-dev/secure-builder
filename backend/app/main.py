@@ -5,6 +5,7 @@ import os
 from hmac import compare_digest
 from app.db import init_db, SessionLocal
 from app.rules import create_ticket, change_status, dashboard, filed
+from app.household import household_board
 from datetime import date
 
 app = FastAPI()
@@ -70,6 +71,12 @@ async def generic_exception_handler(request, exc):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/api/board")
+async def board_endpoint(caller: str = Depends(get_caller), db = Depends(get_db)):
+    today = date.today()
+    board = household_board(db, today)
+    return JSONResponse(content=board, status_code=status.HTTP_200_OK)
 
 @app.post("/api/tickets")
 async def create_ticket_endpoint(request: Request, caller: str = Depends(get_caller), db = Depends(get_db)):

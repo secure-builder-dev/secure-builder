@@ -1,0 +1,7 @@
+id: QW-2e
+unit: QW-2
+state: open
+depends_on: -
+done_when: backend/app/household.py defines household_board(session, today) which takes a datetime.date and returns {'todo': [...], 'in_progress': [...], 'completed': [...]} built from every ticket of both users, each ticket as the dict rules.ticket_to_dict returns; todo holds the tickets with status open or acknowledged and in_progress those with status in_progress, each oldest created_at first; completed holds the tickets with status done or closed whose updated_at date falls within the 7 days ending on today, newest updated_at first, and leaves out older ones; every clause has a pytest test in backend/tests/test_household.py that uses the database in TICKETER_DATABASE_URL with the tables created before each test and dropped after, setting created_at or updated_at directly on the model where a test needs a particular time
+
+# QW-2e

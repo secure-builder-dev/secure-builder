@@ -241,8 +241,12 @@ def typescript_hints(root, dirs):
             except ValueError:
                 continue
             if rel in ts_files and ".css'" not in m.group(4):
-                hints.append(f"{rel}:{m.group(2)}: {m.group(4)[:200]} (the TypeScript compiler, {m.group(3)}; Vite strips "
-                             "types, so at run time this is undefined and the page does not render)")
+                # only a name that does not exist is undefined at run time; a type mismatch (TS2322) still runs, and
+                # saying otherwise sent the model after a crash that was not there (D2-2j)
+                missing = m.group(3) in ("TS2304", "TS2305", "TS2307", "TS2552", "TS2614", "TS2724")
+                hints.append(f"{rel}:{m.group(2)}: {m.group(4)[:200]} (the TypeScript compiler, {m.group(3)}"
+                             + ("; Vite strips types, so at run time this name is undefined and the code using it fails)"
+                                if missing else ")"))
     return hints[:10]
 
 

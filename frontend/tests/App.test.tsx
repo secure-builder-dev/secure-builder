@@ -121,10 +121,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /load/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/to do/i)).toBeInTheDocument();
-      // Use getByRole('heading') to avoid collision with ticket text
+      expect(screen.getByRole('heading', { name: /to do/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: /in progress/i })).toBeInTheDocument();
-      expect(screen.getByText(/completed/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /completed/i })).toBeInTheDocument();
     });
 
     const urgentTicket = screen.getByText('Urgent Task').closest('div');

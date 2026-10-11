@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './styles.css';
+import HoverCard from './HoverCard';
 
 const App = () => {
   const [token, setToken] = useState('');
@@ -143,7 +144,9 @@ const App = () => {
             <h3>To Do</h3>
             {data?.dash.todo.map((t: any) => (
               <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
-                <div>{t.title}</div>
+                <HoverCard ticket={t}>
+                  <div>{t.title}</div>
+                </HoverCard>
                 <div>{t.priority}</div>
                 <div>{t.due}</div>
                 {t.status === 'open' && (
@@ -159,7 +162,9 @@ const App = () => {
             <h3>In Progress</h3>
             {data?.dash.in_progress.map((t: any) => (
               <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
-                <div>{t.title}</div>
+                <HoverCard ticket={t}>
+                  <div>{t.title}</div>
+                </HoverCard>
                 <div>{t.priority}</div>
                 <div>{t.due}</div>
                 <button onClick={() => changeStatus(t.id, 'done')}>Done</button>
@@ -170,7 +175,9 @@ const App = () => {
             <h3>Completed</h3>
             {data?.dash.completed.map((t: any) => (
               <div key={t.id} className="card">
-                <div>{t.title}</div>
+                <HoverCard ticket={t}>
+                  <div>{t.title}</div>
+                </HoverCard>
                 <div>{t.priority}</div>
                 <div>{t.due}</div>
               </div>

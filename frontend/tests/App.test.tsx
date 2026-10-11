@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import App from '../src/App';
 
 const mockToken = 'test-token';
@@ -30,6 +31,10 @@ describe('App', () => {
     vi.clearAllMocks();
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('clause 1 & 2: does not fetch until token entered and Load pressed', async () => {
@@ -147,8 +152,6 @@ describe('App', () => {
   });
 
   it('clause 9: does not use dangerouslySetInnerHTML', async () => {
-    // This is a static analysis check usually, but we can verify no HTML is rendered
-    // by providing HTML strings in the mock data and ensuring they are rendered as text
     const maliciousData = {
       todo: [{ id: 9, title: '<img src=x onerror=alert(1)>', priority: 'low', due: null, status: 'open', group: 2 }],
       in_progress: [],
@@ -163,7 +166,6 @@ describe('App', () => {
     await waitFor(() => {
       const element = screen.getByText('<img src=x onerror=alert(1)>');
       expect(element).toBeInTheDocument();
-      // If it were rendered as HTML, the text content would be empty or different
       expect(element.innerHTML).not.toContain('<img src=x');
     });
   });

@@ -1,0 +1,9 @@
+{
+  "checkpoint": false,
+  "head": "5e0deb3ea1e29ad39505e07fb0aea66cd5790e4b",
+  "range": "12d5acf6c92b..5e0deb3ea1e2",
+  "run": "1",
+  "side": "local",
+  "started": "2026-10-11T04:06:43+00:00",
+  "unit": "D2-1"
+}

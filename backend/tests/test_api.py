@@ -1,5 +1,6 @@
 import pytest
 import os
+import unittest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from app.db import Base, SessionLocal, init_db, engine
@@ -24,6 +25,13 @@ def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    
+    # Gate requirement: assert it never answers 401 or 403
+    unittest.TestCase().assertNotIn(response.status_code, (401, 403))
+    
+    # Also check with invalid token
+    response_invalid = client.get("/health", headers={"Authorization": "Bearer wrong"})
+    unittest.TestCase().assertNotIn(response_invalid.status_code, (401, 403))
 
 def test_auth_missing_header(client):
     """Clause 2: missing header answered 401"""
@@ -60,6 +68,20 @@ def test_change_status_success(client):
     response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer secret_him"})
     assert response.status_code == 200
     assert response.json()["status"] == "acknowledged"
+
+def test_other_user_cannot_make_the_assignees_move(client):
+    """Gate requirement: assert one principal cannot reach another's records / make forbidden moves"""
+    res = client.post("/api/tickets", json={"title": "T"}, headers={"Authorization": "Bearer secret_her"})
+    tid = res.json()["id"]
+    
+    # Filer (her) tries to acknowledge (only assignee 'him' can)
+    response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer secret_her"})
+    assert response.status_code == 403
+    assert response.json() == {"error": "forbidden"}
+    
+    # Verify status is still open
+    res_check = client.get("/api/filed", headers={"Authorization": "Bearer secret_her"})
+    assert res_check.json()["tickets"][0]["status"] == "open"
 
 def test_change_status_errors(client):
     """Clause 4: 404 on LookupError, 403 on PermissionError, 409 on ValueError"""

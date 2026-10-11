@@ -72,6 +72,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/priority/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/due/i)).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Test Title' } });
     const fileButton = screen.getByRole('button', { name: /file ticket/i });
     fireEvent.click(fileButton);
     

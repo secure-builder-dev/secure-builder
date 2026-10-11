@@ -39,7 +39,6 @@ def test_auth_invalid_token(client):
 
 def test_auth_success_her(client):
     """Clause 2: TOKEN_HER identifies 'her'"""
-    # We check this indirectly via /api/filed which should return 200
     response = client.get("/api/filed", headers={"Authorization": "Bearer secret_her"})
     assert response.status_code == 200
 
@@ -55,30 +54,25 @@ def test_create_ticket(client):
 
 def test_change_status_success(client):
     """Clause 4: POST /api/tickets/{id}/status answers 200 on success"""
-    # Create ticket first
     res = client.post("/api/tickets", json={"title": "T"}, headers={"Authorization": "Bearer secret_her"})
     tid = res.json()["id"]
     
-    # Move open -> acknowledged (by him)
     response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer secret_him"})
     assert response.status_code == 200
     assert response.json()["status"] == "acknowledged"
 
 def test_change_status_errors(client):
     """Clause 4: 404 on LookupError, 403 on PermissionError, 409 on ValueError"""
-    # 404 Not Found
     response = client.post("/api/tickets/999/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer secret_him"})
     assert response.status_code == 404
     assert response.json() == {"error": "not found"}
 
-    # 403 Forbidden (her cannot acknowledge)
     res = client.post("/api/tickets", json={"title": "T"}, headers={"Authorization": "Bearer secret_her"})
     tid = res.json()["id"]
     response = client.post(f"/api/tickets/{tid}/status", json={"status": "acknowledged"}, headers={"Authorization": "Bearer secret_her"})
     assert response.status_code == 403
     assert response.json() == {"error": "forbidden"}
 
-    # 409 Invalid Transition
     response = client.post(f"/api/tickets/{tid}/status", json={"status": "closed"}, headers={"Authorization": "Bearer secret_him"})
     assert response.status_code == 409
     assert response.json() == {"error": "invalid transition"}
@@ -104,6 +98,11 @@ def test_invalid_request_400(client):
 
     # Body not a JSON object
     response = client.post("/api/tickets", content="not json", headers={"Authorization": "Bearer secret_her"})
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid request"}
+
+    # Invalid fields (e.g. missing title in create)
+    response = client.post("/api/tickets", json={"details": "no title"}, headers={"Authorization": "Bearer secret_her"})
     assert response.status_code == 400
     assert response.json() == {"error": "invalid request"}
 

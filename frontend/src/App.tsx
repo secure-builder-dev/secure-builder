@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./styles.css";
 import {
   getDashboard,
   getFiledTickets,
@@ -69,18 +70,19 @@ export default function App() {
 
   return (
     <div>
-      <h1>Honey-Do Tickets</h1>
-      
-      <div>
-        <label htmlFor="token">Token</label>
-        <input
-          id="token"
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-        <button onClick={loadBoard} aria-label="Load">Load</button>
-      </div>
+      <header className="topbar">
+        <h1 className="brand">~/honey-do</h1>
+        <div>
+          <label htmlFor="token">Token</label>
+          <input
+            id="token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <button onClick={loadBoard} aria-label="Load">Load</button>
+        </div>
+      </header>
 
       {error && <p>{error}</p>}
 
@@ -120,11 +122,11 @@ export default function App() {
       </fieldset>
 
       {dashboardData && (
-        <section>
-          <h2 id="todo-heading" role="heading">To Do</h2>
-          <div>
+        <section className="board">
+          <div className="column">
+            <h2 id="todo-heading" role="heading">To Do</h2>
             {dashboardData.todo?.map((ticket: any) => (
-              <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
+              <div key={ticket.id} className={`card ${ticket.group === 0 ? "urgent" : ""}`}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
@@ -142,10 +144,10 @@ export default function App() {
             ))}
           </div>
 
-          <h2 id="in-progress-heading" role="heading">In Progress</h2>
-          <div>
+          <div className="column">
+            <h2 id="in-progress-heading" role="heading">In Progress</h2>
             {dashboardData.in_progress?.map((ticket: any) => (
-              <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
+              <div key={ticket.id} className={`card ${ticket.group === 0 ? "urgent" : ""}`}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>
@@ -154,10 +156,10 @@ export default function App() {
             ))}
           </div>
 
-          <h2 id="completed-heading" role="heading">Completed</h2>
-          <div>
+          <div className="column">
+            <h2 id="completed-heading" role="heading">Completed</h2>
             {dashboardData.completed?.map((ticket: any) => (
-              <div key={ticket.id}>
+              <div key={ticket.id} className="card">
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
                 <p>Due: {ticket.due || "N/A"}</p>

@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import App from '../src/App';
@@ -29,7 +29,8 @@ describe('Layout', () => {
 
     render(<App />);
     
-    const topbar = screen.getByLabelText(/Token/i).closest('.topbar');
+    const tokenInput = screen.getByLabelText(/Token/i);
+    const topbar = tokenInput.closest('.topbar');
     expect(topbar).toBeInTheDocument();
     expect(topbar).toContainElement(screen.getByText('~/honey-do'));
     expect(screen.getByText('~/honey-do')).toHaveClass('brand');
@@ -51,8 +52,8 @@ describe('Layout', () => {
     render(<App />);
     
     const tokenInput = screen.getByLabelText(/Token/i);
-    tokenInput.fireEvent.change({ target: { value: 'valid-token' } });
-    screen.getByRole('button', { name: /Load/i }).click();
+    fireEvent.change(tokenInput, { target: { value: 'valid-token' } });
+    fireEvent.click(screen.getByRole('button', { name: /Load/i }));
 
     const board = document.querySelector('.board');
     expect(board).toBeInTheDocument();
@@ -79,8 +80,8 @@ describe('Layout', () => {
     render(<App />);
     
     const tokenInput = screen.getByLabelText(/Token/i);
-    tokenInput.fireEvent.change({ target: { value: 'valid-token' } });
-    screen.getByRole('button', { name: /Load/i }).click();
+    fireEvent.change(tokenInput, { target: { value: 'valid-token' } });
+    fireEvent.click(screen.getByRole('button', { name: /Load/i }));
 
     const urgentTicket = screen.getByText('Urgent Ticket').closest('.card');
     expect(urgentTicket).toBeInTheDocument();

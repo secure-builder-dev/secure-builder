@@ -19,9 +19,12 @@ const App = () => {
       const filedRes = await fetch('/api/filed', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const meRes = await fetch('/api/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-      if (!dashRes.ok || !filedRes.ok) {
-        if (dashRes.status === 401 || filedRes.status === 401) {
+      if (!dashRes.ok || !filedRes.ok || !meRes.ok) {
+        if (dashRes.status === 401 || filedRes.status === 401 || meRes.status === 401) {
           setError('Wrong token');
         } else {
           setError('Something went wrong');
@@ -31,7 +34,8 @@ const App = () => {
 
       const dash = await dashRes.json();
       const filed = await filedRes.json();
-      setData({ dash, filed });
+      const me = await meRes.json();
+      setData({ dash, filed, me });
       setError(null);
     } catch (err) {
       setError('Something went wrong');
@@ -98,8 +102,13 @@ const App = () => {
         <button onClick={loadData}>Load</button>
       </div>
       {error && <div>{error}</div>}
+      {data?.me && (
+        <div>
+          <p>Signed in as {data.me.user}</p>
+        </div>
+      )}
       <div>
-        <h2>New Ticket</h2>
+        <h2>New ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
         <form onSubmit={createTicket}>
           <label>
             Title:
@@ -143,7 +152,7 @@ const App = () => {
           <div className="column">
             <h3>To Do</h3>
             {data?.dash.todo.map((t: any) => (
-              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
+              <div key={t.id} className={`card ${t.priority === 'urgent' ? 'urgent' : ''}`}>
                 <HoverCard ticket={t}>
                   <div>{t.title}</div>
                 </HoverCard>

@@ -141,7 +141,7 @@ def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[d
         session.execute(
             select(Ticket)
             .filter(Ticket.assigned_to == user)
-            .filter(Ticket.status.in_("open", "acknowledged"))
+            .filter(Ticket.status.in_(["open", "acknowledged"]))
         ).scalars().all()
     )
     in_progress_query = (
@@ -157,8 +157,8 @@ def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[d
         due_sort = t.due if t.due is not None else date.max
         return (group, due_sort, t.created_at)
 
-    todo_tickets = sorted(todo_query.all(), key=_sort_key)
-    in_progress_tickets = sorted(in_progress_query.all(), key=_sort_key)
+    todo_tickets = sorted(list(todo_query), key=_sort_key)
+    in_progress_tickets = sorted(list(in_progress_query), key=_sort_key)
 
     def _add_group(t: Ticket) -> dict[str, Any]:
         d = _ticket_to_dict(t)
@@ -174,7 +174,7 @@ def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[d
         session.execute(
             select(Ticket)
             .filter(Ticket.assigned_to == user)
-            .filter(Ticket.status.in_("done", "closed"))
+            .filter(Ticket.status.in_(["done", "closed"]))
             .filter(
                 Ticket.updated_at >= datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc),
                 Ticket.updated_at < datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)

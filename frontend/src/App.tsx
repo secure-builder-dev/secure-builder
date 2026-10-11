@@ -93,7 +93,7 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard}>Load</button>
+        <button onClick={loadBoard} data-testid="load-button">Load</button>
       </div>
 
       {error && <p data-testid="error-message">{error}</p>}
@@ -101,27 +101,30 @@ export default function App() {
 
 
       <div>
-        <h2>New ticket</h2>
+        <h2 data-testid="new-ticket-heading">New ticket</h2>
         <div>
-          <label htmlFor="title-input">Title</label>
+          <label htmlFor="title-input" data-testid="title-label">Title</label>
           <input
             id="title-input"
+            data-testid="title-input"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
           />
         </div>
         <div>
-          <label htmlFor="details-input">Details</label>
+          <label htmlFor="details-input" data-testid="details-label">Details</label>
           <textarea
             id="details-input"
+            data-testid="details-input"
             value={newDetails}
             onChange={(e) => setNewDetails(e.target.value)}
           />
         </div>
         <div>
-          <label htmlFor="priority-select">Priority</label>
+          <label htmlFor="priority-select" data-testid="priority-label">Priority</label>
           <select
             id="priority-select"
+            data-testid="priority-select"
             value={newPriority}
             onChange={(e) => setNewPriority(e.target.value)}
           >
@@ -131,34 +134,35 @@ export default function App() {
           </select>
         </div>
         <div>
-          <label htmlFor="due-input">Due</label>
+          <label htmlFor="due-input" data-testid="due-label">Due</label>
           <input
             id="due-input"
             type="date"
+            data-testid="due-input"
             value={newDue}
             onChange={(e) => setNewDue(e.target.value)}
           />
         </div>
-        <button onClick={handleFileTicket}>File ticket</button>
+        <button onClick={handleFileTicket} data-testid="file-ticket-button">File ticket</button>
       </div>
 
       {dashboardData?.todo && (
         <div>
           <div style={{ display: "flex", gap: "20px" }}>
             <div>
-              <h3>To Do</h3>
+              <h3 data-testid="todo-heading">To Do</h3>
               {dashboardData.todo.map((ticket) => (
                 <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
                   <p>{ticket.title}</p>
                   <p>Priority: {ticket.priority}</p>
                   <p>Due: {ticket.due || "N/A"}</p>
                   {ticket.status === "open" && (
-                    <button onClick={() => handleStatusChange(ticket.id, "acknowledged")}>
+                    <button onClick={() => handleStatusChange(ticket.id, "acknowledged")} data-testid="acknowledge-button">
                       Acknowledge
                     </button>
                   )}
                   {ticket.status === "acknowledged" && (
-                    <button onClick={() => handleStatusChange(ticket.id, "in_progress")}>
+                    <button onClick={() => handleStatusChange(ticket.id, "in_progress")} data-testid="start-button">
                       Start
                     </button>
                   )}
@@ -166,20 +170,20 @@ export default function App() {
               ))}
             </div>
             <div>
-              <h3>In Progress</h3>
+              <h3 data-testid="in-progress-heading">In Progress</h3>
               {dashboardData?.in_progress && dashboardData.in_progress.map((ticket) => (
                 <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
                   <p>{ticket.title}</p>
                   <p>Priority: {ticket.priority}</p>
                   <p>Due: {ticket.due || "N/A"}</p>
-                  <button onClick={() => handleStatusChange(ticket.id, "done")}>
+                  <button onClick={() => handleStatusChange(ticket.id, "done")} data-testid="done-button">
                     Done
                   </button>
                 </div>
               ))}
             </div>
             <div>
-              <h3>Completed</h3>
+              <h3 data-testid="completed-heading">Completed</h3>
               {dashboardData?.completed && dashboardData.completed.map((ticket) => (
                 <div key={ticket.id}>
                   <p>{ticket.title}</p>
@@ -194,7 +198,7 @@ export default function App() {
 
       {filedData?.tickets && (
         <div>
-          <h2>Tickets I filed</h2>
+          <h2 data-testid="filed-heading">Tickets I filed</h2>
           {filedData.tickets.map((ticket) => (
             <div key={ticket.id}>
               <p>{ticket.title}</p>
@@ -203,10 +207,10 @@ export default function App() {
               <p>Status: {ticket.status}</p>
               {ticket.status === "done" && (
                 <>
-                  <button onClick={() => handleStatusChange(ticket.id, "closed")}>
+                  <button onClick={() => handleStatusChange(ticket.id, "closed")} data-testid="close-button">
                     Close
                   </button>
-                  <button onClick={() => handleStatusChange(ticket.id, "open")}>
+                  <button onClick={() => handleStatusChange(ticket.id, "open")} data-testid="reopen-button">
                     Reopen
                   </button>
                 </>

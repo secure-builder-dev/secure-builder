@@ -93,17 +93,17 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard}>Load</button>
+        <button onClick={loadBoard} aria-label="Load">Load</button>
       </div>
 
       {error && <p>{error}</p>}
 
 
 
-      <div>
-        <h2>New ticket</h2>
+      <fieldset>
+        <legend>New ticket</legend>
         <div>
-          <label htmlFor="title-input">Title</label>
+          <label htmlFor="title-input">Title:</label>
           <input
             id="title-input"
             value={newTitle}
@@ -111,7 +111,7 @@ export default function App() {
           />
         </div>
         <div>
-          <label htmlFor="details-input">Details</label>
+          <label htmlFor="details-input">Details:</label>
           <textarea
             id="details-input"
             value={newDetails}
@@ -119,7 +119,7 @@ export default function App() {
           />
         </div>
         <div>
-          <label htmlFor="priority-select">Priority</label>
+          <label htmlFor="priority-select">Priority:</label>
           <select
             id="priority-select"
             value={newPriority}
@@ -131,7 +131,7 @@ export default function App() {
           </select>
         </div>
         <div>
-          <label htmlFor="due-input">Due</label>
+          <label htmlFor="due-input">Due:</label>
           <input
             id="due-input"
             type="date"
@@ -139,8 +139,8 @@ export default function App() {
             onChange={(e) => setNewDue(e.target.value)}
           />
         </div>
-        <button onClick={handleFileTicket}>File ticket</button>
-      </div>
+        <button type="button" onClick={handleFileTicket} aria-label="File ticket">File ticket</button>
+      </fieldset>
 
       {dashboardData?.todo && (
         <div>

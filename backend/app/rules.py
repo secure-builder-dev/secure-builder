@@ -167,7 +167,7 @@ def dashboard(session: Session, user: str, today: date) -> dict:
             })
         elif ticket.status in ("done", "closed"):
             updated_date = ticket.updated_at.date()
-            if today - timedelta(days=7) <= updated_date <= today:
+            if updated_date >= today - timedelta(days=7):
                 completed.append({
                     "id": ticket.id,
                     "title": ticket.title,

@@ -136,15 +136,20 @@ def _compute_group(priority: str, due: date | None, today: date) -> int:
 
 
 def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[dict[str, Any]]]:
+    from sqlalchemy import select
     todo_query = (
-        session.query(Ticket)
-        .filter(Ticket.assigned_to == user)
-        .filter(Ticket.status.in_("open", "acknowledged"))
+        session.execute(
+            select(Ticket)
+            .filter(Ticket.assigned_to == user)
+            .filter(Ticket.status.in_("open", "acknowledged"))
+        ).scalars().all()
     )
     in_progress_query = (
-        session.query(Ticket)
-        .filter(Ticket.assigned_to == user)
-        .filter(Ticket.status == "in_progress")
+        session.execute(
+            select(Ticket)
+            .filter(Ticket.assigned_to == user)
+            .filter(Ticket.status == "in_progress")
+        ).scalars().all()
     )
 
     def _sort_key(t: Ticket):
@@ -163,18 +168,21 @@ def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[d
     todo_list = [_add_group(t) for t in todo_tickets]
     in_progress_list = [_add_group(t) for t in in_progress_tickets]
 
+    from sqlalchemy import select
     seven_days_ago = today - timedelta(days=7)
     completed_query = (
-        session.query(Ticket)
-        .filter(Ticket.assigned_to == user)
-        .filter(Ticket.status.in_("done", "closed"))
-        .filter(
-            Ticket.updated_at >= datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc),
-            Ticket.updated_at < datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
-        )
+        session.execute(
+            select(Ticket)
+            .filter(Ticket.assigned_to == user)
+            .filter(Ticket.status.in_("done", "closed"))
+            .filter(
+                Ticket.updated_at >= datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc),
+                Ticket.updated_at < datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+            )
+        ).scalars().all()
     )
     completed_tickets = sorted(
-        completed_query.all(),
+        completed_query,
         key=lambda t: t.updated_at,
         reverse=True
     )
@@ -188,10 +196,12 @@ def dashboard(session: SessionLocal, user: str, today: date) -> dict[str, list[d
 
 
 def filed(session: SessionLocal, user: str) -> list[dict[str, Any]]:
+    from sqlalchemy import select
     tickets = (
-        session.query(Ticket)
-        .filter(Ticket.filed_by == user)
-        .order_by(Ticket.created_at.desc())
-        .all()
+        session.execute(
+            select(Ticket)
+            .filter(Ticket.filed_by == user)
+            .order_by(Ticket.created_at.desc())
+        ).scalars().all()
     )
     return [_ticket_to_dict(t) for t in tickets]

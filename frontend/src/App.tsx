@@ -1,11 +1,35 @@
 import { useState } from 'react';
 import './App.css';
 
+interface Ticket {
+  id: number;
+  title: string;
+  details: string;
+  priority: 'low' | 'normal' | 'urgent';
+  due: string | null;
+  status: string;
+  filed_by: string;
+  assigned_to: string;
+  created_at: string;
+  updated_at: string;
+  group?: number;
+}
+
+interface DashboardData {
+  todo: Ticket[];
+  in_progress: Ticket[];
+  completed: Ticket[];
+}
+
+interface FiledData {
+  tickets: Ticket[];
+}
+
 function App() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
-  const [dashboardData, setDashboardData] = useState(null);
-  const [filedData, setFiledData] = useState(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [filedData, setFiledData] = useState<FiledData | null>(null);
 
   const handleLoad = async () => {
     try {
@@ -16,7 +40,7 @@ function App() {
       });
       
       if (!dashResponse.ok) {
-        throw new Error(dashResponse.status);
+        throw new Error(dashResponse.status.toString());
       }
       
       const filedResponse = await fetch('/api/filed', {
@@ -26,7 +50,7 @@ function App() {
       });
       
       if (!filedResponse.ok) {
-        throw new Error(filedResponse.status);
+        throw new Error(filedResponse.status.toString());
       }
       
       const dash = await dashResponse.json();
@@ -60,7 +84,7 @@ function App() {
       });
       
       if (!response.ok) {
-        throw new Error(response.status);
+        throw new Error(response.status.toString());
       }
       
       await handleLoad();
@@ -85,7 +109,7 @@ function App() {
       });
       
       if (!response.ok) {
-        throw new Error(response.status);
+        throw new Error(response.status.toString());
       }
       
       await handleLoad();
@@ -142,7 +166,7 @@ function App() {
         <div className="board">
           <div className="column">
             <h3>To Do</h3>
-            {dashboardData.todo.map(ticket => (
+            {dashboardData.todo.map((ticket: Ticket) => (
               <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
                 <h4>{ticket.title}</h4>
                 <p>Priority: {ticket.priority}</p>
@@ -159,7 +183,7 @@ function App() {
           
           <div className="column">
             <h3>In Progress</h3>
-            {dashboardData.in_progress.map(ticket => (
+            {dashboardData.in_progress.map((ticket: Ticket) => (
               <div key={ticket.id} className={ticket.group === 0 ? 'urgent' : ''}>
                 <h4>{ticket.title}</h4>
                 <p>Priority: {ticket.priority}</p>
@@ -171,7 +195,7 @@ function App() {
           
           <div className="column">
             <h3>Completed</h3>
-            {dashboardData.completed.map(ticket => (
+            {dashboardData.completed.map((ticket: Ticket) => (
               <div key={ticket.id}>
                 <h4>{ticket.title}</h4>
                 <p>Priority: {ticket.priority}</p>
@@ -182,10 +206,10 @@ function App() {
         </div>
       )}
 
-      {filedData && (
+      {filedData?.tickets && (
         <div className="filed-tickets">
           <h2>Tickets I Filed</h2>
-          {filedData.tickets.map(ticket => (
+          {filedData.tickets.map((ticket: Ticket) => (
             <div key={ticket.id}>
               <h4>{ticket.title}</h4>
               <p>Status: {ticket.status}</p>

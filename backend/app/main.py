@@ -142,6 +142,13 @@ async def board_endpoint(
     board = household_board(db, today)
     return JSONResponse(status_code=200, content=board)
 
+@app.get("/api/me")
+async def me_endpoint(
+    caller: str = Depends(get_caller),
+    db: Session = Depends(get_db)
+):
+    return JSONResponse(status_code=200, content={"user": caller})
+
 @app.get("/api/filed")
 async def filed_endpoint(
     caller: str = Depends(get_caller),

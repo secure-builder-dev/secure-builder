@@ -113,7 +113,7 @@ const App = () => {
         </div>
       )}
       <div>
-        <h2>New Ticket</h2>
+        <h2>New ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
         <form onSubmit={createTicket}>
           <label>
             Title:
@@ -157,7 +157,7 @@ const App = () => {
           <div className="column">
             <h3>To Do</h3>
             {data?.dash.todo.map((t: any) => (
-              <div key={t.id} className={`card ${t.priority === 'urgent' ? 'urgent' : ''}`}>
+              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
                 <HoverCard ticket={t}>
                   <div>{t.title}</div>
                 </HoverCard>
@@ -175,7 +175,7 @@ const App = () => {
           <div className="column">
             <h3>In Progress</h3>
             {data?.dash.in_progress.map((t: any) => (
-              <div key={t.id} className={`card ${t.priority === 'urgent' ? 'urgent' : ''}`}>
+              <div key={t.id} className={`card ${t.group === 0 ? 'urgent' : ''}`}>
                 <HoverCard ticket={t}>
                   <div>{t.title}</div>
                 </HoverCard>

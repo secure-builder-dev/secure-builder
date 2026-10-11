@@ -1,7 +1,85 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const App = () => {
   const [token, setToken] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
+  const [priority, setPriority] = useState('normal');
+  const [due, setDue] = useState('');
+
+  const loadData = async () => {
+    try {
+      const dashRes = await fetch('/api/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const filedRes = await fetch('/api/filed', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!dashRes.ok || !filedRes.ok) {
+        if (dashRes.status === 401 || filedRes.status === 401) {
+          setError('Wrong token');
+        } else {
+          setError('Something went wrong');
+        }
+        return;
+      }
+
+      const dash = await dashRes.json();
+      const filed = await filedRes.json();
+      setData({ dash, filed });
+      setError(null);
+    } catch (err) {
+      setError('Something went wrong');
+    }
+  };
+
+  const createTicket = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ title, details, priority, due })
+      });
+      if (res.ok) {
+        setTitle('');
+        setDetails('');
+        setPriority('normal');
+        setDue('');
+        await loadData();
+      } else {
+        setError('Something went wrong');
+      }
+    } catch (err) {
+      setError('Something went wrong');
+    }
+  };
+
+  const changeStatus = async (ticketId, newStatus) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        await loadData();
+      } else {
+        setError('Something went wrong');
+      }
+    } catch (err) {
+      setError('Something went wrong');
+    }
+  };
 
   return (
     <div>
@@ -10,42 +88,109 @@ const App = () => {
         <label>
           Token:
           <input
-            type="text"
+            type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
           />
         </label>
+        <button onClick={loadData}>Load</button>
       </div>
+      {error && <div>{error}</div>}
       <div>
         <h2>New Ticket</h2>
-        <form>
-          <input type="text" placeholder="Title" />
-          <textarea placeholder="Details" />
-          <select>
-            <option value="low">Low</option>
-            <option value="normal" selected>
-              Normal
-            </option>
-            <option value="urgent">Urgent</option>
-          </select>
-          <input type="date" />
-          <button type="submit">Create</button>
+        <form onSubmit={createTicket}>
+          <label>
+            Title:
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </label>
+          <label>
+            Details:
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+            />
+          </label>
+          <label>
+            Priority:
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+          <label>
+            Due:
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+            />
+          </label>
+          <button type="submit">File Ticket</button>
         </form>
       </div>
       <div>
         <h2>Board</h2>
         <div>
           <h3>To Do</h3>
+          {data?.dash.todo.map((t) => (
+            <div key={t.id} className={t.group === 0 ? 'urgent' : ''}>
+              <div>{t.title}</div>
+              <div>{t.priority}</div>
+              <div>{t.due}</div>
+              {t.status === 'open' && (
+                <button onClick={() => changeStatus(t.id, 'acknowledged')}>Acknowledge</button>
+              )}
+              {t.status === 'acknowledged' && (
+                <button onClick={() => changeStatus(t.id, 'in_progress')}>Start</button>
+              )}
+            </div>
+          ))}
         </div>
         <div>
           <h3>In Progress</h3>
+          {data?.dash.in_progress.map((t) => (
+            <div key={t.id} className={t.group === 0 ? 'urgent' : ''}>
+              <div>{t.title}</div>
+              <div>{t.priority}</div>
+              <div>{t.due}</div>
+              <button onClick={() => changeStatus(t.id, 'done')}>Done</button>
+            </div>
+          ))}
         </div>
         <div>
           <h3>Completed</h3>
+          {data?.dash.completed.map((t) => (
+            <div key={t.id}>
+              <div>{t.title}</div>
+              <div>{t.priority}</div>
+              <div>{t.due}</div>
+            </div>
+          ))}
         </div>
       </div>
       <div>
         <h2>Tickets I Filed</h2>
+        {data?.filed.tickets.map((t) => (
+          <div key={t.id}>
+            <div>{t.title}</div>
+            <div>{t.priority}</div>
+            <div>{t.due}</div>
+            {t.status === 'done' && (
+              <>
+                <button onClick={() => changeStatus(t.id, 'closed')}>Close</button>
+                <button onClick={() => changeStatus(t.id, 'open')}>Reopen</button>
+              </>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

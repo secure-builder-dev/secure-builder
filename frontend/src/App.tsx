@@ -79,13 +79,13 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard}>Load</button>
+        <button onClick={loadBoard} aria-label="Load">Load</button>
       </div>
 
       {error && <p>{error}</p>}
 
-      <div>
-        <h2>New ticket</h2>
+      <fieldset>
+        <legend>New ticket</legend>
         <label htmlFor="title">Title</label>
         <input
           id="title"
@@ -113,12 +113,12 @@ export default function App() {
           value={due}
           onChange={(e) => setDue(e.target.value)}
         />
-        <button onClick={handleFileTicket}>File ticket</button>
-      </div>
+        <button onClick={handleFileTicket} aria-label="File ticket">File ticket</button>
+      </fieldset>
 
       {dashboardData && (
-        <div>
-          <h2>To Do</h2>
+        <section>
+          <h2 id="todo-heading">To Do</h2>
           <div>
             {dashboardData.todo?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
@@ -139,7 +139,7 @@ export default function App() {
             ))}
           </div>
 
-          <h2>In Progress</h2>
+          <h2 id="in-progress-heading">In Progress</h2>
           <div>
             {dashboardData.in_progress?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
@@ -151,7 +151,7 @@ export default function App() {
             ))}
           </div>
 
-          <h2>Completed</h2>
+          <h2 id="completed-heading">Completed</h2>
           <div>
             {dashboardData.completed?.map((ticket: any) => (
               <div key={ticket.id}>
@@ -161,12 +161,12 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {filedTickets && (
-        <div>
-          <h2>Tickets I filed</h2>
+        <section>
+          <h2 id="filed-heading">Tickets I filed</h2>
           <div>
             {filedTickets.tickets?.map((ticket: any) => (
               <div key={ticket.id}>
@@ -182,7 +182,7 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

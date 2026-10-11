@@ -66,3 +66,11 @@ export async function changeStatus(token: string, ticketId: number, status: stri
   }
   return res.json();
 }
+
+export async function fetchBoard(token: string) {
+  const res = await fetchWithAuth('/api/board', token);
+  if (!res.ok) {
+    throw new Error(String(res.status));
+  }
+  return res.json();
+}

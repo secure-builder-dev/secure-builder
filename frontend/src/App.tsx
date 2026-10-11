@@ -3,10 +3,11 @@ import './styles.css';
 import HoverCard from './HoverCard';
 import Menu from './Menu';
 import Directions from './Directions';
+import HouseholdBoard from './HouseholdBoard';
 
 const App = () => {
   const [token, setToken] = useState('');
-  const [data, setData] = useState<{ dash: any; filed: any; me: any } | null>(null);
+  const [data, setData] = useState<{ dash: any; filed: any; me: any; board?: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
@@ -25,6 +26,9 @@ const App = () => {
       const meRes = await fetch('/api/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const boardRes = await fetch('/api/board', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       if (!dashRes.ok || !filedRes.ok || !meRes.ok) {
         if (dashRes.status === 401 || filedRes.status === 401 || meRes.status === 401) {
@@ -38,7 +42,11 @@ const App = () => {
       const dash = await dashRes.json();
       const filed = await filedRes.json();
       const me = await meRes.json();
-      setData({ dash, filed, me });
+      let board = { todo: [], in_progress: [], completed: [] };
+      if (boardRes.ok) {
+        board = await boardRes.json();
+      }
+      setData({ dash, filed, me, board });
       setError(null);
     } catch (err) {
       setError('Something went wrong');
@@ -112,8 +120,9 @@ const App = () => {
           <p>Signed in as {data.me.user}</p>
         </div>
       )}
+      {data?.board && <HouseholdBoard board={data.board} />}
       <div>
-        <h2>New Ticket for {data?.me?.user === 'her' ? 'him' : 'her'}</h2>
+        <h2>New Ticket</h2>
         <form onSubmit={createTicket}>
           <label>
             Title:

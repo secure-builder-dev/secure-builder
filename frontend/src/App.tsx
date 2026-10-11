@@ -4,10 +4,12 @@ import {
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
   fetchMe,
+  fetchBoard,
 } from "./api";
 import HoverCard from "./HoverCard";
 import Menu from "./Menu";
 import Directions from "./Directions";
+import HouseholdBoard from "./HouseholdBoard";
 import "./styles.css";
 
 type DashboardData = {
@@ -18,6 +20,12 @@ type DashboardData = {
 
 type FiledData = {
   tickets: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;
+};
+
+type BoardData = {
+  todo: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;  
+  in_progress: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;
+  completed: Array<{ id: number; title: string; details: string; priority: string; due: string | null; status: string; filed_by: string; assigned_to: string; created_at: string }>;
 };
 
 export default function App() {
@@ -34,15 +42,18 @@ export default function App() {
   const [newDue, setNewDue] = useState("");
 
   const [showDirections, setShowDirections] = useState(false);
+  const [boardData, setBoardData] = useState<BoardData | null>(null);
 
   const loadBoard = async () => {
     setLoading(true);
     setError(null);
     setCurrentUser(null);
+    setBoardData(null);
     try {
-      const [result, meResult] = await Promise.allSettled([
+      const [result, meResult, boardResult] = await Promise.allSettled([
         getDashboardAndFiled(token),
-        fetchMe(token)
+        fetchMe(token),
+        fetchBoard(token)
       ]);
       
       if (result.status === 'fulfilled') {
@@ -61,6 +72,13 @@ export default function App() {
         const meData = await meResult.value;
         if (meData && meData.user) {
           setCurrentUser(meData.user);
+        }
+      }
+
+      if (boardResult.status === 'fulfilled') {
+        const boardRes = await boardResult.value;
+        if (boardRes && Array.isArray(boardRes.todo) && Array.isArray(boardRes.in_progress) && Array.isArray(boardRes.completed)) {
+          setBoardData(boardRes);
         }
       }
     } catch (e: unknown) {
@@ -135,6 +153,10 @@ export default function App() {
 
       {showDirections && (
         <Directions onClose={() => setShowDirections(false)} />
+      )}
+
+      {boardData && (
+        <HouseholdBoard board={boardData} />
       )}
 
       <fieldset>

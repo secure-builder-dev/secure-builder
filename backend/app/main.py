@@ -84,22 +84,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return response
 
 
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    # Never expose stack traces
-    response = JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"error": "internal error"},
-        headers={
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": "default-src 'none'",
-            "Cache-Control": "no-store",
-            "Referrer-Policy": "no-referrer"
-        }
-    )
-    return response
-
-
 @app.post("/api/tickets", status_code=status.HTTP_201_CREATED)
 async def create_ticket_endpoint(request: Request):
     caller = get_caller(request)

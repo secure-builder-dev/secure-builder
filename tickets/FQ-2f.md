@@ -1,6 +1,6 @@
 id: FQ-2f
 unit: FQ-2
-state: open
+state: claimed
 depends_on: FQ-2e
 done_when: backend/app/main.py adds GET /api/board, which answers 200 with household_board(session, today) from backend/app/household.py where today is the current UTC date, and both her and him get the same board; GET /api/board without the Authorization header, or with a token matching neither user, answers 401 with {"error": "unauthorized"}; every other route keeps its behaviour and every test in backend/tests/test_api.py still passes; every clause has a pytest test in backend/tests/test_board_api.py that uses the database in TICKETER_DATABASE_URL with the tables created before each test and dropped after, uses fastapi.testclient.TestClient and sets TOKEN_HER and TOKEN_HIM with monkeypatch.setenv
 

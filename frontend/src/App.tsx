@@ -5,16 +5,17 @@ import {
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
 } from "./api";
+import type { DashboardData, FiledTicketsData } from "./api";
 
 export default function App() {
   const [token, setToken] = useState("");
-  const [dashboardData, setDashboardData] = useState<ReturnType<typeof getDashboard> | null>(null);
-  const [filedTickets, setFiledTickets] = useState<ReturnType<typeof getFiledTickets> | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [filedTickets, setFiledTickets] = useState<FiledTicketsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
-  const [priority, setPriority] = useState("normal");
+  const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
   const [due, setDue] = useState("");
 
   const loadBoard = async () => {
@@ -85,26 +86,30 @@ export default function App() {
 
       <div>
         <h2>New ticket</h2>
+        <label htmlFor="title">Title</label>
         <input
-          label="Title"
+          id="title"
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+        <label htmlFor="details">Details</label>
         <textarea
-          label="Details"
+          id="details"
           placeholder="Details"
           value={details}
           onChange={(e) => setDetails(e.target.value)}
         />
-        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+        <label htmlFor="priority">Priority</label>
+        <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value as "low" | "normal" | "urgent")}>
           <option value="low">low</option>
           <option value="normal">normal</option>
           <option value="urgent">urgent</option>
         </select>
+        <label htmlFor="due">Due</label>
         <input
+          id="due"
           type="date"
-          label="Due"
           value={due}
           onChange={(e) => setDue(e.target.value)}
         />
@@ -115,7 +120,7 @@ export default function App() {
         <div>
           <h2>To Do</h2>
           <div>
-            {dashboardData.todo.map((ticket) => (
+            {dashboardData.todo?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
@@ -136,7 +141,7 @@ export default function App() {
 
           <h2>In Progress</h2>
           <div>
-            {dashboardData.in_progress.map((ticket) => (
+            {dashboardData.in_progress?.map((ticket: any) => (
               <div key={ticket.id} className={ticket.group === 0 ? "urgent" : ""}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
@@ -148,7 +153,7 @@ export default function App() {
 
           <h2>Completed</h2>
           <div>
-            {dashboardData.completed.map((ticket) => (
+            {dashboardData.completed?.map((ticket: any) => (
               <div key={ticket.id}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>
@@ -163,7 +168,7 @@ export default function App() {
         <div>
           <h2>Tickets I filed</h2>
           <div>
-            {filedTickets.tickets.map((ticket) => (
+            {filedTickets.tickets?.map((ticket: any) => (
               <div key={ticket.id}>
                 <p>{ticket.title}</p>
                 <p>Priority: {ticket.priority}</p>

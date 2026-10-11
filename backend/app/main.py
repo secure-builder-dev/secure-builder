@@ -179,7 +179,11 @@ async def dashboard_endpoint(request: Request):
 
 @app.get("/api/filed")
 async def filed_endpoint(request: Request):
+    from app.db import init_db, Base, engine
     caller = get_caller(request)
+    
+    # Ensure tables exist (for test environments without lifespan)
+    Base.metadata.create_all(bind=engine)
     
     session = SessionLocal()
     try:

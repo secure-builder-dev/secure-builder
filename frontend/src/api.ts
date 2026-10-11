@@ -74,3 +74,11 @@ export async function fetchBoard(token: string) {
   }
   return res.json();
 }
+
+export async function fetchMe(token: string) {
+  const res = await fetchWithAuth('/api/me', token);
+  if (!res.ok) {
+    return null;
+  }
+  return res.json();
+}

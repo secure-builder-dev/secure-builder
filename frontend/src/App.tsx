@@ -3,6 +3,7 @@ import {
   getDashboardAndFiled,
   createTicket as apiCreateTicket,
   changeStatus as apiChangeStatus,
+  fetchMe,
 } from "./api";
 import HoverCard from "./HoverCard";
 import "./styles.css";
@@ -21,7 +22,9 @@ export default function App() {
   const [token, setToken] = useState("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filedData, setFiledData] = useState<FiledData | null>(null);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [newTitle, setNewTitle] = useState("");
   const [newDetails, setNewDetails] = useState("");
@@ -29,11 +32,33 @@ export default function App() {
   const [newDue, setNewDue] = useState("");
 
   const loadBoard = async () => {
+    setLoading(true);
     setError(null);
+    setCurrentUser(null);
     try {
-      const result = await getDashboardAndFiled(token);
-      setDashboardData(result.dashboard);
-      setFiledData(result.filed);
+      const [result, meResult] = await Promise.allSettled([
+        getDashboardAndFiled(token),
+        fetchMe(token)
+      ]);
+      
+      if (result.status === 'fulfilled') {
+        setDashboardData(result.value.dashboard);
+        setFiledData(result.value.filed);
+      } else if (result.status === 'rejected') {
+        const err = result.reason as Error;
+        if (err.message === "WRONG_TOKEN") {
+          setError("Wrong token");
+        } else {
+          setError("Something went wrong");
+        }
+      }
+      
+      if (meResult.status === 'fulfilled') {
+        const meData = await meResult.value;
+        if (meData && meData.user) {
+          setCurrentUser(meData.user);
+        }
+      }
     } catch (e: unknown) {
       const err = e as Error;
       if (err.message === "WRONG_TOKEN") {
@@ -41,6 +66,8 @@ export default function App() {
       } else {
         setError("Something went wrong");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,15 +121,15 @@ export default function App() {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={loadBoard} aria-label="Load">Load</button>
+        <button onClick={loadBoard} aria-label="Load" disabled={loading}>Load</button>
       </div>
 
-      {error && <p>{error}</p>}
-
-
+      {error && <p className="error">{error}</p>}
+      
+      {currentUser && <p>Signed in as {currentUser}</p>}
 
       <fieldset>
-        <legend>New Ticket</legend>
+        <legend>New Ticket{currentUser ? ` for ${currentUser === 'her' ? 'him' : 'her'}` : ''}</legend>
         <div>
           <label htmlFor="title-input">Title:</label>
           <input

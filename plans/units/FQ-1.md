@@ -1,4 +1,4 @@
 id: FQ-1
-state: planned
+state: building
 
 # FQ-1

@@ -63,17 +63,20 @@ describe('HouseholdBoard Component', () => {
     render(<HouseholdBoard board={mockBoard} />);
 
     // To Do
-    expect(screen.getByText('Fix sink')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
-    expect(screen.getByText('Buy milk')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
+    const todoSection = screen.getByText('To Do').closest('[role="gridcell"]');
+    expect(todoSection).toHaveTextContent('Fix sink');
+    expect(todoSection).toHaveTextContent('for him');
+    expect(todoSection).toHaveTextContent('Buy milk');
+    expect(todoSection).toHaveTextContent('for her');
 
     // In Progress
-    expect(screen.getByText('Paint wall')).toBeInTheDocument();
-    expect(screen.getByText('for him')).toBeInTheDocument();
+    const progressSection = screen.getByText('In Progress').closest('[role="gridcell"]');
+    expect(progressSection).toHaveTextContent('Paint wall');
+    expect(progressSection).toHaveTextContent('for him');
 
     // Completed
-    expect(screen.getByText('Mow lawn')).toBeInTheDocument();
-    expect(screen.getByText('for her')).toBeInTheDocument();
+    const completedSection = screen.getByText('Completed').closest('[role="gridcell"]');
+    expect(completedSection).toHaveTextContent('Mow lawn');
+    expect(completedSection).toHaveTextContent('for her');
   });
 });

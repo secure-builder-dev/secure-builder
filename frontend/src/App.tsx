@@ -1,12 +1,13 @@
 import { useState } from "react";
 import "./styles.css";
-import type { Board, NewTicket, Ticket } from "./types";
+import type { Board, Filed, NewTicket, Ticket } from "./types";
 import { changeStatus, createTicket, fetchDashboard, fetchFiled } from "./api";
 import TicketCard from "./TicketCard";
 
 export default function App() {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
+  const [filed, setFiled] = useState<Filed | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -16,11 +17,12 @@ export default function App() {
   async function handleLoad() {
     setError(null);
     try {
-      const [dash] = await Promise.all([
+      const [dash, filedRes] = await Promise.all([
         fetchDashboard(token),
-        fetchFiled(token).catch(() => ({ tickets: [] as Ticket[] })),
+        fetchFiled(token),
       ]);
       setBoard(dash);
+      setFiled(filedRes);
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -28,6 +30,7 @@ export default function App() {
         setError("Something went wrong");
       }
       setBoard(null);
+      setFiled(null);
     }
   }
 
@@ -185,6 +188,27 @@ export default function App() {
                 {renderColumn("To Do", "To Do", board.todo)}
                 {renderColumn("In Progress", "In Progress", board.in_progress)}
                 {renderColumn("Completed", "Completed", board.completed)}
+              </div>
+            </section>
+            <section className="panel" aria-label="Tickets I filed">
+              <h2>Tickets I filed</h2>
+              <div className="card-list">
+                {filed?.tickets.map((t) => {
+                  let children: React.ReactNode = null;
+                  if (t.status === "done") {
+                    children = (
+                      <>
+                        <button onClick={() => handleStatusChange(t.id, "closed")}>Close</button>
+                        <button onClick={() => handleStatusChange(t.id, "open")}>Reopen</button>
+                      </>
+                    );
+                  }
+                  return (
+                    <TicketCard key={t.id} ticket={t}>
+                      {children}
+                    </TicketCard>
+                  );
+                })}
               </div>
             </section>
           </>

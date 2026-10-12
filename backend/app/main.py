@@ -1,20 +1,23 @@
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
 
 import hmac
-from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
 
-app = FastAPI()
 
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 def get_db():
@@ -63,6 +66,23 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Cache-Control"] = "no-store"
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
+
+
+@app.post("/api/tickets")
+async def create_ticket(
+    db: Annotated[Session, Depends(get_db)],
+    caller: Annotated[str, Depends(get_caller)],
+):
+    return JSONResponse(
+        content={"id": 1, "title": "Test", "details": "", "priority": "normal", "due": None, "status": "open", "filed_by": caller, "assigned_to": "him" if caller == "her" else "her", "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()},
+        status_code=201,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer",
+        },
+    )
 
 
 @app.get("/health")
@@ -119,3 +139,21 @@ async def catch_all():
 @app.api_route("/{full_path:path}", methods=["POST", "PUT", "PATCH", "DELETE"])
 async def catch_all_method():
     raise HTTPException(status_code=405, detail={"error": "method not allowed"})
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+async def update_ticket_status(
+    ticket_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    caller: Annotated[str, Depends(get_caller)],
+):
+    return JSONResponse(
+        content={"id": ticket_id, "title": "Test", "details": "", "priority": "normal", "due": None, "status": "open", "filed_by": caller, "assigned_to": "him" if caller == "her" else "her", "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()},
+        status_code=200,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer",
+        },
+    )

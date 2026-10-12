@@ -1,14 +1,18 @@
 import hmac
+import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Route
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.db import SessionLocal, init_db
+from app.models import Ticket
+from sqlalchemy import and_, or_, func
 
 
 def get_caller(request: Request) -> Optional[str]:
@@ -70,11 +74,96 @@ def api_filed(request: Request) -> JSONResponse:
         s.close()
 
 
+async def api_tickets_post(request: Request) -> JSONResponse:
+    """POST /api/tickets - create a new ticket."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    
+    # Read body manually to handle validation
+    try:
+        content_length = int(request.headers.get("Content-Length", 0))
+        if content_length > 65536:
+            return JSONResponse(status_code=413, content={"error": "too large"})
+        
+        body_bytes = await request.body()
+        body = json.loads(body_bytes.decode())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    # Validate body is a dict
+    if not isinstance(body, dict):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    # Reject extra keys (only title, details, priority, due are allowed)
+    allowed_keys = {"title", "details", "priority", "due"}
+    if not set(body.keys()).issubset(allowed_keys):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    s = SessionLocal()
+    try:
+        title = body.get("title", "")
+        details = body.get("details", "")
+        priority = body.get("priority", "normal")
+        due = body.get("due")
+        
+        ticket = _create_ticket_impl(s, title, details, priority, due, caller)
+        return JSONResponse(status_code=201, content=_ticket_to_dict(ticket))
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    finally:
+        s.close()
+
+
+async def api_ticket_status_post(request: Request) -> JSONResponse:
+    """POST /api/tickets/{id}/status - change ticket status."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    
+    # Get id from path
+    try:
+        ticket_id = int(request.path_params["id"])
+    except (ValueError, KeyError):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    # Read body manually
+    try:
+        content_length = int(request.headers.get("Content-Length", 0))
+        if content_length > 65536:
+            return JSONResponse(status_code=413, content={"error": "too large"})
+        
+        body_bytes = await request.body()
+        body = json.loads(body_bytes.decode())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    # Validate body is exactly {"status": <string>}
+    if not isinstance(body, dict):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if set(body.keys()) != {"status"}:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if not isinstance(body["status"], str):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    new_status = body["status"]
+    
+    s = SessionLocal()
+    try:
+        ticket = _change_status_impl(s, ticket_id, new_status, caller)
+        return JSONResponse(status_code=200, content=_ticket_to_dict(ticket))
+    except LookupError:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    except PermissionError:
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    except ValueError:
+        return JSONResponse(status_code=409, content={"error": "invalid transition"})
+    finally:
+        s.close()
+
+
 def _dashboard_impl(session, caller: str, today):
     """Implement dashboard logic inline."""
-    from app.models import Ticket
-    from sqlalchemy import and_, or_, func, date
-    
     # Tickets assigned to caller
     assigned = session.query(Ticket).filter(Ticket.assigned_to == caller).all()
     
@@ -82,27 +171,12 @@ def _dashboard_impl(session, caller: str, today):
     in_progress = []
     completed = []
     
-    seven_days_ago = today - datetime.timedelta(days=7) if hasattr(datetime, 'timedelta') else __import__('datetime').timedelta(days=7)
-    from datetime import timedelta
     seven_days_ago = today - timedelta(days=7)
     
     for t in assigned:
-        # Convert ticket to dict-like structure
-        ticket_dict = {
-            "id": t.id,
-            "title": t.title,
-            "details": t.details,
-            "priority": t.priority,
-            "due": t.due.isoformat() if t.due else None,
-            "status": t.status,
-            "filed_by": t.filed_by,
-            "assigned_to": t.assigned_to,
-            "created_at": t.created_at.isoformat(),
-            "updated_at": t.updated_at.isoformat(),
-        }
+        ticket_dict = _ticket_to_dict(t)
         
         if t.status in ("open", "acknowledged"):
-            # Determine group
             due_before = t.due is not None and t.due < today
             due_today_or_3days = (
                 t.due is not None and 
@@ -117,7 +191,6 @@ def _dashboard_impl(session, caller: str, today):
                 ticket_dict["group"] = 2
             todo.append(ticket_dict)
         elif t.status == "in_progress":
-            # Determine group
             due_before = t.due is not None and t.due < today
             due_today_or_3days = (
                 t.due is not None and 
@@ -132,12 +205,10 @@ def _dashboard_impl(session, caller: str, today):
                 ticket_dict["group"] = 2
             in_progress.append(ticket_dict)
         elif t.status in ("done", "closed"):
-            # Check if updated_at is within last 7 days
             update_date = t.updated_at.date()
             if update_date >= seven_days_ago and update_date <= today:
                 completed.append(ticket_dict)
     
-    # Sort todo: group, then due (none last), then created_at
     def sort_key(t):
         g = t.get("group", 2)
         due = t["due"]
@@ -156,27 +227,108 @@ def _dashboard_impl(session, caller: str, today):
 
 def _filed_impl(session, caller: str):
     """Implement filed tickets logic inline."""
-    from app.models import Ticket
-    
     tickets = session.query(Ticket).filter(Ticket.filed_by == caller).order_by(Ticket.created_at.desc()).all()
     
-    result = []
-    for t in tickets:
-        ticket_dict = {
-            "id": t.id,
-            "title": t.title,
-            "details": t.details,
-            "priority": t.priority,
-            "due": t.due.isoformat() if t.due else None,
-            "status": t.status,
-            "filed_by": t.filed_by,
-            "assigned_to": t.assigned_to,
-            "created_at": t.created_at.isoformat(),
-            "updated_at": t.updated_at.isoformat(),
-        }
-        result.append(ticket_dict)
+    return [_ticket_to_dict(t) for t in tickets]
+
+
+def _ticket_to_dict(t):
+    """Convert a Ticket model to a dict."""
+    return {
+        "id": t.id,
+        "title": t.title,
+        "details": t.details,
+        "priority": t.priority,
+        "due": t.due.isoformat() if t.due else None,
+        "status": t.status,
+        "filed_by": t.filed_by,
+        "assigned_to": t.assigned_to,
+        "created_at": t.created_at.isoformat(),
+        "updated_at": t.updated_at.isoformat(),
+    }
+
+
+def _create_ticket_impl(session, title: str, details: str, priority: str, due, caller: str):
+    """Create a new ticket."""
+    # Validate title
+    if not title or len(title) > 120:
+        raise ValueError("invalid request")
     
-    return result
+    # Validate details
+    if details and len(details) > 1000:
+        raise ValueError("invalid request")
+    
+    # Validate priority
+    if priority not in ("low", "normal", "urgent"):
+        raise ValueError("invalid request")
+    
+    # Validate due date
+    if due is not None:
+        try:
+            due_date = datetime.strptime(due, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError("invalid request")
+    else:
+        due_date = None
+    
+    # Determine assigned_to (the other user)
+    assigned_to = "her" if caller == "him" else "him"
+    
+    ticket = Ticket(
+        title=title.strip(),
+        details=details or "",
+        priority=priority,
+        due=due_date,
+        status="open",
+        filed_by=caller,
+        assigned_to=assigned_to,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    session.add(ticket)
+    session.commit()
+    return ticket
+
+
+def _change_status_impl(session, ticket_id: int, new_status: str, caller: str):
+    """Change the status of a ticket."""
+    ticket = session.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise LookupError("not found")
+    
+    # Check if caller is a party
+    if caller != ticket.filed_by and caller != ticket.assigned_to:
+        raise LookupError("not found")
+    
+    current_status = ticket.status
+    
+    # Validate new_status is a string
+    if not isinstance(new_status, str):
+        raise ValueError("invalid transition")
+    
+    # Define valid transitions
+    transitions = {
+        ("open", "acknowledged"): "assignee",
+        ("acknowledged", "in_progress"): "assignee",
+        ("in_progress", "done"): "assignee",
+        ("done", "closed"): "filer",
+        ("done", "open"): "filer",
+        ("closed", "open"): "filer",
+    }
+    
+    if (current_status, new_status) not in transitions:
+        raise ValueError("invalid transition")
+    
+    required_party = transitions[(current_status, new_status)]
+    if required_party == "assignee" and caller != ticket.assigned_to:
+        raise PermissionError("forbidden")
+    if required_party == "filer" and caller != ticket.filed_by:
+        raise PermissionError("forbidden")
+    
+    ticket.status = new_status
+    ticket.updated_at = datetime.now(timezone.utc)
+    session.commit()
+    return ticket
 
 
 # Define routes
@@ -184,6 +336,8 @@ routes: list[Route] = [
     Route("/health", endpoint=health_endpoint, methods=["GET"]),
     Route("/api/dashboard", endpoint=api_dashboard, methods=["GET"]),
     Route("/api/filed", endpoint=api_filed, methods=["GET"]),
+    Route("/api/tickets", endpoint=api_tickets_post, methods=["POST"]),
+    Route("/api/tickets/{id}/status", endpoint=api_ticket_status_post, methods=["POST"]),
 ]
 
 app = FastAPI()
@@ -201,6 +355,15 @@ async def add_security_headers(request: Request, call_next):
 app.add_middleware(BaseHTTPMiddleware, dispatch=add_security_headers)
 
 # Exception handlers
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"}
+    )
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     content = {"error": exc.detail} if isinstance(exc.detail, str) else {"error": "error"}
@@ -209,19 +372,19 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content=content
     )
 
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=404,
-        content={"error": "not found"}
-    )
-
-@app.exception_handler(405)
-async def method_not_allowed_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=405,
-        content={"error": "method not allowed"}
-    )
+@app.exception_handler(StarletteHTTPException)
+async def starlette_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    elif exc.status_code == 405:
+        return JSONResponse(
+            status_code=405,
+            content={"error": "method not allowed"}
+        )
+    raise exc
 
 # Lifespan handler for startup
 from contextlib import asynccontextmanager

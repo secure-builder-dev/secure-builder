@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, changeStatus } from './api';
+import { fetchDashboard, fetchFiled, createTicket, changeStatus, fetchBoard } from './api';
 import TicketCard from './TicketCard';
+import HouseholdBoard from './HouseholdBoard';
 import './styles.css';
 
 const App = () => {
   const [token, setToken] = useState('');
   const [dashboard, setDashboard] = useState<{ todo: any[]; in_progress: any[]; completed: any[] } | null>(null);
   const [filedTickets, setFiledTickets] = useState<any[]>([]);
+  const [householdBoard, setHouseholdBoard] = useState<{ todo: any[]; in_progress: any[]; completed: any[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -29,6 +31,17 @@ const App = () => {
         setError('Something went wrong');
       }
       setDashboard(null);
+      setHouseholdBoard(null);
+    }
+    try {
+      const board = await fetchBoard(token);
+      if (board && typeof board === 'object' && 'todo' in board && 'in_progress' in board && 'completed' in board) {
+        setHouseholdBoard(board);
+      } else {
+        setHouseholdBoard(null);
+      }
+    } catch (err) {
+      setHouseholdBoard(null);
     }
   };
 
@@ -183,6 +196,7 @@ const App = () => {
             </div>
           </section>
         )}
+        {householdBoard && <HouseholdBoard board={householdBoard} />}
       </main>
     </div>
   );

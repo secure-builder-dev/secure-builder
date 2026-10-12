@@ -1,4 +1,4 @@
 id: GQ-1
-state: planned
+state: building
 
 # GQ-1

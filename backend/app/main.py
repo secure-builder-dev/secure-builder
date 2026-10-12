@@ -207,6 +207,9 @@ async def change_status_route(
         raise HTTPException(status_code=401, detail="unauthorized")
     
     # Read body manually to handle validation errors
+    raw_body = await request.body()
+    if len(raw_body) > 65536:
+        raise HTTPException(status_code=413, detail="too large")
     try:
         body_bytes = await request.body()
         data = json.loads(body_bytes.decode("utf-8"))

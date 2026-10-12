@@ -173,6 +173,23 @@ export default function App() {
             </div>
           </section>
         )}
+        {filed && (
+          <section className="panel" aria-label="Tickets I filed">
+            <h2>Tickets I filed</h2>
+            <div className="card-list">
+              {filed.tickets.map((t) => (
+                <TicketCard key={t.id} ticket={t}>
+                  {t.status === "done" && (
+                    <>
+                      <button onClick={() => handleStatusChange(t.id, "closed")}>Close</button>
+                      <button onClick={() => handleStatusChange(t.id, "open")}>Reopen</button>
+                    </>
+                  )}
+                </TicketCard>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

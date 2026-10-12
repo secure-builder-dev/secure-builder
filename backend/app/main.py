@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Depends
 
 from app.db import SessionLocal, init_db
 from app.rules import dashboard, filed, create_ticket, change_status
+from app.household import household_board
 
 
 def get_caller(request: Request) -> str | None:
@@ -193,6 +194,16 @@ async def create_ticket_route(
         return result
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid request")
+
+
+@app.get("/api/board")
+def get_board(request: Request, session: SessionLocal = Depends(get_session)):
+    """Get the household board with all tickets."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    today = datetime.now(timezone.utc).date()
+    return household_board(session, today)
 
 
 @app.post("/api/tickets/{ticket_id}/status")

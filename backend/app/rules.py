@@ -82,3 +82,49 @@ def create_ticket(session, filed_by: str, data: dict[str, Any]) -> dict[str, Any
     session.commit()
 
     return ticket_to_dict(ticket)
+
+
+def change_status(session, ticket_id: int, user: str, new_status: str) -> dict[str, Any]:
+    # Validate user
+    if user not in USERS:
+        raise LookupError("user is neither filer nor assignee")
+
+    # Fetch ticket
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError("ticket not found")
+
+    # Check if user is a party
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("user is neither filer nor assignee")
+
+    # Validate new_status
+    valid_statuses = ["open", "acknowledged", "in_progress", "done", "closed"]
+    if new_status not in valid_statuses:
+        raise ValueError("new_status must be one of open, acknowledged, in_progress, done, closed")
+
+    # Check if move is in the table
+    allowed_moves = {
+        ("open", "acknowledged"): "assignee",
+        ("acknowledged", "in_progress"): "assignee",
+        ("in_progress", "done"): "assignee",
+        ("done", "closed"): "filer",
+        ("done", "open"): "filer",
+        ("closed", "open"): "filer",
+    }
+    move = (ticket.status, new_status)
+    if move not in allowed_moves:
+        raise ValueError("move not in the table")
+
+    # Check if user has permission
+    required_party = allowed_moves[move]
+    if (required_party == "assignee" and user != ticket.assigned_to) or \
+       (required_party == "filer" and user != ticket.filed_by):
+        raise PermissionError("user does not have permission for this move")
+
+    # Update ticket
+    ticket.status = new_status
+    ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+    session.commit()
+
+    return ticket_to_dict(ticket)

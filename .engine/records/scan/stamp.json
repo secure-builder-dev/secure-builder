@@ -1,5 +1,5 @@
 {
-  "commit": "f02c0e2c6f62547f58bc5695a4e85c9973b3b297",
+  "commit": "cae830679bf38248fd3160be4afa59408b731f68",
   "detection_data_date": "2026-10-09",
   "digests": {},
   "mode": "local",
@@ -9,12 +9,11 @@
     "malware",
     "vulnerabilities-a",
     "vulnerabilities-b",
-    "sast-a",
     "sast-b-python",
     "sast-b-javascript",
     "sast-b",
     "dast"
   ],
-  "timestamp": "2026-10-12T09:22:09+00:00",
-  "verdict": "green"
+  "timestamp": "2026-10-12T09:48:10+00:00",
+  "verdict": "red"
 }

@@ -9,7 +9,7 @@ def create_ticket(
     session: Session,
     caller: str,
     data: dict,
-) -> Ticket:
+) -> dict:
     """Create a new ticket.
     
     Args:
@@ -18,7 +18,7 @@ def create_ticket(
         data: Dict with title, details, priority, due keys
         
     Returns:
-        The created Ticket instance
+        The created ticket as a dict
         
     Raises:
         ValueError: If validation fails
@@ -65,15 +65,15 @@ def create_ticket(
     )
     session.add(ticket)
     session.commit()
-    return ticket
+    return ticket_to_dict(ticket)
 
 
 def change_status(
     session: Session,
     ticket_id: int,
-    new_status: str,
     caller: str,
-) -> Ticket:
+    new_status: str,
+) -> dict:
     """Change the status of a ticket.
     
     Args:
@@ -83,7 +83,7 @@ def change_status(
         caller: 'her' or 'him'
         
     Returns:
-        The updated Ticket instance
+        The updated ticket as a dict
         
     Raises:
         LookupError: If ticket not found or caller is not a party
@@ -122,7 +122,7 @@ def change_status(
     ticket.status = new_status
     ticket.updated_at = dt.datetime.now(dt.timezone.utc)
     session.commit()
-    return ticket
+    return ticket_to_dict(ticket)
 
 
 def ticket_to_dict(ticket: Ticket) -> dict:

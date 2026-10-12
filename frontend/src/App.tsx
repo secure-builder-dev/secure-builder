@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { fetchDashboard, fetchFiled, createTicket, changeStatus, fetchBoard, fetchMe } from './api';
 import TicketCard from './TicketCard';
 import HouseholdBoard from './HouseholdBoard';
+import Menu from './Menu';
+import Directions from './Directions';
 import './styles.css';
 
 const App = () => {
@@ -17,6 +19,7 @@ const App = () => {
     due: ''
   });
   const [signedInUser, setSignedInUser] = useState<string | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
 
   const loadData = async () => {
     try {
@@ -93,6 +96,7 @@ const App = () => {
     <div className="app">
       <header className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <div className="token-form">
           <label htmlFor="token-input">Token</label>
           <input
@@ -107,6 +111,7 @@ const App = () => {
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
+        {showDirections && <Directions onClose={() => setShowDirections(false)} />}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>New ticket{signedInUser && signedInUser === 'her' ? ' for him' : signedInUser === 'him' ? ' for her' : ''}</h2>
           <form onSubmit={handleSubmit}>

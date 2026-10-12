@@ -9,6 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.db import SessionLocal, init_db
 from app import rules
+from app.household import household_board
 
 
 @asynccontextmanager
@@ -59,10 +60,22 @@ async def dashboard(caller: str = Depends(get_caller), db=Depends(get_db)):
     return JSONResponse(content=board)
 
 
+@app.get("/api/board")
+async def board(caller: str = Depends(get_caller), db=Depends(get_db)):
+    today = datetime.now(timezone.utc).date()
+    board = household_board(db, today)
+    return JSONResponse(content=board)
+
+
 @app.get("/api/filed")
 async def filed(caller: str = Depends(get_caller), db=Depends(get_db)):
     tickets = rules.filed(db, caller)
     return JSONResponse(content={"tickets": tickets})
+
+
+@app.get("/api/me")
+async def me(caller: str = Depends(get_caller)):
+    return JSONResponse(content={"user": caller})
 
 
 @app.exception_handler(HTTPException)

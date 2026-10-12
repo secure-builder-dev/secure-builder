@@ -1,12 +1,14 @@
 import { useState } from "react";
 import "./styles.css";
 import type { Board, Filed, NewTicket, Ticket } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled } from "./api";
+import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard } from "./api";
 import TicketCard from "./TicketCard";
+import HouseholdBoard from "./HouseholdBoard";
 
 export default function App() {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
+  const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Filed | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -31,6 +33,19 @@ export default function App() {
       }
       setBoard(null);
       setFiled(null);
+    }
+
+    // Fetch household board separately; failures are silent and do not affect the rest of the page
+    try {
+      const boardRes = await fetchBoard(token);
+      if (boardRes && typeof boardRes === "object" &&
+          Array.isArray(boardRes.todo) &&
+          Array.isArray(boardRes.in_progress) &&
+          Array.isArray(boardRes.completed)) {
+        setHouseholdBoard(boardRes);
+      }
+    } catch {
+      // Silently ignore failures for household board
     }
   }
 
@@ -211,6 +226,7 @@ export default function App() {
                 })}
               </div>
             </section>
+            {householdBoard && <HouseholdBoard board={householdBoard} />}
           </>
         )}
       </main>

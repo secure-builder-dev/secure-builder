@@ -206,6 +206,15 @@ def get_board(request: Request, session: SessionLocal = Depends(get_session)):
     return household_board(session, today)
 
 
+@app.get("/api/me")
+def get_me(request: Request):
+    """Get the current caller's username."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    return {"user": caller}
+
+
 @app.post("/api/tickets/{ticket_id}/status")
 async def change_status_route(
     ticket_id: int,

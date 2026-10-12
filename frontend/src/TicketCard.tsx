@@ -1,5 +1,6 @@
 import React from "react";
 import type { Ticket } from "./types";
+import HoverCard from "./HoverCard";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -15,7 +16,11 @@ export default function TicketCard({ ticket, children }: TicketCardProps) {
       className={`card${ticket.group === 0 ? " urgent" : ""}`}
       aria-label={title}
     >
-      <h3 className="card-title">{title}</h3>
+      <h3 className="card-title">
+        <HoverCard ticket={ticket}>
+          {title}
+        </HoverCard>
+      </h3>
       <div className="card-meta">
         <span className={`badge priority-${priority}`}>
           {priority}

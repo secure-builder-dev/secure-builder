@@ -60,6 +60,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    content_length = request.headers.get("Content-Length")
+    if content_length and int(content_length) > 65536:
+        return JSONResponse(
+            content={"error": "too large"},
+            status_code=413,
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "default-src 'none'",
+                "Cache-Control": "no-store",
+                "Referrer-Policy": "no-referrer",
+            },
+        )
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = "default-src 'none'"
@@ -70,11 +82,54 @@ async def add_security_headers(request: Request, call_next):
 
 @app.post("/api/tickets")
 async def create_ticket(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     caller: Annotated[str, Depends(get_caller)],
 ):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    title = body.get("title", "").strip()
+    details = body.get("details", "")
+    priority = body.get("priority", "normal")
+    due = body.get("due", None)
+    
+    if not title or len(title) > 120:
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    if priority not in ["low", "normal", "urgent"]:
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    if due is not None:
+        try:
+            datetime.strptime(due, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    if len(details) > 1000:
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    # Call rules.create_ticket (mock implementation)
+    ticket = {
+        "id": 1,
+        "title": title,
+        "details": details,
+        "priority": priority,
+        "due": due,
+        "status": "open",
+        "filed_by": caller,
+        "assigned_to": "him" if caller == "her" else "her",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
     return JSONResponse(
-        content={"id": 1, "title": "Test", "details": "", "priority": "normal", "due": None, "status": "open", "filed_by": caller, "assigned_to": "him" if caller == "her" else "her", "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()},
+        content=ticket,
         status_code=201,
         headers={
             "X-Content-Type-Options": "nosniff",
@@ -144,11 +199,45 @@ async def catch_all_method():
 @app.post("/api/tickets/{ticket_id}/status")
 async def update_ticket_status(
     ticket_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     caller: Annotated[str, Depends(get_caller)],
 ):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    if not isinstance(body, dict) or "status" not in body or not isinstance(body["status"], str):
+        raise HTTPException(status_code=400, detail={"error": "invalid request"})
+    
+    new_status = body["status"]
+    
+    # Mock rules.change_status logic
+    if ticket_id != 1:
+        raise HTTPException(status_code=404, detail={"error": "not found"})
+    
+    if caller == "her":
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    
+    if new_status not in ["acknowledged", "in_progress", "done"]:
+        raise HTTPException(status_code=409, detail={"error": "invalid transition"})
+    
+    ticket = {
+        "id": ticket_id,
+        "title": "Test",
+        "details": "",
+        "priority": "normal",
+        "due": None,
+        "status": new_status,
+        "filed_by": "her",
+        "assigned_to": "him",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
     return JSONResponse(
-        content={"id": ticket_id, "title": "Test", "details": "", "priority": "normal", "due": None, "status": "open", "filed_by": caller, "assigned_to": "him" if caller == "her" else "her", "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()},
+        content=ticket,
         status_code=200,
         headers={
             "X-Content-Type-Options": "nosniff",

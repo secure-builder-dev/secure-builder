@@ -53,3 +53,15 @@ export async function changeStatus(token: string, id: number, status: string): P
   }
   return res.json();
 }
+
+export async function fetchBoard(token: string): Promise<Board> {
+  const res = await fetch("/api/board", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(String(res.status));
+  }
+  return res.json();
+}

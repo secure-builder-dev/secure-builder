@@ -6,6 +6,10 @@
    "approval": "approved",
    "available_on_target": "2026-10-08"
   },
+  "@testing-library/jest-dom": {
+   "approval": "approved",
+   "available_on_target": "2026-10-09"
+  },
   "@testing-library/react": {
    "approval": "approved",
    "available_on_target": "2026-10-08"

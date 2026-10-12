@@ -1,0 +1,20 @@
+{
+  "commit": "27637443e3b616b65a09f26fae9de0891ffdc4c6",
+  "detection_data_date": "2026-10-09",
+  "digests": {},
+  "mode": "local",
+  "scanners": [
+    "container-hygiene",
+    "iac-misconfiguration",
+    "malware",
+    "vulnerabilities-a",
+    "vulnerabilities-b",
+    "sast-a",
+    "sast-b-python",
+    "sast-b-javascript",
+    "sast-b",
+    "dast"
+  ],
+  "timestamp": "2026-10-12T13:31:37+00:00",
+  "verdict": "green"
+}

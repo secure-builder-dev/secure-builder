@@ -6,6 +6,7 @@ import './styles.css';
 const App = () => {
   const [token, setToken] = useState('');
   const [dashboard, setDashboard] = useState<{ todo: any[]; in_progress: any[]; completed: any[] } | null>(null);
+  const [filedTickets, setFiledTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -17,7 +18,9 @@ const App = () => {
   const handleLoad = async () => {
     try {
       const dash = await fetchDashboard(token);
+      const filed = await fetchFiled(token);
       setDashboard(dash);
+      setFiledTickets(filed.tickets);
       setError(null);
     } catch (err) {
       if (err instanceof Error && err.message === '401') {
@@ -26,6 +29,7 @@ const App = () => {
         setError('Something went wrong');
       }
       setDashboard(null);
+      setFiledTickets([]);
     }
   };
 
@@ -40,9 +44,6 @@ const App = () => {
       });
       setFormData({ title: '', details: '', priority: 'normal', due: '' });
       await handleLoad();
-      const filed = await fetchFiled(token);
-      // The test expects two GET /api/filed calls, so we intentionally re-fetch without using the result
-      await fetchFiled(token);
     } catch (err) {
       if (err instanceof Error && err.message === '401') {
         setError('Wrong token');
@@ -163,6 +164,23 @@ const App = () => {
                   <p className="empty">Nothing here</p>
                 )}
               </section>
+            </div>
+          </section>
+        )}
+        {dashboard && (
+          <section className="panel" aria-label="Tickets I filed">
+            <h2>Tickets I filed</h2>
+            <div className="card-list">
+              {filedTickets.map((ticket) => (
+                <TicketCard key={ticket.id} ticket={ticket}>
+                  {ticket.status === 'done' && (
+                    <>
+                      <button onClick={() => handleStatusChange(ticket.id, 'closed')}>Close</button>
+                      <button onClick={() => handleStatusChange(ticket.id, 'open')}>Reopen</button>
+                    </>
+                  )}
+                </TicketCard>
+              ))}
             </div>
           </section>
         )}

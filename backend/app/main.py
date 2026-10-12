@@ -6,7 +6,7 @@ from typing import Generator
 from fastapi import FastAPI, Request, Depends
 
 from app.db import SessionLocal, init_db
-from app.rules import dashboard, filed
+from app.rules import dashboard, filed, create_ticket, change_status
 
 
 def get_caller(request: Request) -> str | None:
@@ -60,6 +60,29 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
+async def check_body_size_middleware(request: Request, call_next):
+    """Check Content-Length header and reject bodies over 65536 bytes."""
+    content_length = request.headers.get("Content-Length")
+    if content_length is not None:
+        try:
+            if int(content_length) > 65536:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "too large"},
+                    headers={
+                        "X-Content-Type-Options": "nosniff",
+                        "Content-Security-Policy": "default-src 'none'",
+                        "Cache-Control": "no-store",
+                        "Referrer-Policy": "no-referrer",
+                    },
+                )
+        except ValueError:
+            pass
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def add_security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -69,8 +92,11 @@ async def add_security_headers_middleware(request: Request, call_next):
     return response
 
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Body
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request as StarletteRequest
+import json
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -85,10 +111,26 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     else:
         detail = getattr(exc, "detail", "error")
     
-    from fastapi.responses import JSONResponse
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": detail},
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer",
+        },
+    )
+
+
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle FastAPI validation errors with 400 invalid request."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"},
         headers={
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "default-src 'none'",
@@ -121,6 +163,71 @@ def get_filed(request: Request, session: SessionLocal = Depends(get_session)):
     """Get tickets filed by the caller."""
     caller = get_caller(request)
     if caller is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="unauthorized")
     return {"tickets": filed(session, caller)}
+
+
+@app.post("/api/tickets", status_code=201)
+async def create_ticket_route(
+    request: Request,
+    session: SessionLocal = Depends(get_session),
+):
+    """Create a new ticket."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    
+    # Read body manually to handle validation errors
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="invalid request")
+    
+    # Must be a JSON object
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="invalid request")
+    
+    try:
+        result = create_ticket(session, caller, data)
+        return result
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid request")
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+async def change_status_route(
+    ticket_id: int,
+    request: Request,
+    session: SessionLocal = Depends(get_session),
+):
+    """Change the status of a ticket."""
+    caller = get_caller(request)
+    if caller is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    
+    # Read body manually to handle validation errors
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="invalid request")
+    
+    # Must be exactly {"status": <string>}
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="invalid request")
+    if set(data.keys()) != {"status"}:
+        raise HTTPException(status_code=400, detail="invalid request")
+    new_status = data["status"]
+    if not isinstance(new_status, str):
+        raise HTTPException(status_code=400, detail="invalid request")
+    
+    try:
+        result = change_status(session, ticket_id, caller, new_status)
+        return result
+    except LookupError:
+        raise HTTPException(status_code=404, detail="not found")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="forbidden")
+    except ValueError:
+        raise HTTPException(status_code=409, detail="invalid transition")

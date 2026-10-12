@@ -50,3 +50,11 @@ export async function changeStatus(token: string, id: number, status: string): P
   checkStatus(res.status);
   return res.json();
 }
+
+export async function fetchBoard(token: string): Promise<Board> {
+  const res = await fetch(`${BASE}/board`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  checkStatus(res.status);
+  return res.json();
+}

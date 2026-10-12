@@ -104,4 +104,64 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class BodySizeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("Content-Length")
+        if content_length and int(content_length) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"},
+            )
+        return await call_next(request)
+
+
+@app.exception_handler(Exception)
+async def validation_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"},
+    )
+
+
+@app.post("/api/tickets")
+async def create_ticket_endpoint(caller: str = Depends(get_caller), db=Depends(get_db), request: Request = None):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    if not isinstance(body, dict):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    try:
+        ticket = rules.create_ticket(db, caller, body)
+        return JSONResponse(content=ticket, status_code=201)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+async def change_status_endpoint(ticket_id: int, caller: str = Depends(get_caller), db=Depends(get_db), request: Request = None):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    if not isinstance(body, dict) or body.keys() != {"status"} or not isinstance(body["status"], str):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    new_status = body["status"]
+    
+    try:
+        ticket = rules.change_status(db, ticket_id, caller, new_status)
+        return JSONResponse(content=ticket)
+    except LookupError:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    except PermissionError:
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    except ValueError:
+        return JSONResponse(status_code=409, content={"error": "invalid transition"})
+
+
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeMiddleware)

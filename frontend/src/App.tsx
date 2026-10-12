@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchDashboard, fetchFiled, createTicket, changeStatus, fetchBoard } from './api';
+import { fetchDashboard, fetchFiled, createTicket, changeStatus, fetchBoard, fetchMe } from './api';
 import TicketCard from './TicketCard';
 import HouseholdBoard from './HouseholdBoard';
 import './styles.css';
@@ -16,6 +16,7 @@ const App = () => {
     priority: 'normal' as 'low' | 'normal' | 'urgent',
     due: ''
   });
+  const [signedInUser, setSignedInUser] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -42,6 +43,16 @@ const App = () => {
       }
     } catch (err) {
       setHouseholdBoard(null);
+    }
+    try {
+      const me = await fetchMe(token);
+      if (me && typeof me === 'object' && 'user' in me && (me.user === 'her' || me.user === 'him')) {
+        setSignedInUser(me.user);
+      } else {
+        setSignedInUser(null);
+      }
+    } catch (err) {
+      setSignedInUser(null);
     }
   };
 
@@ -92,11 +103,12 @@ const App = () => {
           />
           <button onClick={loadData}>Load</button>
         </div>
+        {signedInUser && <span className="whoami">Signed in as {signedInUser}</span>}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
         <section className="panel new-ticket" aria-label="New ticket">
-          <h2>New ticket</h2>
+          <h2>New ticket{signedInUser && signedInUser === 'her' ? ' for him' : signedInUser === 'him' ? ' for her' : ''}</h2>
           <form onSubmit={handleSubmit}>
             <label htmlFor="title-input">Title</label>
             <input

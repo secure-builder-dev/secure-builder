@@ -39,6 +39,69 @@ def ticket_to_dict(ticket: Ticket) -> dict[str, Any]:
     }
 
 
+STATUS_MOVES = {
+    ("open", "acknowledged"): "assignee",
+    ("acknowledged", "in_progress"): "assignee",
+    ("in_progress", "done"): "assignee",
+    ("done", "closed"): "filer",
+    ("done", "open"): "filer",
+    ("closed", "open"): "filer",
+}
+
+VALID_STATUSES = {"open", "acknowledged", "in_progress", "done", "closed"}
+
+
+def change_status(session, ticket_id: int, user: str, new_status: str) -> dict[str, Any]:
+    """Change the status of a ticket according to the design's status table.
+    
+    Args:
+        session: Database session
+        ticket_id: ID of the ticket to update
+        user: User attempting the change ('her' or 'him')
+        new_status: Target status
+    
+    Returns:
+        ticket_to_dict result for the updated ticket
+    
+    Raises:
+        LookupError: If ticket does not exist or user is neither filer nor assignee
+        ValueError: If new_status is invalid or the move is not in the table
+        PermissionError: If the move is valid but user is not the authorized party
+    """
+    # Check if ticket exists and user is a party (LookupError first)
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError(f"Ticket {ticket_id} not found")
+    
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError(f"User {user} is not a party to ticket {ticket_id}")
+    
+    # Validate new_status (ValueError second)
+    if new_status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status: {new_status}")
+    
+    current_status = ticket.status
+    
+    # Check if the move is in the table (ValueError for invalid moves, including same status)
+    move_key = (current_status, new_status)
+    if move_key not in STATUS_MOVES:
+        raise ValueError(f"Invalid transition from {current_status} to {new_status}")
+    
+    # Check if user is the authorized party (PermissionError third)
+    required_party = STATUS_MOVES[move_key]
+    expected_user = ticket.assigned_to if required_party == "assignee" else ticket.filed_by
+    
+    if user != expected_user:
+        raise PermissionError(f"User {user} is not authorized to make this transition")
+    
+    # Perform the status change
+    ticket.status = new_status
+    ticket.updated_at = datetime.now(timezone.utc)
+    session.commit()
+    
+    return ticket_to_dict(ticket)
+
+
 def create_ticket(session, filed_by: str, data: dict[str, Any]) -> dict[str, Any]:
     """Create a new ticket with validation.
     

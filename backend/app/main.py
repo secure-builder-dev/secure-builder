@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request, Depends
 from app.db import SessionLocal, init_db
 from app.rules import dashboard, filed, create_ticket, change_status
 from app.household import household_board
+from fastapi import FastAPI
 
 
 def get_caller(request: Request) -> str | None:
@@ -59,6 +60,10 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app with lifespan and middleware
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/api/search")
+def search(q: str):
+    return {"query": q}
 
 @app.middleware("http")
 async def check_body_size_middleware(request: Request, call_next):

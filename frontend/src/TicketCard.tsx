@@ -1,12 +1,15 @@
 import React from 'react';
 import type { Ticket } from './types';
+import HoverCard from './HoverCard';
 
 const TicketCard = ({ ticket, children }: { ticket: Ticket; children?: React.ReactNode }) => {
   const statusText = ticket.status.replace(/_/g, ' ');
 
   return (
     <article className={`card ${ticket.group === 0 ? 'urgent' : ''}`} aria-label={ticket.title}>
-      <h3 className="card-title">{ticket.title}</h3>
+      <h3 className="card-title">
+        <HoverCard ticket={ticket}>{ticket.title}</HoverCard>
+      </h3>
       <div className="card-meta">
         <span className={`badge priority-${ticket.priority}`}>{ticket.priority}</span>
         {ticket.due && <span className="due">due {ticket.due}</span>}

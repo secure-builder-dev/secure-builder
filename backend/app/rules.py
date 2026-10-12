@@ -102,6 +102,108 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict[s
     return ticket_to_dict(ticket)
 
 
+def _compute_group(priority: str, due: date | None, today: date) -> int:
+    """Compute the group number for a ticket based on priority and due date."""
+    if priority == "urgent":
+        return 0
+    if due is not None:
+        if due < today:
+            return 0
+        delta = (due - today).days
+        if 0 <= delta <= 3:
+            return 1
+    return 2
+
+
+def dashboard(session, user: str, today: date) -> dict[str, list[dict[str, Any]]]:
+    """Return the personal board for a user.
+    
+    Args:
+        session: Database session
+        user: The user whose board to show ('her' or 'him')
+        today: The reference date for grouping and completed window
+    
+    Returns:
+        Dict with keys 'todo', 'in_progress', 'completed', each a list of ticket dicts.
+        todo and in_progress include a 'group' key; completed does not.
+    """
+    from sqlalchemy import select, and_, or_, func, desc
+    from datetime import timedelta
+    
+    # Get all tickets assigned to this user
+    stmt = select(Ticket).where(Ticket.assigned_to == user)
+    tickets = session.execute(stmt).scalars().all()
+    
+    todo: list[dict[str, Any]] = []
+    in_progress: list[dict[str, Any]] = []
+    completed: list[dict[str, Any]] = []
+    
+    # Completed window: today and the 6 days before (7 days ending today)
+    window_start = today - timedelta(days=6)
+    
+    for ticket in tickets:
+        tdict = ticket_to_dict(ticket)
+        status = ticket.status
+        
+        if status in ("open", "acknowledged"):
+            # Add group key for todo
+            group = _compute_group(ticket.priority, ticket.due, today)
+            tdict["group"] = group
+            todo.append(tdict)
+        elif status == "in_progress":
+            # Add group key for in_progress
+            group = _compute_group(ticket.priority, ticket.due, today)
+            tdict["group"] = group
+            in_progress.append(tdict)
+        elif status in ("done", "closed"):
+            # Check if updated_at is within the completed window
+            update_date = ticket.updated_at.date()
+            if window_start <= update_date <= today:
+                completed.append(tdict)
+    
+    # Sort todo and in_progress: by group, then due (None last), then created_at oldest first
+    def sort_key(t):
+        group = t["group"]
+        due = t["due"]
+        # For sorting: None should come last, so use a tuple where None maps to a high value
+        if due is None:
+            due_sort = (1, "")  # (1,) puts it after all dates
+        else:
+            due_sort = (0, due)
+        created_at = t["created_at"]
+        return (group, due_sort, created_at)
+    
+    todo.sort(key=sort_key)
+    in_progress.sort(key=sort_key)
+    
+    # Sort completed: newest updated_at first
+    completed.sort(key=lambda t: t["updated_at"], reverse=True)
+    
+    return {
+        "todo": todo,
+        "in_progress": in_progress,
+        "completed": completed,
+    }
+
+
+def filed(session, user: str) -> list[dict[str, Any]]:
+    """Return all tickets filed by a user, newest created_at first.
+    
+    Args:
+        session: Database session
+        user: The user whose filed tickets to show ('her' or 'him')
+    
+    Returns:
+        List of ticket dicts, ordered by created_at descending.
+    """
+    from sqlalchemy import select
+    
+    stmt = select(Ticket).where(Ticket.filed_by == user).order_by(Ticket.created_at.desc())
+    tickets = session.execute(stmt).scalars().all()
+    
+    return [ticket_to_dict(t) for t in tickets]
+
+
 def create_ticket(session, filed_by: str, data: dict[str, Any]) -> dict[str, Any]:
     """Create a new ticket with validation.
     

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchDashboard, fetchFiled } from './api';
+import { fetchDashboard, fetchFiled, createTicket, changeStatus } from './api';
 import TicketCard from './TicketCard';
 import './styles.css';
 
@@ -7,6 +7,12 @@ const App = () => {
   const [token, setToken] = useState('');
   const [dashboard, setDashboard] = useState<{ todo: any[]; in_progress: any[]; completed: any[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    details: '',
+    priority: 'normal' as 'low' | 'normal' | 'urgent',
+    due: ''
+  });
 
   const loadData = async () => {
     try {
@@ -20,6 +26,39 @@ const App = () => {
         setError('Something went wrong');
       }
       setDashboard(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createTicket(token, {
+        title: formData.title,
+        details: formData.details,
+        priority: formData.priority,
+        due: formData.due || null
+      });
+      setFormData({ title: '', details: '', priority: 'normal', due: '' });
+      await loadData();
+    } catch (err) {
+      if (err instanceof Error && err.message === '401') {
+        setError('Wrong token');
+      } else {
+        setError('Something went wrong');
+      }
+    }
+  };
+
+  const handleStatusChange = async (id: number, status: string) => {
+    try {
+      await changeStatus(token, id, status);
+      await loadData();
+    } catch (err) {
+      if (err instanceof Error && err.message === '401') {
+        setError('Wrong token');
+      } else {
+        setError('Something went wrong');
+      }
     }
   };
 
@@ -40,6 +79,42 @@ const App = () => {
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
+        <section className="panel new-ticket" aria-label="New ticket">
+          <h2>New ticket</h2>
+          <form onSubmit={handleSubmit}>
+            <label htmlFor="title-input">Title</label>
+            <input
+              id="title-input"
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+            />
+            <label htmlFor="details-input">Details</label>
+            <textarea
+              id="details-input"
+              value={formData.details}
+              onChange={(e) => setFormData({...formData, details: e.target.value})}
+            />
+            <label htmlFor="priority-input">Priority</label>
+            <select
+              id="priority-input"
+              value={formData.priority}
+              onChange={(e) => setFormData({...formData, priority: e.target.value as 'low' | 'normal' | 'urgent'})}
+            >
+              <option value="low">low</option>
+              <option value="normal">normal</option>
+              <option value="urgent">urgent</option>
+            </select>
+            <label htmlFor="due-input">Due</label>
+            <input
+              id="due-input"
+              type="date"
+              value={formData.due}
+              onChange={(e) => setFormData({...formData, due: e.target.value})}
+            />
+            <button type="submit">File ticket</button>
+          </form>
+        </section>
         {dashboard && (
           <section className="panel" aria-label="My board">
             <h2>My board</h2>
@@ -50,7 +125,10 @@ const App = () => {
                 </h3>
                 {dashboard.todo.length > 0 ? (
                   dashboard.todo.map((ticket) => (
-                    <TicketCard key={ticket.id} ticket={ticket} />
+                    <TicketCard key={ticket.id} ticket={ticket}>
+                      {ticket.status === 'open' && <button onClick={() => handleStatusChange(ticket.id, 'acknowledged')}>Acknowledge</button>}
+                      {ticket.status === 'acknowledged' && <button onClick={() => handleStatusChange(ticket.id, 'in_progress')}>Start</button>}
+                    </TicketCard>
                   ))
                 ) : (
                   <p className="empty">Nothing here</p>
@@ -62,7 +140,9 @@ const App = () => {
                 </h3>
                 {dashboard.in_progress.length > 0 ? (
                   dashboard.in_progress.map((ticket) => (
-                    <TicketCard key={ticket.id} ticket={ticket} />
+                    <TicketCard key={ticket.id} ticket={ticket}>
+                      {ticket.status === 'in_progress' && <button onClick={() => handleStatusChange(ticket.id, 'done')}>Done</button>}
+                    </TicketCard>
                   ))
                 ) : (
                   <p className="empty">Nothing here</p>

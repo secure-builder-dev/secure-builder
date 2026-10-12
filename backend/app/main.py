@@ -141,7 +141,7 @@ async def create_ticket_endpoint(caller: str = Depends(get_caller), db=Depends(g
 
 
 @app.post("/api/tickets/{ticket_id}/status")
-async def change_status_endpoint(ticket_id: int, caller: str = Depends(get_caller), db=Depends(get_db), request: Request = None):
+async def change_status_endpoint(ticket_id: str, caller: str = Depends(get_caller), db=Depends(get_db), request: Request = None):
     try:
         body = await request.json()
     except Exception:
@@ -153,7 +153,12 @@ async def change_status_endpoint(ticket_id: int, caller: str = Depends(get_calle
     new_status = body["status"]
     
     try:
-        ticket = rules.change_status(db, ticket_id, caller, new_status)
+        ticket_id_int = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    
+    try:
+        ticket = rules.change_status(db, ticket_id_int, caller, new_status)
         return JSONResponse(content=ticket)
     except LookupError:
         return JSONResponse(status_code=404, content={"error": "not found"})

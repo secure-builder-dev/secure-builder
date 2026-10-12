@@ -58,3 +58,11 @@ export async function fetchBoard(token: string): Promise<Board> {
   checkStatus(res.status);
   return res.json();
 }
+
+export async function fetchMe(token: string): Promise<Me> {
+  const res = await fetch(`${BASE}/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  checkStatus(res.status);
+  return res.json();
+}

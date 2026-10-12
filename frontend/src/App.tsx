@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./styles.css";
-import type { Board, Filed, NewTicket, Ticket } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard } from "./api";
+import type { Board, Filed, Me, NewTicket, Ticket, User } from "./types";
+import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard, fetchMe } from "./api";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 
@@ -10,6 +10,7 @@ export default function App() {
   const [board, setBoard] = useState<Board | null>(null);
   const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Filed | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -46,6 +47,20 @@ export default function App() {
       }
     } catch {
       // Silently ignore failures for household board
+    }
+
+    // Fetch /api/me separately; failures are silent and do not affect the rest of the page
+    try {
+      const meRes = await fetchMe(token);
+      if (meRes && typeof meRes === "object" &&
+          (meRes.user === "her" || meRes.user === "him")) {
+        setMe(meRes);
+      } else {
+        setMe(null);
+      }
+    } catch {
+      // Silently ignore failures for /api/me
+      setMe(null);
     }
   }
 
@@ -147,13 +162,14 @@ export default function App() {
           </label>
           <button onClick={handleLoad}>Load</button>
         </div>
+        {me && <span className="whoami">Signed in as {me.user}</span>}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
         {board && (
           <>
             <section className="panel new-ticket" aria-label="New ticket">
-              <h2>New ticket</h2>
+              <h2>{me && (me.user === "her" ? "New ticket for him" : me.user === "him" ? "New ticket for her" : "New ticket") || "New ticket"}</h2>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

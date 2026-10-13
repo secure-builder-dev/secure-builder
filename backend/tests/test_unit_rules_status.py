@@ -29,7 +29,12 @@ class TestChangeStatusSuccess:
         assert result["id"] == t.id
         # updated_at should be close to now (within 2 seconds)
         now = datetime.now(timezone.utc)
-        assert abs((result["updated_at"][:19] if isinstance(result["updated_at"], str) else result["updated_at"]).replace(tzinfo=timezone.utc) - now).total_seconds() < 2
+        updated_at_str = result["updated_at"]
+        if isinstance(updated_at_str, str):
+            updated_at_dt = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+        else:
+            updated_at_dt = updated_at_str
+        assert abs((updated_at_dt - now).total_seconds()) < 2
 
     def test_acknowledged_to_in_progress_by_assignee(self, db):
         t = Ticket(

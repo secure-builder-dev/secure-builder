@@ -34,8 +34,8 @@ def ticket_to_dict(ticket: Ticket) -> dict:
         "status": ticket.status,
         "filed_by": ticket.filed_by,
         "assigned_to": ticket.assigned_to,
-        "created_at": created_at.isoformat().replace("+00:00", "Z"),
-        "updated_at": updated_at.isoformat().replace("+00:00", "Z"),
+        "created_at": created_at.isoformat(),
+        "updated_at": updated_at.isoformat(),
     }
 
 
@@ -116,6 +116,10 @@ def create_ticket(
     Raises:
         ValueError: If title is invalid, details too long, priority invalid, or due invalid
     """
+    USERS = {"her", "him"}
+    if user not in USERS:
+        raise ValueError(f"Invalid user: {user}")
+    
     # Extract and validate fields
     title = data.get("title", "")
     details = data.get("details", "")
@@ -127,18 +131,22 @@ def create_ticket(
     if not set(data.keys()).issubset(allowed_keys):
         raise ValueError("Invalid field in request")
     
-    # Validate title
+    # Validate title type before calling strip()
+    if not isinstance(title, str):
+        raise ValueError("Title must be a string")
     stripped_title = title.strip()
     if not stripped_title or len(stripped_title) > 120:
         raise ValueError("Title must be 1-120 characters")
     
-    # Validate details
+    # Validate details type before checking length
     if not isinstance(details, str):
         raise ValueError("Details must be a string")
     if len(details) > 1000:
         raise ValueError("Details must be 0-1000 characters")
     
-    # Validate priority
+    # Validate priority type and value
+    if not isinstance(priority, str):
+        raise ValueError("Priority must be a string")
     valid_priorities = {"low", "normal", "urgent"}
     if priority not in valid_priorities:
         raise ValueError(f"Invalid priority: {priority}")
@@ -146,6 +154,8 @@ def create_ticket(
     # Parse due date
     due = None
     if due_str is not None:
+        if not isinstance(due_str, str):
+            raise ValueError("Due must be a string")
         try:
             due = date.fromisoformat(due_str)
         except (ValueError, TypeError):
@@ -280,8 +290,11 @@ def _sort_key_for_active_by_dict(ticket_dict: dict, today: date):
     else:
         due_sort = (1, date.max)
     
-    # Parse created_at for sorting
-    created_at = datetime.fromisoformat(ticket_dict["created_at"].replace("Z", "+00:00"))
+    # Parse created_at for sorting (handle both +00:00 and Z formats)
+    created_at_str = ticket_dict["created_at"]
+    if created_at_str.endswith("Z"):
+        created_at_str = created_at_str[:-1] + "+00:00"
+    created_at = datetime.fromisoformat(created_at_str)
     
     return (group, due_sort, created_at)
 

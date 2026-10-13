@@ -1,21 +1,41 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from typing import Optional
+import time
 
 from app.models import Ticket
 
 
 def ticket_to_dict(ticket: Ticket) -> dict:
     """Convert a Ticket to a dictionary."""
+    due_str = None
+    if ticket.due is not None:
+        if isinstance(ticket.due, datetime):
+            due_str = ticket.due.strftime("%Y-%m-%d")
+        elif isinstance(ticket.due, date):
+            due_str = ticket.due.isoformat()
+        else:
+            due_str = str(ticket.due)
+    
+    # Ensure timestamps are timezone-aware UTC before converting
+    created_at = ticket.created_at
+    updated_at = ticket.updated_at
+    
+    if not created_at.tzinfo:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    if not updated_at.tzinfo:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    
     return {
         "id": ticket.id,
         "title": ticket.title,
         "details": ticket.details,
         "priority": ticket.priority,
-        "due": ticket.due.strftime("%Y-%m-%d") if ticket.due else None,
+        "due": due_str,
         "status": ticket.status,
         "filed_by": ticket.filed_by,
         "assigned_to": ticket.assigned_to,
-        "created_at": ticket.created_at.isoformat(),
-        "updated_at": ticket.updated_at.isoformat(),
+        "created_at": created_at.isoformat().replace("+00:00", "Z"),
+        "updated_at": updated_at.isoformat().replace("+00:00", "Z"),
     }
 
 
@@ -69,8 +89,70 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
         raise PermissionError(f"User '{user}' is not the assignee")
     
     # Perform the status change
+    now = datetime.now(timezone.utc)
     ticket.status = new_status
-    ticket.updated_at = datetime.now(timezone.utc)
+    ticket.updated_at = now
+    session.commit()
+    
+    return ticket_to_dict(ticket)
+
+
+def create_ticket(
+    session,
+    title: str,
+    details: str,
+    priority: str,
+    due: Optional[date],
+    user: str
+) -> dict:
+    """
+    Create a new ticket.
+    
+    Args:
+        session: Database session
+        title: Ticket title (1-120 chars after stripping)
+        details: Ticket details (0-1000 chars, default "")
+        priority: Priority level (low | normal | urgent, default "normal")
+        due: Due date or None
+        user: The user filing the ticket
+    
+    Returns:
+        Dictionary representation of the created ticket
+    
+    Raises:
+        ValueError: If title is invalid, details too long, priority invalid, or due invalid
+    """
+    # Validate title
+    stripped_title = title.strip()
+    if not stripped_title or len(stripped_title) > 120:
+        raise ValueError("Title must be 1-120 characters")
+    
+    # Validate details
+    if not isinstance(details, str):
+        raise ValueError("Details must be a string")
+    if len(details) > 1000:
+        raise ValueError("Details must be 0-1000 characters")
+    
+    # Validate priority
+    valid_priorities = {"low", "normal", "urgent"}
+    if priority not in valid_priorities:
+        raise ValueError(f"Invalid priority: {priority}")
+    
+    # Create ticket
+    now = datetime.now(timezone.utc)
+    ticket = Ticket(
+        title=stripped_title,
+        details=details if details else "",
+        priority=priority,
+        due=due,
+        status="open",
+        filed_by=user,
+        assigned_to="him" if user == "her" else "her",
+        created_at=now,
+        updated_at=now
+    )
+    
+    session.add(ticket)
     session.commit()
     
     return ticket_to_dict(ticket)

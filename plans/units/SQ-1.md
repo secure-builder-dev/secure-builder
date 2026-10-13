@@ -1,4 +1,4 @@
 id: SQ-1
-state: planned
+state: building
 
 # SQ-1

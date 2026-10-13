@@ -215,6 +215,13 @@ async def create_ticket_endpoint(request: StarletteRequest):
         session.close()
 
 
+@app.get("/api/me")
+def get_me(request: StarletteRequest):
+    """Get the current user."""
+    caller = require_caller(request)
+    return {"user": caller}
+
+
 @app.post("/api/tickets/{ticket_id}/status")
 async def change_status_endpoint(request: StarletteRequest, ticket_id: int):
     """Change the status of a ticket."""

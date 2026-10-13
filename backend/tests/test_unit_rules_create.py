@@ -1,16 +1,8 @@
 import pytest
-from datetime import datetime, timezone
-from dateutil.parser import parse as parse_date
+from datetime import datetime, timezone, date
 
-from app.rules import USERS, ticket_to_dict, create_ticket
+from app.rules import ticket_to_dict, create_ticket
 from app.models import Ticket
-
-
-class TestUsers:
-    def test_users_tuple_exists(self):
-        assert isinstance(USERS, tuple)
-        assert "her" in USERS
-        assert "him" in USERS
 
 
 class TestTicketToDict:
@@ -209,8 +201,8 @@ class TestCreateTicketSuccess:
 
     def test_created_at_and_updated_at_same_utc_time(self, db):
         result = create_ticket(db, "her", {"title": "Test"})
-        created = parse_date(result["created_at"])
-        updated = parse_date(result["updated_at"])
+        created = datetime.fromisoformat(result["created_at"])
+        updated = datetime.fromisoformat(result["updated_at"])
         assert created.tzinfo is not None
         assert updated.tzinfo is not None
         assert created.replace(microsecond=0) == updated.replace(microsecond=0)

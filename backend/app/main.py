@@ -5,13 +5,14 @@ from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
 
 from app.db import SessionLocal, init_db
-from app.rules import dashboard, filed
+from app.rules import dashboard, filed, create_ticket, change_status
 
 from contextlib import asynccontextmanager
 
@@ -113,6 +114,15 @@ async def http_exception_handler(request: StarletteRequest, exc: StarletteHTTPEx
         )
 
 
+# Exception handler for RequestValidationError (replaces FastAPI's default 422)
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: StarletteRequest, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"}
+    )
+
+
 
 
 
@@ -145,3 +155,133 @@ def get_filed(request: StarletteRequest):
         return {"tickets": tickets}
     finally:
         session.close()
+
+
+@app.post("/api/tickets")
+async def create_ticket_endpoint(request: StarletteRequest):
+    """Create a new ticket."""
+    caller = require_caller(request)
+    
+    # Read body manually to handle validation errors ourselves
+    try:
+        body = await request.body()
+        if len(body) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        import json
+        data = json.loads(body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Validate that body is a dict
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    session = SessionLocal()
+    try:
+        ticket_dict = create_ticket(session, caller, data)
+        return JSONResponse(
+            status_code=201,
+            content=ticket_dict
+        )
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    finally:
+        session.close()
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+async def change_status_endpoint(request: StarletteRequest, ticket_id: int):
+    """Change the status of a ticket."""
+    caller = require_caller(request)
+    
+    # Read body manually
+    try:
+        body = await request.body()
+        if len(body) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        import json
+        data = json.loads(body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Validate body is exactly {"status": <string>}
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    if set(data.keys()) != {"status"}:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    new_status = data.get("status")
+    if not isinstance(new_status, str):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    session = SessionLocal()
+    try:
+        ticket_dict = change_status(session, ticket_id, caller, new_status)
+        return JSONResponse(
+            status_code=200,
+            content=ticket_dict
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden"}
+        )
+    except ValueError:
+        return JSONResponse(
+            status_code=409,
+            content={"error": "invalid transition"}
+        )
+    finally:
+        session.close()
+
+
+# Middleware to check body size before reading
+@app.middleware("http")
+async def check_body_size(request: StarletteRequest, call_next):
+    """Check Content-Length header and reject bodies over 65536 bytes."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 65536:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "too large"}
+                )
+        except ValueError:
+            pass
+    
+    response = await call_next(request)
+    return response

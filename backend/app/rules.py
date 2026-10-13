@@ -99,22 +99,16 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
 
 def create_ticket(
     session,
-    title: str,
-    details: str,
-    priority: str,
-    due: Optional[date],
-    user: str
+    user: str,
+    data: dict
 ) -> dict:
     """
     Create a new ticket.
     
     Args:
         session: Database session
-        title: Ticket title (1-120 chars after stripping)
-        details: Ticket details (0-1000 chars, default "")
-        priority: Priority level (low | normal | urgent, default "normal")
-        due: Due date or None
         user: The user filing the ticket
+        data: Dict with fields title, details, priority, due
     
     Returns:
         Dictionary representation of the created ticket
@@ -122,6 +116,17 @@ def create_ticket(
     Raises:
         ValueError: If title is invalid, details too long, priority invalid, or due invalid
     """
+    # Extract and validate fields
+    title = data.get("title", "")
+    details = data.get("details", "")
+    priority = data.get("priority", "normal")
+    due_str = data.get("due")
+    
+    # Check for extra keys
+    allowed_keys = {"title", "details", "priority", "due"}
+    if not set(data.keys()).issubset(allowed_keys):
+        raise ValueError("Invalid field in request")
+    
     # Validate title
     stripped_title = title.strip()
     if not stripped_title or len(stripped_title) > 120:
@@ -137,6 +142,14 @@ def create_ticket(
     valid_priorities = {"low", "normal", "urgent"}
     if priority not in valid_priorities:
         raise ValueError(f"Invalid priority: {priority}")
+    
+    # Parse due date
+    due = None
+    if due_str is not None:
+        try:
+            due = date.fromisoformat(due_str)
+        except (ValueError, TypeError):
+            raise ValueError("Invalid due date format")
     
     # Create ticket
     now = datetime.now(timezone.utc)

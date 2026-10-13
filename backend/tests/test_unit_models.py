@@ -1,4 +1,5 @@
 import os
+import sys
 import importlib
 from unittest.mock import patch
 
@@ -14,26 +15,27 @@ class TestDbModule:
         # Remove the variable if it exists
         monkeypatch.delenv("TICKETER_DATABASE_URL", raising=False)
 
-        # Reload the module to trigger fresh import behavior
-        import app.db as db_module
-
-        importlib.reload(db_module)
+        # Remove any cached import of app.db so we can test fresh import
+        modules_to_remove = [k for k in sys.modules if k.startswith("app")]
+        for mod in modules_to_remove:
+            del sys.modules[mod]
 
         with pytest.raises(RuntimeError, match="TICKETER_DATABASE_URL"):
-            # Accessing any attribute that triggers initialization should fail
-            # We force evaluation by trying to use the module
-            _ = db_module.__dict__
+            # Importing the module should raise at import time
+            import app.db  # noqa: F401
 
     def test_db_raises_when_url_empty(self, monkeypatch):
         """Clause 1: RuntimeError when TICKETER_DATABASE_URL is empty."""
         monkeypatch.setenv("TICKETER_DATABASE_URL", "")
 
-        import app.db as db_module
-
-        importlib.reload(db_module)
+        # Remove any cached import of app.db so we can test fresh import
+        modules_to_remove = [k for k in sys.modules if k.startswith("app")]
+        for mod in modules_to_remove:
+            del sys.modules[mod]
 
         with pytest.raises(RuntimeError, match="TICKETER_DATABASE_URL"):
-            _ = db_module.__dict__
+            # Importing the module should raise at import time
+            import app.db  # noqa: F401
 
     def test_db_exports_engine(self, monkeypatch):
         """Clause 2: db.py defines engine."""

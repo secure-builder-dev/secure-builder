@@ -13,6 +13,7 @@ from starlette.responses import Response as StarletteResponse
 
 from app.db import SessionLocal, init_db
 from app.rules import dashboard, filed, create_ticket, change_status
+from app.household import household_board
 
 from contextlib import asynccontextmanager
 
@@ -153,6 +154,19 @@ def get_filed(request: StarletteRequest):
     try:
         tickets = filed(session, caller)
         return {"tickets": tickets}
+    finally:
+        session.close()
+
+
+@app.get("/api/board")
+def get_board(request: StarletteRequest):
+    """Get the household board."""
+    caller = require_caller(request)
+    session = SessionLocal()
+    try:
+        today = datetime.now(timezone.utc).date()
+        result = household_board(session, today)
+        return result
     finally:
         session.close()
 

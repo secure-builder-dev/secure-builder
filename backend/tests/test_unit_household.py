@@ -152,17 +152,49 @@ class TestHouseholdBoard:
     def test_todo_ordered_oldest_created_at_first(self, db):
         """Clause 2: todo ordered oldest created_at first."""
         from app.household import household_board
+        from datetime import datetime, timezone
         
-        with patch('app.rules.datetime') as mock_datetime:
-            # Create tickets in reverse chronological order
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 10, 0, tzinfo=rules.timezone.utc)
-            ticket3 = rules.create_ticket(db, 'her', {'title': 'Third'})
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 9, 0, tzinfo=rules.timezone.utc)
-            ticket2 = rules.create_ticket(db, 'him', {'title': 'Second'})
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 8, 0, tzinfo=rules.timezone.utc)
-            ticket1 = rules.create_ticket(db, 'her', {'title': 'First'})
+        # Create tickets in reverse chronological order using set_times helper
+        ticket3 = rules.create_ticket(db, 'her', {'title': 'Third'})
+        
+        # Manually update created_at to simulate different creation times
+        db.execute(
+            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
+            {"created_at": datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc), "id": ticket3['id']}
+        )
+        
+        ticket2 = rules.create_ticket(db, 'him', {'title': 'Second'})
+        db.execute(
+            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
+            {"created_at": datetime(2024, 1, 15, 9, 0, tzinfo=timezone.utc), "id": ticket2['id']}
+        )
+        
+        ticket1 = rules.create_ticket(db, 'her', {'title': 'First'})
+        db.execute(
+            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
+            {"created_at": datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc), "id": ticket1['id']}
+        )
+        
+        # Reorder: First should be oldest (8am), Second middle (9am), Third newest (10am)
+        # But we want to test that sorting by created_at works correctly
+        # So let's create them in order and then verify the sort
+        db.rollback()
+        
+        # Fresh start - create tickets with explicit timestamps
+        from sqlalchemy import text
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Third', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 10:00:00+00', '2024-01-15 10:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Second', '', 'normal', NULL, 'open', 'him', 'her', '2024-01-15 09:00:00+00', '2024-01-15 09:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('First', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 08:00:00+00', '2024-01-15 08:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         
@@ -174,23 +206,22 @@ class TestHouseholdBoard:
     def test_in_progress_ordered_oldest_created_at_first(self, db):
         """Clause 2: in_progress ordered oldest created_at first."""
         from app.household import household_board
+        from sqlalchemy import text
         
-        with patch('app.rules.datetime') as mock_datetime:
-            # Create and move tickets to in_progress in reverse order
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 10, 0, tzinfo=rules.timezone.utc)
-            ticket3 = rules.create_ticket(db, 'her', {'title': 'Third'})
-            rules.change_status(db, ticket3['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket3['id'], 'him', 'in_progress')
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 9, 0, tzinfo=rules.timezone.utc)
-            ticket2 = rules.create_ticket(db, 'him', {'title': 'Second'})
-            rules.change_status(db, ticket2['id'], 'her', 'acknowledged')
-            rules.change_status(db, ticket2['id'], 'her', 'in_progress')
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 8, 0, tzinfo=rules.timezone.utc)
-            ticket1 = rules.create_ticket(db, 'her', {'title': 'First'})
-            rules.change_status(db, ticket1['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket1['id'], 'him', 'in_progress')
+        # Create tickets with explicit timestamps and move them to in_progress
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Third', '', 'normal', NULL, 'in_progress', 'her', 'him', '2024-01-15 10:00:00+00', '2024-01-15 10:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Second', '', 'normal', NULL, 'in_progress', 'him', 'her', '2024-01-15 09:00:00+00', '2024-01-15 09:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('First', '', 'normal', NULL, 'in_progress', 'her', 'him', '2024-01-15 08:00:00+00', '2024-01-15 08:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         
@@ -202,19 +233,18 @@ class TestHouseholdBoard:
     def test_completed_contains_done_and_closed(self, db):
         """Clause 3: completed holds tickets with status done or closed."""
         from app.household import household_board
+        from sqlalchemy import text
         
-        # Create and complete a ticket (done)
-        done_ticket = rules.create_ticket(db, 'her', {'title': 'Done ticket'})
-        rules.change_status(db, done_ticket['id'], 'him', 'acknowledged')
-        rules.change_status(db, done_ticket['id'], 'him', 'in_progress')
-        rules.change_status(db, done_ticket['id'], 'him', 'done')
-        
-        # Create and close a ticket (closed)
-        closed_ticket = rules.create_ticket(db, 'him', {'title': 'Closed ticket'})
-        rules.change_status(db, closed_ticket['id'], 'her', 'acknowledged')
-        rules.change_status(db, closed_ticket['id'], 'her', 'in_progress')
-        rules.change_status(db, closed_ticket['id'], 'her', 'done')
-        rules.change_status(db, closed_ticket['id'], 'him', 'closed')
+        # Create tickets with explicit timestamps within the 7-day window
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Done ticket', '', 'normal', NULL, 'done', 'her', 'him', '2024-01-10 10:00:00+00', '2024-01-15 10:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Closed ticket', '', 'normal', NULL, 'closed', 'him', 'her', '2024-01-10 10:00:00+00', '2024-01-15 11:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         
@@ -242,21 +272,20 @@ class TestHouseholdBoard:
     def test_completed_within_7_day_window(self, db):
         """Clause 3: completed only includes tickets updated within 7 days (today + 6 before)."""
         from app.household import household_board
+        from sqlalchemy import text
         
-        with patch('app.rules.datetime') as mock_datetime:
-            # Create ticket and complete it today (should be included)
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 15, 12, 0, tzinfo=rules.timezone.utc)
-            ticket_today = rules.create_ticket(db, 'her', {'title': 'Today'})
-            rules.change_status(db, ticket_today['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket_today['id'], 'him', 'in_progress')
-            rules.change_status(db, ticket_today['id'], 'him', 'done')
-            
-            # Create ticket and complete it 6 days ago (should be included)
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 9, 12, 0, tzinfo=rules.timezone.utc)
-            ticket_6_days = rules.create_ticket(db, 'him', {'title': 'Six days ago'})
-            rules.change_status(db, ticket_6_days['id'], 'her', 'acknowledged')
-            rules.change_status(db, ticket_6_days['id'], 'her', 'in_progress')
-            rules.change_status(db, ticket_6_days['id'], 'her', 'done')
+        # Create ticket and complete it today (should be included)
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Today', '', 'normal', NULL, 'done', 'her', 'him', '2024-01-15 12:00:00+00', '2024-01-15 12:00:00+00')
+        """))
+        
+        # Create ticket and complete it 6 days ago (should be included)
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Six days ago', '', 'normal', NULL, 'done', 'him', 'her', '2024-01-09 12:00:00+00', '2024-01-09 12:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         
@@ -268,14 +297,15 @@ class TestHouseholdBoard:
     def test_completed_excludes_outside_7_day_window(self, db):
         """Clause 3: completed excludes tickets updated more than 6 days before today."""
         from app.household import household_board
+        from sqlalchemy import text
         
-        with patch('app.rules.datetime') as mock_datetime:
-            # Create ticket and complete it 7 days ago (should be excluded)
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 8, 12, 0, tzinfo=rules.timezone.utc)
-            ticket_old = rules.create_ticket(db, 'her', {'title': 'Old ticket'})
-            rules.change_status(db, ticket_old['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket_old['id'], 'him', 'in_progress')
-            rules.change_status(db, ticket_old['id'], 'him', 'done')
+        # Create ticket and complete it 7 days ago (should be excluded)
+        # Window is Jan 9-15, so Jan 8 is outside
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Old ticket', '', 'normal', NULL, 'done', 'her', 'him', '2024-01-08 12:00:00+00', '2024-01-08 12:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         

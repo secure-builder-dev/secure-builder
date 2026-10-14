@@ -405,6 +405,65 @@ async def change_status_endpoint(request: Request, id: int, session: SessionLoca
         )
 
 
+@app.patch("/api/tickets/{id}")
+async def edit_ticket_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Edit a ticket."""
+    from app.rules import edit_ticket, NotEditable
+    
+    caller = get_caller(request)
+    
+    # Read and parse the body manually
+    try:
+        body_bytes = await request.body()
+        if len(body_bytes) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        body_str = body_bytes.decode("utf-8")
+        import json
+        data = json.loads(body_str)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Must be a dict
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    try:
+        result = edit_ticket(session, id, caller, data)
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden"}
+        )
+    except NotEditable:
+        return JSONResponse(
+            status_code=409,
+            content={"error": "not editable"}
+        )
+
+
 
 
 

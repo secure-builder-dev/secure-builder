@@ -1,19 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Ticket, Comments, History, CommentOut } from "../src/types";
-
-// These functions do not exist yet in ../src/api; the tests fail until they are added.
-const fetchTicket = (token: string, id: number) => {
-  throw new Error("fetchTicket not implemented");
-};
-const fetchComments = (token: string, id: number) => {
-  throw new Error("fetchComments not implemented");
-};
-const fetchHistory = (token: string, id: number) => {
-  throw new Error("fetchHistory not implemented");
-};
-const addComment = (token: string, id: number, body: string) => {
-  throw new Error("addComment not implemented");
-};
+import {
+  fetchTicket,
+  fetchComments,
+  fetchHistory,
+  addComment,
+} from "../src/api";
 
 describe("E3 API functions", () => {
   const originalFetch = global.fetch;

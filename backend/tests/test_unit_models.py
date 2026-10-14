@@ -15,9 +15,11 @@ class TestDbModule:
         """Clause 1: RuntimeError when TICKETER_DATABASE_URL is unset."""
         env = os.environ.copy()
         env.pop("TICKETER_DATABASE_URL", None)
+        # Use absolute path for cwd to avoid Windows subprocess issues
+        backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd="backend",
+            cwd=backend_dir,
             env=env,
             capture_output=True,
             text=True,
@@ -29,9 +31,11 @@ class TestDbModule:
         """Clause 1: RuntimeError when TICKETER_DATABASE_URL is empty."""
         env = os.environ.copy()
         env["TICKETER_DATABASE_URL"] = ""
+        # Use absolute path for cwd to avoid Windows subprocess issues
+        backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd="backend",
+            cwd=backend_dir,
             env=env,
             capture_output=True,
             text=True,

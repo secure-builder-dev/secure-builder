@@ -1,11 +1,13 @@
 import { useState } from "react";
-import type { Board, NewTicket, Status, Ticket, Me, User } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard, fetchMe } from "./api";
+import type { Board, NewTicket, Status, Ticket, Me, User, BoardFilter, Summary } from "./types";
+import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard, fetchMe, fetchSummary } from "./api";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
 import TicketDetail from "./TicketDetail";
+import FilterBar from "./FilterBar";
+import SummaryBadge from "./SummaryBadge";
 import "./styles.css";
 
 export default function App() {
@@ -23,6 +25,8 @@ export default function App() {
   const [showDirections, setShowDirections] = useState(false);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   const [detailKey, setDetailKey] = useState(0);
+  const [boardFilter, setBoardFilter] = useState<BoardFilter>({ q: "", priority: "", assigned_to: "" });
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   async function handleLoad() {
     setError(null);
@@ -33,16 +37,18 @@ export default function App() {
     setBoardError(false);
     setMe(null);
     setOpenTicket(null);
+    setSummary(null);
     try {
       const dash = await fetchDashboard(token);
       const filedRes = await fetchFiled(token).catch(() => undefined);
-      const boardRes = await fetchBoard(token).catch((e) => {
+      const boardRes = await fetchBoard(token, boardFilter).catch((e) => {
         if (e instanceof Error && e.message !== "401") {
           setBoardError(true);
         }
         return undefined;
       });
       const meRes = await fetchMe(token).catch(() => undefined);
+      const summaryRes = await fetchSummary(token).catch(() => undefined);
       
       setDashboard(dash);
       setFiled(filedRes?.tickets ?? []);
@@ -62,6 +68,14 @@ export default function App() {
       if (meRes && typeof meRes === "object" && 
           (meRes.user === "her" || meRes.user === "him")) {
         setMe(meRes.user);
+      }
+      
+      // Validate summary response
+      if (summaryRes && typeof summaryRes === "object" &&
+          typeof summaryRes.overdue === "number" &&
+          typeof summaryRes.due_today === "number" &&
+          typeof summaryRes.open === "number") {
+        setSummary(summaryRes);
       }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
@@ -115,6 +129,23 @@ export default function App() {
         setError("Something went wrong");
       }
     }
+  }
+
+  function handleFilterApply(filter: BoardFilter) {
+    setBoardFilter(filter);
+    // Re-fetch the household board with the new filter
+    fetchBoard(token, filter)
+      .then((boardRes) => {
+        if (boardRes && typeof boardRes === "object" &&
+            Array.isArray(boardRes.todo) &&
+            Array.isArray(boardRes.in_progress) &&
+            Array.isArray(boardRes.completed)) {
+          setHouseholdBoard(boardRes);
+        }
+      })
+      .catch(() => {
+        // Silently fail - keep existing board
+      });
   }
 
   function renderColumn(name: string, ariaLabel: string, tickets: Ticket[]) {
@@ -176,6 +207,7 @@ export default function App() {
           <button onClick={handleLoad}>Load</button>
         </div>
         {me && <span className="whoami">Signed in as {me}</span>}
+        {summary && <SummaryBadge summary={summary} />}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
@@ -287,7 +319,9 @@ export default function App() {
           <HouseholdBoard
             board={householdBoard}
             onOpen={(ticket) => setOpenTicket(ticket)}
-          />
+          >
+            <FilterBar onApply={handleFilterApply} />
+          </HouseholdBoard>
         )}
       </main>
     </div>

@@ -72,8 +72,14 @@ def get_db_session():
 
 
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    """Add security headers to every response."""
+async def check_body_size(request: Request, call_next):
+    """Check Content-Length header and reject bodies over 65536 bytes."""
+    content_length = int(request.headers.get("Content-Length", 0))
+    if content_length > 65536:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "too large"}
+        )
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = "default-src 'none'"
@@ -81,6 +87,16 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
+
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle FastAPI validation errors with 400 invalid request."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"}
+    )
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -128,6 +144,155 @@ async def get_filed(request: Request, session: SessionLocal = Depends(get_db_ses
     caller = get_caller(request)
     tickets = filed(session, caller)
     return {"tickets": tickets}
+
+
+@app.post("/api/tickets")
+async def create_ticket_endpoint(request: Request, session: SessionLocal = Depends(get_db_session)):
+    """Create a new ticket."""
+    from app.rules import create_ticket
+    
+    caller = get_caller(request)
+    
+    # Read and parse the body manually to avoid FastAPI's 422
+    try:
+        body_bytes = await request.body()
+        if len(body_bytes) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        body_str = body_bytes.decode("utf-8")
+        import json
+        data = json.loads(body_str)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Must be a dict
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    try:
+        result = create_ticket(session, caller, data)
+        return JSONResponse(
+            status_code=201,
+            content=result
+        )
+    except ValueError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+
+
+@app.post("/api/tickets/{id}/status")
+async def change_status_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Change the status of a ticket."""
+    from app.rules import change_status
+    
+    caller = get_caller(request)
+    
+    # Read and parse the body manually
+    try:
+        body_bytes = await request.body()
+        if len(body_bytes) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        body_str = body_bytes.decode("utf-8")
+        import json
+        data = json.loads(body_str)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Must be a dict with exactly {"status": <string>}
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    if set(data.keys()) != {"status"}:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    new_status = data["status"]
+    if not isinstance(new_status, str):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    try:
+        result = change_status(session, id, caller, new_status)
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden"}
+        )
+    except ValueError:
+        return JSONResponse(
+            status_code=409,
+            content={"error": "invalid transition"}
+        )
+
+
+# Remove the duplicate 404 and 405 handlers - FastAPI handles these by default
+# The custom handler above already covers them via StarletteHTTPException mapping
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """Handle 404 errors."""
+    return JSONResponse(
+        status_code=404,
+        content={"error": "not found"}
+    )
+
+
+@app.exception_handler(405)
+async def method_not_allowed_handler(request: Request, exc):
+    """Handle 405 errors."""
+    return JSONResponse(
+        status_code=405,
+        content={"error": "method not allowed"}
+    )
+
+
+# Handle non-integer path parameter for /api/tickets/{id}/status
+@app.exception_handler(422)
+async def handle_422(request: Request, exc):
+    """Handle 422 errors (non-integer id) with 400."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": "invalid request"}
+    )
+
+# Override the default 422 handler registration
+from fastapi import FastAPI
+app.add_exception_handler(422, handle_422)
+
+# Also need to handle the case where path parameter is not an integer
+# FastAPI will raise a 422 for this, which we now handle above
 
 
 @app.exception_handler(404)

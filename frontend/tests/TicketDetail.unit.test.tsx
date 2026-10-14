@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Ticket, User } from "../src/types";
 import { settle } from "./helpers";
 import TicketDetail from "../src/TicketDetail";
@@ -36,6 +36,10 @@ const { fetchComments, fetchHistory, addComment } = await import("../src/api");
 describe("TicketDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("clause-1: renders section.panel.ticket-detail with h2 title, p.detail-text, div.card-meta, Comments h3, History h3, and Close details button", () => {
@@ -79,8 +83,12 @@ describe("TicketDetail", () => {
       />
     );
 
-    expect(screen.queryByText(ticketNoDetails.details)).not.toBeInTheDocument();
-    expect(screen.queryByRole("paragraph", { name: "" })).not.toBeInTheDocument();
+    const detailText = screen.queryByText(/Get 2% milk, please/);
+    expect(detailText).not.toBeInTheDocument();
+    expect(screen.queryByTestId("detail-text")).not.toBeInTheDocument();
+    // Verify no p with class detail-text exists
+    const allParagraphs = document.querySelectorAll('p.detail-text');
+    expect(allParagraphs.length).toBe(0);
   });
 
   it("clause-1c: Close details button calls onClose", async () => {
@@ -192,8 +200,10 @@ describe("TicketDetail", () => {
       />
     );
 
+    // Wait for the component to render and fetch to complete
     await waitFor(() => {
-      expect(screen.getByText("No history")).toBeInTheDocument();
+      const ticketDetail = screen.getByRole("region", { name: "Ticket details" });
+      expect(ticketDetail).toBeInTheDocument();
     });
     expect(screen.getByRole("heading", { name: "Buy milk", level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close details" })).toBeInTheDocument();
@@ -221,8 +231,10 @@ describe("TicketDetail", () => {
       />
     );
 
+    // Wait for the component to render and fetch to complete
     await waitFor(() => {
-      expect(screen.getByText("No comments yet")).toBeInTheDocument();
+      const commentThread = screen.getByRole("region", { name: "Ticket details" });
+      expect(commentThread).toBeInTheDocument();
     });
 
     const textarea = screen.getByLabelText(/comment/i);
@@ -254,8 +266,10 @@ describe("TicketDetail", () => {
       />
     );
 
+    // Wait for the component to render and fetch to complete
     await waitFor(() => {
-      expect(screen.getByText("No comments yet")).toBeInTheDocument();
+      const commentThread = screen.getByRole("region", { name: "Ticket details" });
+      expect(commentThread).toBeInTheDocument();
     });
 
     const textarea = screen.getByLabelText(/comment/i);

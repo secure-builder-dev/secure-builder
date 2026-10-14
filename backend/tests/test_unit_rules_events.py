@@ -4,7 +4,6 @@ import pytest
 
 from app.models import TicketEvent
 from app.rules import create_ticket, change_status
-from tests.conftest import HER, HIM
 
 
 class TestCreateTicketRecordsEvent:
@@ -13,7 +12,7 @@ class TestCreateTicketRecordsEvent:
     def test_create_ticket_records_filed_event(self, db):
         """Clause 1: create_ticket records one event of kind 'filed' with actor the filer, from_status None and to_status 'open'."""
         data = {'title': 'Test ticket'}
-        result = create_ticket(db, HER, data)
+        result = create_ticket(db, 'her', data)
         
         # Get the ticket ID from the result
         ticket_id = result['id']
@@ -24,7 +23,7 @@ class TestCreateTicketRecordsEvent:
         assert len(events) == 1
         event = events[0]
         assert event.kind == 'filed'
-        assert event.actor == HER
+        assert event.actor == 'her'
         assert event.from_status is None
         assert event.to_status == 'open'
         assert event.at is not None
@@ -32,7 +31,7 @@ class TestCreateTicketRecordsEvent:
     def test_create_ticket_event_stored_in_same_commit(self, db):
         """Clause 1: Event is stored in the same commit as the ticket."""
         data = {'title': 'Test ticket'}
-        result = create_ticket(db, HER, data)
+        result = create_ticket(db, 'her', data)
         
         # Commit the session to ensure everything is persisted
         db.commit()
@@ -46,7 +45,7 @@ class TestCreateTicketRecordsEvent:
     def test_create_ticket_records_event_for_him(self, db):
         """Clause 1: Works for both users."""
         data = {'title': 'Test ticket from him'}
-        result = create_ticket(db, HIM, data)
+        result = create_ticket(db, 'him', data)
         
         ticket_id = result['id']
         events = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket_id).all()
@@ -54,7 +53,7 @@ class TestCreateTicketRecordsEvent:
         assert len(events) == 1
         event = events[0]
         assert event.kind == 'filed'
-        assert event.actor == HIM
+        assert event.actor == 'him'
         assert event.from_status is None
         assert event.to_status == 'open'
 
@@ -66,13 +65,13 @@ class TestChangeStatusRecordsEvent:
         """Clause 2: change_status records one event of kind 'status' with actor the caller, from_status the old status and to_status the new one."""
         # Create a ticket first
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         # Get the ticket
         ticket = db.query(app.models.Ticket).first()
         
         # Change status from open to acknowledged (assignee can do this)
-        result = change_status(db, ticket.id, HIM, 'acknowledged')
+        result = change_status(db, ticket.id, 'him', 'acknowledged')
         
         # Query for events for this ticket
         events = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).all()
@@ -86,7 +85,7 @@ class TestChangeStatusRecordsEvent:
         
         event = status_events[0]
         assert event.kind == 'status'
-        assert event.actor == HIM
+        assert event.actor == 'him'
         assert event.from_status == 'open'
         assert event.to_status == 'acknowledged'
         assert event.at is not None
@@ -95,13 +94,13 @@ class TestChangeStatusRecordsEvent:
         """Clause 2: Event is stored in the same commit as the move."""
         # Create a ticket first
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         # Get the ticket
         ticket = db.query(app.models.Ticket).first()
         
         # Change status
-        change_status(db, ticket.id, HIM, 'acknowledged')
+        change_status(db, ticket.id, 'him', 'acknowledged')
         
         # Commit and verify
         db.commit()
@@ -114,15 +113,15 @@ class TestChangeStatusRecordsEvent:
         """Clause 2: from_status is the old status, to_status is the new one."""
         # Create a ticket (status = 'open')
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         ticket = db.query(app.models.Ticket).first()
         
         # Move open -> acknowledged
-        change_status(db, ticket.id, HIM, 'acknowledged')
+        change_status(db, ticket.id, 'him', 'acknowledged')
         
         # Move acknowledged -> in_progress
-        change_status(db, ticket.id, HIM, 'in_progress')
+        change_status(db, ticket.id, 'him', 'in_progress')
         
         events = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).all()
         status_events = [e for e in events if e.kind == 'status']
@@ -162,7 +161,7 @@ class TestFailedOperationsRecordNoEvent:
         data = {'title': ''}  # Empty title after stripping
         
         with pytest.raises(ValueError):
-            create_ticket(db, HER, data)
+            create_ticket(db, 'her', data)
         
         tickets = db.query(app.models.Ticket).all()
         assert len(tickets) == 0
@@ -174,7 +173,7 @@ class TestFailedOperationsRecordNoEvent:
         """Clause 3: A change_status call that raises records no event."""
         # Create a ticket first
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         ticket = db.query(app.models.Ticket).first()
         initial_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()
@@ -191,14 +190,14 @@ class TestFailedOperationsRecordNoEvent:
         """Clause 3: change_status with PermissionError records no event."""
         # Create a ticket (her files it, him is assignee)
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         ticket = db.query(app.models.Ticket).first()
         initial_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()
         
         # Her (filer) cannot move open -> acknowledged (only assignee can)
         with pytest.raises(PermissionError):
-            change_status(db, ticket.id, HER, 'acknowledged')
+            change_status(db, ticket.id, 'her', 'acknowledged')
         
         # Event count should not have changed
         final_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()
@@ -208,13 +207,13 @@ class TestFailedOperationsRecordNoEvent:
         """Clause 3: change_status with LookupError records no event."""
         # Create a ticket first
         data = {'title': 'Test ticket'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         initial_event_count = db.query(TicketEvent).count()
         
         # Non-existent ticket should raise LookupError
         with pytest.raises(LookupError):
-            change_status(db, 99999, HIM, 'acknowledged')
+            change_status(db, 99999, 'him', 'acknowledged')
         
         # Event count should not have changed
         final_event_count = db.query(TicketEvent).count()
@@ -224,25 +223,24 @@ class TestFailedOperationsRecordNoEvent:
         """Clause 3: Every earlier behaviour of create_ticket and change_status is unchanged."""
         # Test that create_ticket still returns the ticket dict
         data = {'title': 'Test', 'priority': 'urgent'}
-        result = create_ticket(db, HER, data)
+        result = create_ticket(db, 'her', data)
         
         assert result['title'] == 'Test'
         assert result['priority'] == 'urgent'
         assert result['status'] == 'open'
-        assert result['filed_by'] == HER
-        assert result['assigned_to'] == HIM
+        assert result['filed_by'] == 'her'
+        assert result['assigned_to'] == 'him'
     
     def test_earlier_behavior_unchanged_change_status_returns_ticket(self, db):
         """Clause 3: change_status still returns the updated ticket dict."""
         data = {'title': 'Test'}
-        create_ticket(db, HER, data)
+        create_ticket(db, 'her', data)
         
         ticket = db.query(app.models.Ticket).first()
-        result = change_status(db, ticket.id, HIM, 'acknowledged')
+        result = change_status(db, ticket.id, 'him', 'acknowledged')
         
         assert result['id'] == ticket.id
         assert result['status'] == 'acknowledged'
 
 
-# Import app.models for use in tests
-import app.models
+

@@ -148,12 +148,52 @@ async def get_filed(request: Request, session: SessionLocal = Depends(get_db_ses
 
 @app.get("/api/board")
 async def get_board(request: Request, session: SessionLocal = Depends(get_db_session)):
-    """Get the household board."""
+    """Get the household board with optional filters."""
     from app.household import household_board
     
     caller = get_caller(request)
     today = datetime.now(timezone.utc).date()
-    result = household_board(session, today)
+    
+    # Get query parameters
+    q = request.query_params.get("q")
+    priority = request.query_params.get("priority")
+    assigned_to = request.query_params.get("assigned_to")
+    
+    # Validate q length (max 120 characters)
+    if q is not None and len(q) > 120:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Validate priority if provided
+    valid_priorities = ("low", "normal", "urgent")
+    if priority is not None and priority != "" and priority not in valid_priorities:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Validate assigned_to if provided
+    valid_users = ("her", "him")
+    if assigned_to is not None and assigned_to != "" and assigned_to not in valid_users:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    result = household_board(session, today, q=q, priority=priority, assigned_to=assigned_to)
+    return result
+
+
+@app.get("/api/summary")
+async def get_summary(request: Request, session: SessionLocal = Depends(get_db_session)):
+    """Get the caller's summary for today."""
+    from app.household import summary
+    
+    caller = get_caller(request)
+    today = datetime.now(timezone.utc).date()
+    result = summary(session, caller, today)
     return result
 
 

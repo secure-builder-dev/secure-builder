@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import TicketDetail from "../src/TicketDetail";
 import type { Ticket, User } from "../src/types";
+import { settle } from "./helpers";
+import TicketDetail from "../src/TicketDetail";
 
 const mockTicket: Ticket = {
   id: 1,
@@ -97,7 +97,7 @@ describe("TicketDetail", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -226,8 +226,9 @@ describe("TicketDetail", () => {
     });
 
     const textarea = screen.getByLabelText(/comment/i);
-    await userEvent.type(textarea, "Great idea!");
-    await userEvent.click(screen.getByRole("button", { name: /add comment/i }));
+    fireEvent.change(textarea, { target: { value: "Great idea!" } });
+    fireEvent.click(screen.getByRole("button", { name: /add comment/i }));
+    await settle();
 
     await waitFor(() => {
       expect(addComment).toHaveBeenCalledWith(mockToken, mockTicket.id, "Great idea!");
@@ -258,8 +259,9 @@ describe("TicketDetail", () => {
     });
 
     const textarea = screen.getByLabelText(/comment/i);
-    await userEvent.type(textarea, "Test comment");
-    await userEvent.click(screen.getByRole("button", { name: /add comment/i }));
+    fireEvent.change(textarea, { target: { value: "Test comment" } });
+    fireEvent.click(screen.getByRole("button", { name: /add comment/i }));
+    await settle();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Could not add the comment");

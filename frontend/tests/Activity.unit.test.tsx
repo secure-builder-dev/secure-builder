@@ -1,6 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, fireEvent } from "@testing-library/react";
 import CommentThread from "../src/CommentThread";
 import HistoryList from "../src/HistoryList";
 import { comment, event } from "./helpers";
@@ -49,29 +48,27 @@ describe("CommentThread form", () => {
     expect(button).toBeInTheDocument();
   });
 
-  it("submitting calls onAdd with the stripped text and empties the field", async () => {
-    const user = userEvent.setup();
+  it("submitting calls onAdd with the stripped text and empties the field", () => {
     const onAdd = vi.fn();
 
     render(<CommentThread comments={[]} onAdd={onAdd} />);
 
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-    await user.type(textarea, "  Hello World  ");
-    await user.click(screen.getByRole("button", { name: "Add comment" }));
+    fireEvent.change(textarea, { target: { value: "  Hello World  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Add comment" }));
 
     expect(onAdd).toHaveBeenCalledWith("Hello World");
     expect(textarea.value).toBe("");
   });
 
-  it("blank text calls nothing", async () => {
-    const user = userEvent.setup();
+  it("blank text calls nothing", () => {
     const onAdd = vi.fn();
 
     render(<CommentThread comments={[]} onAdd={onAdd} />);
 
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
-    await user.type(textarea, "   ");
-    await user.click(screen.getByRole("button", { name: "Add comment" }));
+    fireEvent.change(textarea, { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Add comment" }));
 
     expect(onAdd).not.toHaveBeenCalled();
   });

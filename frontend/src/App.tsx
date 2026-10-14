@@ -5,6 +5,7 @@ import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
+import TicketDetail from "./TicketDetail";
 import "./styles.css";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
   const [due, setDue] = useState("");
   const [showDirections, setShowDirections] = useState(false);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
 
   async function handleLoad() {
     setError(null);
@@ -29,6 +31,7 @@ export default function App() {
     setDue("");
     setBoardError(false);
     setMe(null);
+    setOpenTicket(null);
     try {
       const dash = await fetchDashboard(token);
       const filedRes = await fetchFiled(token).catch(() => undefined);
@@ -129,7 +132,13 @@ export default function App() {
           <button onClick={() => handleStatusChange(t.id, "done")}>Done</button>
         );
       }
-      return <TicketCard key={t.id} ticket={t}>{children}</TicketCard>;
+      return (
+        <TicketCard
+          key={t.id}
+          ticket={t}
+          onOpen={(ticket) => setOpenTicket(ticket)}
+        >{children}</TicketCard>
+      );
     });
     return (
       <section className="column" aria-label={ariaLabel}>
@@ -166,6 +175,18 @@ export default function App() {
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
         {showDirections && <Directions onClose={() => setShowDirections(false)} />}
+        {openTicket && (
+          <TicketDetail
+            token={token}
+            ticket={openTicket}
+            me={me}
+            onClose={() => setOpenTicket(null)}
+            onSaved={(updated) => {
+              setOpenTicket(updated);
+              handleLoad();
+            }}
+          />
+        )}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form
@@ -244,13 +265,24 @@ export default function App() {
                       </>
                     );
                   }
-                  return <TicketCard key={t.id} ticket={t}>{children}</TicketCard>;
+                  return (
+                    <TicketCard
+                      key={t.id}
+                      ticket={t}
+                      onOpen={(ticket) => setOpenTicket(ticket)}
+                    >{children}</TicketCard>
+                  );
                 })
               )}
             </div>
           </section>
         )}
-        {!boardError && householdBoard && <HouseholdBoard board={householdBoard} />}
+        {!boardError && householdBoard && (
+          <HouseholdBoard
+            board={householdBoard}
+            onOpen={(ticket) => setOpenTicket(ticket)}
+          />
+        )}
       </main>
     </div>
   );

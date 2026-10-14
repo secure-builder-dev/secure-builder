@@ -17,9 +17,11 @@ export default function TicketDetail({
   ticket,
   me,
   onClose,
+  onSaved,
 }: TicketDetailProps) {
   const [comments, setComments] = useState<CommentOut[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +38,10 @@ export default function TicketDetail({
       .catch(() => {
         setComments([]);
       });
+  }, [token, ticket.id]);
+
+  useEffect(() => {
+    setEvents([]);
 
     fetchHistory(token, ticket.id)
       .then((res) => {
@@ -46,7 +52,7 @@ export default function TicketDetail({
       .catch(() => {
         setEvents([]);
       });
-  }, [token, ticket.id]);
+  }, [token, ticket.id, refreshKey]);
 
   const handleAddComment = async (body: string) => {
     try {

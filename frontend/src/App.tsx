@@ -22,6 +22,7 @@ export default function App() {
   const [due, setDue] = useState("");
   const [showDirections, setShowDirections] = useState(false);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [detailKey, setDetailKey] = useState(0);
 
   async function handleLoad() {
     setError(null);
@@ -102,6 +103,10 @@ export default function App() {
     setError(null);
     try {
       await changeStatus(token, id, status);
+      setDetailKey((n) => n + 1);
+      // Force a re-render of TicketDetail by updating the key before handleLoad
+      // This ensures history is refetched when the panel remounts
+      await new Promise(resolve => setTimeout(resolve, 0));
       await handleLoad();
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
@@ -177,6 +182,7 @@ export default function App() {
         {showDirections && <Directions onClose={() => setShowDirections(false)} />}
         {openTicket && (
           <TicketDetail
+            key={`${openTicket.id}-${detailKey}`}
             token={token}
             ticket={openTicket}
             me={me}

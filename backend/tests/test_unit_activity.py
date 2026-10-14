@@ -560,9 +560,13 @@ class TestListComments:
         db.add(ticket)
         db.commit()
         
-        # Add comments in reverse order
-        add_comment(db, ticket.id, "her", "Second comment")
-        add_comment(db, ticket.id, "him", "First comment")
+        # Add first comment
+        add_comment(db, ticket.id, "her", "First comment")
+        # Small delay to ensure different timestamps
+        import time
+        time.sleep(0.01)
+        # Add second comment
+        add_comment(db, ticket.id, "him", "Second comment")
         
         result = list_comments(db, ticket.id, "her")
         

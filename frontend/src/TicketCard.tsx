@@ -26,9 +26,9 @@ export default function TicketCard({ ticket, children, onOpen }: TicketCardProps
 
   return (
     <article className={`card${ticket.group === 0 ? " urgent" : ""}${onOpen ? " openable" : ""}`} aria-label={title}>
-      <h3 className="card-title" onClick={handleClick}>
+      <h3 className="card-title" onClick={handleClick} onKeyDown={handleKeyDown}>
         <HoverCard ticket={ticket}>
-          <span className="hover-target" onKeyDown={handleKeyDown}>{title}</span>
+          {title}
         </HoverCard>
       </h3>
       <div className="card-meta">

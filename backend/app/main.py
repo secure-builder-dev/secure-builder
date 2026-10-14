@@ -201,6 +201,13 @@ async def create_ticket_endpoint(request: Request, session: SessionLocal = Depen
         )
 
 
+@app.get("/api/me")
+async def get_me_endpoint(request: Request):
+    """Get the current user's identity."""
+    caller = get_caller(request)
+    return {"user": caller}
+
+
 @app.post("/api/tickets/{id}/status")
 async def change_status_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
     """Change the status of a ticket."""

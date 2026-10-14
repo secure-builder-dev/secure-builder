@@ -247,3 +247,127 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
     session.commit()
     
     return ticket_to_dict(ticket)
+
+
+def _compute_group(priority: str, due: date | None, today: date) -> int:
+    """Compute the group value for a ticket.
+    
+    Group 0: priority is 'urgent' OR due is before today
+    Group 1: due is today or within 3 days after today
+    Group 2: otherwise (including no due date)
+    """
+    # Group 0: urgent priority or due before today
+    if priority == 'urgent':
+        return 0
+    if due is not None and due < today:
+        return 0
+    
+    # Group 1: due today or within 3 days after today
+    if due is not None:
+        days_until_due = (due - today).days
+        if 0 <= days_until_due <= 3:
+            return 1
+    
+    # Group 2: everything else
+    return 2
+
+
+def _sort_key_for_active(ticket, group: int):
+    """Sort key for todo and in_progress tickets.
+    
+    Order by: group, then due date (none last), then created_at oldest first.
+    """
+    # For due date sorting: None should come last
+    # We use a tuple: (has_no_due, due_date) where has_no_due is 1 for None, 0 otherwise
+    if ticket.due is None:
+        due_sort = (1, date.max)
+    else:
+        due_sort = (0, ticket.due)
+    
+    return (group, due_sort, ticket.created_at)
+
+
+def dashboard(session, user: str, today: date) -> dict:
+    """Get the personal board for a user.
+    
+    Args:
+        session: Database session
+        user: The user whose board to retrieve ('her' or 'him')
+        today: The reference date for grouping and completed window
+    
+    Returns:
+        Dict with keys 'todo', 'in_progress', 'completed', each a list of
+        ticket_to_dict dicts (with extra 'group' key for todo/in_progress).
+    """
+    from app.models import Ticket
+    from sqlalchemy import select, and_, or_
+    
+    # Get all tickets assigned to this user
+    stmt = select(Ticket).where(Ticket.assigned_to == user)
+    tickets = session.execute(stmt).scalars().all()
+    
+    todo_items = []
+    in_progress_items = []
+    completed_items = []
+    
+    # Calculate the 7-day window for completed (today + 6 days before)
+    window_start = today - timedelta(days=6)
+    
+    for ticket in tickets:
+        if ticket.status in ('open', 'acknowledged'):
+            # Todo column
+            group = _compute_group(ticket.priority, ticket.due, today)
+            ticket_dict = ticket_to_dict(ticket)
+            ticket_dict['group'] = group
+            todo_items.append((ticket, ticket_dict))
+        elif ticket.status == 'in_progress':
+            # In progress column
+            group = _compute_group(ticket.priority, ticket.due, today)
+            ticket_dict = ticket_to_dict(ticket)
+            ticket_dict['group'] = group
+            in_progress_items.append((ticket, ticket_dict))
+        elif ticket.status in ('done', 'closed'):
+            # Check if updated_at is within the 7-day window
+            ticket_updated_date = ticket.updated_at.date()
+            if window_start <= ticket_updated_date <= today:
+                completed_items.append(ticket)
+    
+    # Sort todo and in_progress by group, then due (none last), then created_at
+    todo_items.sort(key=lambda x: _sort_key_for_active(x[0], x[1]['group']))
+    in_progress_items.sort(key=lambda x: _sort_key_for_active(x[0], x[1]['group']))
+    
+    # Extract just the dicts
+    todo = [item_dict for _, item_dict in todo_items]
+    in_progress = [item_dict for _, item_dict in in_progress_items]
+    
+    # Sort completed by updated_at newest first
+    completed_items.sort(key=lambda t: t.updated_at, reverse=True)
+    completed = [ticket_to_dict(t) for t in completed_items]
+    
+    return {
+        'todo': todo,
+        'in_progress': in_progress,
+        'completed': completed
+    }
+
+
+def filed(session, user: str) -> list:
+    """Get all tickets filed by a user.
+    
+    Args:
+        session: Database session
+        user: The user who filed the tickets ('her' or 'him')
+    
+    Returns:
+        List of ticket_to_dict dicts, ordered by created_at newest first.
+    """
+    from app.models import Ticket
+    from sqlalchemy import select
+    
+    stmt = select(Ticket).where(Ticket.filed_by == user).order_by(Ticket.created_at.desc())
+    tickets = session.execute(stmt).scalars().all()
+    
+    return [ticket_to_dict(t) for t in tickets]
+
+
+from datetime import timedelta

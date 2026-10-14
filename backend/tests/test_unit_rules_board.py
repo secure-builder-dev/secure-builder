@@ -406,16 +406,11 @@ class TestDashboard:
         result = dashboard(db, 'her', today)
         todo = result['todo']
         
-        # Should be ordered: group 0 (t1, t2), group 1 (t3), group 2 with due (t5), group 2 no due (t4)
+        # Should be ordered: group 0 (t2, t1), group 1 (t3), group 2 with due (t5), group 2 no due (t4)
+        # Within group 0: ordered by due date ascending. t2.due=6/10 < t1.due=7/1, so t2 first
         assert len(todo) == 5
-        assert todo[0]['id'] == t1.id  # Group 0, urgent
-        assert todo[1]['id'] == t2.id  # Group 0, overdue (due before today comes before urgent with future due? No, both group 0)
-        # Actually within group 0: ordered by due date first. t2.due=6/10, t1.due=7/1
-        # So t2 should come before t1 if ordering by due date ascending
-        # Let me reconsider: the spec says "ordered by group, then by due date (tickets without a due date last), then by created_at"
-        # Within group 0: t2.due=6/10, t1.due=7/1 -> t2 first (earlier due)
-        assert todo[0]['id'] == t2.id  # Group 0, due 6/10
-        assert todo[1]['id'] == t1.id  # Group 0, due 7/1
+        assert todo[0]['id'] == t2.id  # Group 0, due 6/10 (overdue)
+        assert todo[1]['id'] == t1.id  # Group 0, due 7/1 (urgent)
         assert todo[2]['id'] == t3.id  # Group 1, due today
         assert todo[3]['id'] == t5.id  # Group 2, due 7/1
         assert todo[4]['id'] == t4.id  # Group 2, no due (last)

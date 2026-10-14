@@ -1,4 +1,4 @@
-import type { Board, Filed, Ticket, NewTicket, Status } from "./types";
+import type { Board, Filed, Ticket, NewTicket, Status, Me } from "./types";
 
 export async function fetchDashboard(token: string): Promise<Board> {
   const res = await fetch("/api/dashboard", {
@@ -46,6 +46,15 @@ export async function changeStatus(token: string, id: number, status: Status): P
 
 export async function fetchBoard(token: string): Promise<Board> {
   const res = await fetch("/api/board", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+export async function fetchMe(token: string): Promise<Me> {
+  const res = await fetch("/api/me", {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });

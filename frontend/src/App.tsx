@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Board, NewTicket, Status, Ticket } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard } from "./api";
+import type { Board, NewTicket, Status, Ticket, Me, User } from "./types";
+import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard, fetchMe } from "./api";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import "./styles.css";
@@ -12,6 +12,7 @@ export default function App() {
   const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [boardError, setBoardError] = useState<boolean>(false);
+  const [me, setMe] = useState<User | null>(null);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
@@ -24,6 +25,7 @@ export default function App() {
     setPriority("normal");
     setDue("");
     setBoardError(false);
+    setMe(null);
     try {
       const dash = await fetchDashboard(token);
       const filedRes = await fetchFiled(token).catch(() => undefined);
@@ -33,6 +35,8 @@ export default function App() {
         }
         return undefined;
       });
+      const meRes = await fetchMe(token).catch(() => undefined);
+      
       setDashboard(dash);
       setFiled(filedRes?.tickets ?? []);
       
@@ -45,6 +49,12 @@ export default function App() {
       } else {
         setBoardError(true);
         setHouseholdBoard(null);
+      }
+      
+      // Validate me response
+      if (meRes && typeof meRes === "object" && 
+          (meRes.user === "her" || meRes.user === "him")) {
+        setMe(meRes.user);
       }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
@@ -147,11 +157,12 @@ export default function App() {
           </label>
           <button onClick={handleLoad}>Load</button>
         </div>
+        {me && <span className="whoami">Signed in as {me}</span>}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
         <section className="panel new-ticket" aria-label="New ticket">
-          <h2>New ticket</h2>
+          <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();

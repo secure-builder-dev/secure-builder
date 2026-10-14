@@ -114,6 +114,78 @@ def _validate_due(value: Any) -> date | None:
         raise ValueError("due must be a valid date in YYYY-MM-DD format")
 
 
+# Status transition table: (from_status, to_status) -> required_party
+# 'filer' means the user who filed the ticket
+# 'assignee' means the user the ticket is assigned to
+STATUS_TRANSITIONS = {
+    ('open', 'acknowledged'): 'assignee',
+    ('acknowledged', 'in_progress'): 'assignee',
+    ('in_progress', 'done'): 'assignee',
+    ('done', 'closed'): 'filer',
+    ('done', 'open'): 'filer',
+    ('closed', 'open'): 'filer',
+}
+
+VALID_STATUSES = {'open', 'acknowledged', 'in_progress', 'done', 'closed'}
+
+
+def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
+    """Change the status of a ticket according to the status transition table.
+    
+    Args:
+        session: Database session
+        ticket_id: ID of the ticket to update
+        user: User attempting the change (must be filer or assignee)
+        new_status: Target status
+    
+    Returns:
+        ticket_to_dict of the updated ticket
+    
+    Raises:
+        LookupError: If ticket does not exist or user is not a party
+        ValueError: If new_status is invalid or transition is not allowed
+        PermissionError: If user is not the required party for this transition
+    """
+    from app.models import Ticket
+    
+    # Check 1: LookupError - ticket must exist and user must be a party
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError(f"Ticket {ticket_id} not found")
+    
+    if user != ticket.filed_by and user != ticket.assigned_to:
+        raise LookupError(f"User '{user}' is not a party to ticket {ticket_id}")
+    
+    # Check 2: ValueError - new_status must be valid
+    if new_status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status: {new_status}")
+    
+    # Check 3: ValueError - transition must be in the table (including same-status)
+    current_status = ticket.status
+    if current_status == new_status:
+        raise ValueError("Cannot change status to the same status")
+    
+    transition_key = (current_status, new_status)
+    if transition_key not in STATUS_TRANSITIONS:
+        raise ValueError(f"Invalid transition from {current_status} to {new_status}")
+    
+    # Check 4: PermissionError - user must be the required party
+    required_party = STATUS_TRANSITIONS[transition_key]
+    expected_user = ticket.filed_by if required_party == 'filer' else ticket.assigned_to
+    
+    if user != expected_user:
+        raise PermissionError(f"User '{user}' is not authorized for this transition")
+    
+    # All checks passed - perform the update
+    now = datetime.now(timezone.utc)
+    ticket.status = new_status
+    ticket.updated_at = now
+    
+    session.commit()
+    
+    return ticket_to_dict(ticket)
+
+
 def create_ticket(session, filed_by: str, data: dict) -> dict:
     """Create a new ticket.
     

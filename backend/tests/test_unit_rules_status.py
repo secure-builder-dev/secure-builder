@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime, timezone
 from app.rules import change_status, ticket_to_dict
 from app.models import Ticket

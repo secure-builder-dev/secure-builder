@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { Ticket } from "../src/types";
 import EditTicketForm from "../src/EditTicketForm";
 

@@ -3,6 +3,8 @@ import type { Board, NewTicket, Status, Ticket, Me, User } from "./types";
 import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard, fetchMe } from "./api";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
+import Menu from "./Menu";
+import Directions from "./Directions";
 import "./styles.css";
 
 export default function App() {
@@ -17,6 +19,7 @@ export default function App() {
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
   const [due, setDue] = useState("");
+  const [showDirections, setShowDirections] = useState(false);
 
   async function handleLoad() {
     setError(null);
@@ -146,6 +149,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <div className="token-form">
           <label>
             Token
@@ -161,6 +165,7 @@ export default function App() {
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
+        {showDirections && <Directions onClose={() => setShowDirections(false)} />}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form

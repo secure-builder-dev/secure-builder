@@ -1,6 +1,6 @@
 id: TQ-2e
 unit: TQ-2
-state: open
+state: claimed
 depends_on: TQ-2a, TQ-2d
 done_when: frontend/src/App.tsx default-exports App, which imports './styles.css' and renders <div className="app"> holding <header className="topbar"> and then <main className="content">, as in the page structure of the design; the header holds <h1 className="brand">~/honey-do</h1> and <div className="token-form"> with a password input labelled Token (its value only in React state, never in localStorage or sessionStorage) and a Load button — nothing is fetched until Load is pressed; Load calls fetchDashboard and fetchFiled from api.ts with the token — once the dashboard has answered, main shows <section className="panel" aria-label="My board"> with <h2>My board</h2> and <div className="board"> holding three <section className="column"> elements with aria-label To Do, In Progress and Completed for todo, in_progress and completed; each column starts with <h3 className="column-title">{name} <span className="count">{number of tickets}</span></h3>, then shows one TicketCard (from TicketCard.tsx) per ticket in the order given, or <p className="empty">Nothing here</p> when it has none; when a request fails with Error('401') main shows <p role="alert" className="error">Wrong token</p>, on any other failure Something went wrong (never the response body), and a later successful Load clears the message — no board is shown until a dashboard has loaded
 

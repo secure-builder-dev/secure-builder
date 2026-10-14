@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.models import TicketEvent
+from app.models import Ticket, TicketEvent
 from app.rules import create_ticket, change_status
 
 
@@ -68,7 +68,7 @@ class TestChangeStatusRecordsEvent:
         create_ticket(db, 'her', data)
         
         # Get the ticket
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         
         # Change status from open to acknowledged (assignee can do this)
         result = change_status(db, ticket.id, 'him', 'acknowledged')
@@ -97,7 +97,7 @@ class TestChangeStatusRecordsEvent:
         create_ticket(db, 'her', data)
         
         # Get the ticket
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         
         # Change status
         change_status(db, ticket.id, 'him', 'acknowledged')
@@ -149,7 +149,7 @@ class TestFailedOperationsRecordNoEvent:
             create_ticket(db, 'invalid_user', data)
         
         # No tickets should exist
-        tickets = db.query(app.models.Ticket).all()
+        tickets = db.query(Ticket).all()
         assert len(tickets) == 0
         
         # No events should exist
@@ -163,7 +163,7 @@ class TestFailedOperationsRecordNoEvent:
         with pytest.raises(ValueError):
             create_ticket(db, 'her', data)
         
-        tickets = db.query(app.models.Ticket).all()
+        tickets = db.query(Ticket).all()
         assert len(tickets) == 0
         
         events = db.query(TicketEvent).all()
@@ -175,7 +175,7 @@ class TestFailedOperationsRecordNoEvent:
         data = {'title': 'Test ticket'}
         create_ticket(db, 'her', data)
         
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         initial_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()
         
         # Invalid status should raise ValueError
@@ -192,7 +192,7 @@ class TestFailedOperationsRecordNoEvent:
         data = {'title': 'Test ticket'}
         create_ticket(db, 'her', data)
         
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         initial_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()
         
         # Her (filer) cannot move open -> acknowledged (only assignee can)
@@ -236,7 +236,7 @@ class TestFailedOperationsRecordNoEvent:
         data = {'title': 'Test'}
         create_ticket(db, 'her', data)
         
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         result = change_status(db, ticket.id, 'him', 'acknowledged')
         
         assert result['id'] == ticket.id

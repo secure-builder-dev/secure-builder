@@ -1,10 +1,11 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from unittest.mock import patch
 
 import pytest
 
 from app.models import Ticket
 from app import rules
+from tests.conftest import set_times
 
 
 class TestHouseholdBoard:
@@ -152,39 +153,12 @@ class TestHouseholdBoard:
     def test_todo_ordered_oldest_created_at_first(self, db):
         """Clause 2: todo ordered oldest created_at first."""
         from app.household import household_board
-        from datetime import datetime, timezone
-        
-        # Create tickets in reverse chronological order using set_times helper
-        ticket3 = rules.create_ticket(db, 'her', {'title': 'Third'})
-        
-        # Manually update created_at to simulate different creation times
-        db.execute(
-            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
-            {"created_at": datetime(2024, 1, 15, 8, 0, tzinfo=timezone.utc), "id": ticket3['id']}
-        )
-        
-        ticket2 = rules.create_ticket(db, 'him', {'title': 'Second'})
-        db.execute(
-            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
-            {"created_at": datetime(2024, 1, 15, 9, 0, tzinfo=timezone.utc), "id": ticket2['id']}
-        )
-        
-        ticket1 = rules.create_ticket(db, 'her', {'title': 'First'})
-        db.execute(
-            "UPDATE tickets SET created_at = :created_at WHERE id = :id",
-            {"created_at": datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc), "id": ticket1['id']}
-        )
-        
-        # Reorder: First should be oldest (8am), Second middle (9am), Third newest (10am)
-        # But we want to test that sorting by created_at works correctly
-        # So let's create them in order and then verify the sort
-        db.rollback()
-        
-        # Fresh start - create tickets with explicit timestamps
         from sqlalchemy import text
+        
+        # Create tickets with explicit timestamps using raw SQL for precise control
         db.execute(text("""
             INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
-            VALUES ('Third', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 10:00:00+00', '2024-01-15 10:00:00+00')
+            VALUES ('First', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 08:00:00+00', '2024-01-15 08:00:00+00')
         """))
         db.execute(text("""
             INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
@@ -192,7 +166,7 @@ class TestHouseholdBoard:
         """))
         db.execute(text("""
             INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
-            VALUES ('First', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 08:00:00+00', '2024-01-15 08:00:00+00')
+            VALUES ('Third', '', 'normal', NULL, 'open', 'her', 'him', '2024-01-15 10:00:00+00', '2024-01-15 10:00:00+00')
         """))
         db.commit()
         
@@ -314,26 +288,22 @@ class TestHouseholdBoard:
     def test_completed_ordered_newest_updated_at_first(self, db):
         """Clause 3: completed ordered newest updated_at first."""
         from app.household import household_board
+        from sqlalchemy import text
         
-        with patch('app.rules.datetime') as mock_datetime:
-            # Create and complete tickets in chronological order
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 10, 12, 0, tzinfo=rules.timezone.utc)
-            ticket1 = rules.create_ticket(db, 'her', {'title': 'First'})
-            rules.change_status(db, ticket1['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket1['id'], 'him', 'in_progress')
-            rules.change_status(db, ticket1['id'], 'him', 'done')
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 12, 12, 0, tzinfo=rules.timezone.utc)
-            ticket2 = rules.create_ticket(db, 'him', {'title': 'Second'})
-            rules.change_status(db, ticket2['id'], 'her', 'acknowledged')
-            rules.change_status(db, ticket2['id'], 'her', 'in_progress')
-            rules.change_status(db, ticket2['id'], 'her', 'done')
-            
-            mock_datetime.now.return_value = rules.datetime(2024, 1, 14, 12, 0, tzinfo=rules.timezone.utc)
-            ticket3 = rules.create_ticket(db, 'her', {'title': 'Third'})
-            rules.change_status(db, ticket3['id'], 'him', 'acknowledged')
-            rules.change_status(db, ticket3['id'], 'him', 'in_progress')
-            rules.change_status(db, ticket3['id'], 'him', 'done')
+        # Create and complete tickets in chronological order with explicit timestamps
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('First', '', 'normal', NULL, 'done', 'her', 'him', '2024-01-05 12:00:00+00', '2024-01-10 12:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Second', '', 'normal', NULL, 'done', 'him', 'her', '2024-01-06 12:00:00+00', '2024-01-12 12:00:00+00')
+        """))
+        db.execute(text("""
+            INSERT INTO tickets (title, details, priority, due, status, filed_by, assigned_to, created_at, updated_at)
+            VALUES ('Third', '', 'normal', NULL, 'done', 'her', 'him', '2024-01-07 12:00:00+00', '2024-01-14 12:00:00+00')
+        """))
+        db.commit()
         
         result = household_board(db, date(2024, 1, 15))
         

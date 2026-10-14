@@ -115,7 +115,7 @@ class TestChangeStatusRecordsEvent:
         data = {'title': 'Test ticket'}
         create_ticket(db, 'her', data)
         
-        ticket = db.query(app.models.Ticket).first()
+        ticket = db.query(Ticket).first()
         
         # Move open -> acknowledged
         change_status(db, ticket.id, 'him', 'acknowledged')
@@ -180,7 +180,7 @@ class TestFailedOperationsRecordNoEvent:
         
         # Invalid status should raise ValueError
         with pytest.raises(ValueError):
-            change_status(db, ticket.id, HIM, 'invalid_status')
+            change_status(db, ticket.id, 'him', 'invalid_status')
         
         # Event count should not have changed
         final_event_count = db.query(TicketEvent).filter(TicketEvent.ticket_id == ticket.id).count()

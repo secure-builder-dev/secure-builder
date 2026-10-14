@@ -16,7 +16,7 @@ class TestDbModule:
         env = os.environ.copy()
         env.pop("TICKETER_DATABASE_URL", None)
         # Use absolute path for cwd to avoid Windows subprocess issues
-        backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
             cwd=backend_dir,
@@ -32,7 +32,7 @@ class TestDbModule:
         env = os.environ.copy()
         env["TICKETER_DATABASE_URL"] = ""
         # Use absolute path for cwd to avoid Windows subprocess issues
-        backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
             cwd=backend_dir,

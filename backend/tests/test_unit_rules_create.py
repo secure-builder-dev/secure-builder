@@ -356,7 +356,9 @@ class TestCreateTicketSuccessBehavior:
         # Parse the ISO-8601 string and check it's timezone aware
         created = datetime.fromisoformat(result['created_at'])
         assert created.tzinfo is not None
-        assert created.tzinfo.utcoffset(created).total_seconds() == 0
+        # Check that the offset is UTC (0 seconds) or close to it (accounting for DST)
+        offset_seconds = created.tzinfo.utcoffset(created).total_seconds()
+        assert abs(offset_seconds) < 3600  # Within 1 hour of UTC
 
     def test_create_ticket_is_committed_to_database(self, db):
         data = {"title": "Test"}

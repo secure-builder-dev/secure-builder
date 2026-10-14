@@ -1,0 +1,9 @@
+{
+  "checkpoint": false,
+  "head": "3998b508b385affc031a00991b7cd32bdfd9500a",
+  "range": "3c99a3810fad..3998b508b385",
+  "run": "3",
+  "side": "local",
+  "started": "2026-10-14T21:24:25+00:00",
+  "unit": "TQ-4"
+}

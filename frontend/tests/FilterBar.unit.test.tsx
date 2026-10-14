@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import FilterBar from "../src/FilterBar";
 import SummaryBadge from "../src/SummaryBadge";
 
@@ -12,6 +12,7 @@ describe("FilterBar", () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.resetAllMocks();
   });
 
@@ -95,6 +96,10 @@ describe("FilterBar", () => {
 });
 
 describe("SummaryBadge", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renders span.summary named Summary with the correct text for given numbers", () => {
     const summary = { overdue: 2, due_today: 1, open: 5 };
     render(<SummaryBadge summary={summary} />);

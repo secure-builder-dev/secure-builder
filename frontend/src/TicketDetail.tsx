@@ -22,14 +22,12 @@ export default function TicketDetail({
 }: TicketDetailProps) {
   const [comments, setComments] = useState<CommentOut[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [addError, setAddError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     setComments([]);
-    setEvents([]);
     setAddError(null);
 
     fetchComments(token, ticket.id)
@@ -55,7 +53,7 @@ export default function TicketDetail({
       .catch(() => {
         setEvents([]);
       });
-  }, [token, ticket.id, refreshKey]);
+  }, [token, ticket.id]);
 
   const handleAddComment = async (body: string) => {
     try {

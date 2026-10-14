@@ -146,6 +146,17 @@ async def get_filed(request: Request, session: SessionLocal = Depends(get_db_ses
     return {"tickets": tickets}
 
 
+@app.get("/api/board")
+async def get_board(request: Request, session: SessionLocal = Depends(get_db_session)):
+    """Get the household board."""
+    from app.household import household_board
+    
+    caller = get_caller(request)
+    today = datetime.now(timezone.utc).date()
+    result = household_board(session, today)
+    return result
+
+
 @app.post("/api/tickets")
 async def create_ticket_endpoint(request: Request, session: SessionLocal = Depends(get_db_session)):
     """Create a new ticket."""
@@ -257,57 +268,7 @@ async def change_status_endpoint(request: Request, id: int, session: SessionLoca
         )
 
 
-# Remove the duplicate 404 and 405 handlers - FastAPI handles these by default
-# The custom handler above already covers them via StarletteHTTPException mapping
-
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc):
-    """Handle 404 errors."""
-    return JSONResponse(
-        status_code=404,
-        content={"error": "not found"}
-    )
 
 
-@app.exception_handler(405)
-async def method_not_allowed_handler(request: Request, exc):
-    """Handle 405 errors."""
-    return JSONResponse(
-        status_code=405,
-        content={"error": "method not allowed"}
-    )
 
 
-# Handle non-integer path parameter for /api/tickets/{id}/status
-@app.exception_handler(422)
-async def handle_422(request: Request, exc):
-    """Handle 422 errors (non-integer id) with 400."""
-    return JSONResponse(
-        status_code=400,
-        content={"error": "invalid request"}
-    )
-
-# Override the default 422 handler registration
-from fastapi import FastAPI
-app.add_exception_handler(422, handle_422)
-
-# Also need to handle the case where path parameter is not an integer
-# FastAPI will raise a 422 for this, which we now handle above
-
-
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc):
-    """Handle 404 errors."""
-    return JSONResponse(
-        status_code=404,
-        content={"error": "not found"}
-    )
-
-
-@app.exception_handler(405)
-async def method_not_allowed_handler(request: Request, exc):
-    """Handle 405 errors."""
-    return JSONResponse(
-        status_code=405,
-        content={"error": "method not allowed"}
-    )

@@ -1,14 +1,17 @@
 import { useState } from "react";
 import type { Board, NewTicket, Status, Ticket } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled } from "./api";
+import { changeStatus, createTicket, fetchDashboard, fetchFiled, fetchBoard } from "./api";
 import TicketCard from "./TicketCard";
+import HouseholdBoard from "./HouseholdBoard";
 import "./styles.css";
 
 export default function App() {
   const [token, setToken] = useState("");
   const [dashboard, setDashboard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[]>([]);
+  const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [boardError, setBoardError] = useState<boolean>(false);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
@@ -20,13 +23,29 @@ export default function App() {
     setDetails("");
     setPriority("normal");
     setDue("");
+    setBoardError(false);
     try {
-      const [dash, filedRes] = await Promise.all([
-        fetchDashboard(token),
-        fetchFiled(token).catch(() => undefined),
-      ]);
+      const dash = await fetchDashboard(token);
+      const filedRes = await fetchFiled(token).catch(() => undefined);
+      const boardRes = await fetchBoard(token).catch((e) => {
+        if (e instanceof Error && e.message !== "401") {
+          setBoardError(true);
+        }
+        return undefined;
+      });
       setDashboard(dash);
       setFiled(filedRes?.tickets ?? []);
+      
+      // Validate board response structure
+      if (boardRes && typeof boardRes === "object" && 
+          Array.isArray(boardRes.todo) && 
+          Array.isArray(boardRes.in_progress) && 
+          Array.isArray(boardRes.completed)) {
+        setHouseholdBoard(boardRes);
+      } else {
+        setBoardError(true);
+        setHouseholdBoard(null);
+      }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -35,6 +54,7 @@ export default function App() {
       }
       setDashboard(null);
       setFiled([]);
+      setHouseholdBoard(null);
     }
   }
 
@@ -187,29 +207,34 @@ export default function App() {
             </div>
           </section>
         )}
-        {filed.length > 0 && (
+        {dashboard && (
           <section className="panel" aria-label="Tickets I filed">
             <h2>Tickets I filed</h2>
             <div className="card-list">
-              {filed.map((t) => {
-                let children: React.ReactNode;
-                if (t.status === "done") {
-                  children = (
-                    <>
-                      <button onClick={() => handleStatusChange(t.id, "closed")}>
-                        Close
-                      </button>
-                      <button onClick={() => handleStatusChange(t.id, "open")}>
-                        Reopen
-                      </button>
-                    </>
-                  );
-                }
-                return <TicketCard key={t.id} ticket={t}>{children}</TicketCard>;
-              })}
+              {filed.length === 0 ? (
+                <p className="empty">Nothing here</p>
+              ) : (
+                filed.map((t) => {
+                  let children: React.ReactNode;
+                  if (t.status === "done") {
+                    children = (
+                      <>
+                        <button onClick={() => handleStatusChange(t.id, "closed")}>
+                          Close
+                        </button>
+                        <button onClick={() => handleStatusChange(t.id, "open")}>
+                          Reopen
+                        </button>
+                      </>
+                    );
+                  }
+                  return <TicketCard key={t.id} ticket={t}>{children}</TicketCard>;
+                })
+              )}
             </div>
           </section>
         )}
+        {!boardError && householdBoard && <HouseholdBoard board={householdBoard} />}
       </main>
     </div>
   );

@@ -1,7 +1,19 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from app.models import Ticket
 from app.household import household_board, summary
-from tests.conftest import at
+
+def at(day, hour="12:00"):
+    """A timezone-aware UTC datetime on the given date."""
+    if isinstance(day, str):
+        day = date.fromisoformat(day)
+    if isinstance(hour, str):
+        parts = hour.split(":")
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+    else:
+        h = hour
+        m = 0
+    return datetime(day.year, day.month, day.day, h, m, tzinfo=timezone.utc)
 
 
 class TestHouseholdBoardFilters:

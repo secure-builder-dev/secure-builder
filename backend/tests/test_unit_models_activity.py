@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import inspect
 
-from app.db import SessionLocal, init_db
+from app.db import SessionLocal, init_db, engine
 from app.models import Ticket, Comment, TicketEvent
 
 

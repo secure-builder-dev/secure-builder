@@ -25,6 +25,7 @@ export default function TicketDetail({
   const [addError, setAddError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setComments([]);
@@ -53,7 +54,7 @@ export default function TicketDetail({
       .catch(() => {
         setEvents([]);
       });
-  }, [token, ticket.id]);
+  }, [token, ticket.id, refreshKey]);
 
   const handleAddComment = async (body: string) => {
     try {

@@ -148,6 +148,35 @@ export default function App() {
       });
   }
 
+  async function refresh() {
+    try {
+      const dash = await fetchDashboard(token).catch(() => undefined);
+      if (dash) setDashboard(dash);
+    } catch {}
+    try {
+      const filedRes = await fetchFiled(token).catch(() => undefined);
+      if (filedRes?.tickets !== undefined) setFiled(filedRes.tickets ?? []);
+    } catch {}
+    try {
+      const boardRes = await fetchBoard(token, boardFilter).catch(() => undefined);
+      if (boardRes && typeof boardRes === "object" &&
+          Array.isArray(boardRes.todo) &&
+          Array.isArray(boardRes.in_progress) &&
+          Array.isArray(boardRes.completed)) {
+        setHouseholdBoard(boardRes);
+      }
+    } catch {}
+    try {
+      const summaryRes = await fetchSummary(token).catch(() => undefined);
+      if (summaryRes && typeof summaryRes === "object" &&
+          typeof summaryRes.overdue === "number" &&
+          typeof summaryRes.due_today === "number" &&
+          typeof summaryRes.open === "number") {
+        setSummary(summaryRes);
+      }
+    } catch {}
+  }
+
   function renderColumn(name: string, ariaLabel: string, tickets: Ticket[]) {
     const cards = tickets.map((t) => {
       let children: React.ReactNode;
@@ -221,7 +250,7 @@ export default function App() {
             onClose={() => setOpenTicket(null)}
             onSaved={(updated) => {
               setOpenTicket(updated);
-              handleLoad();
+              refresh();
             }}
           />
         )}

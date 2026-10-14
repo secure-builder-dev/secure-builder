@@ -26,7 +26,6 @@ describe("TicketCard hover card", () => {
   it("wraps the title in HoverCard with the ticket prop", () => {
     render(<TicketCard ticket={baseTicket} />);
 
-    const hoverTarget = screen.getByRole("tooltip").closest("span") as HTMLElement | null;
     const span = document.querySelector("h3.card-title span") as HTMLElement | null;
 
     expect(span).not.toBeNull();

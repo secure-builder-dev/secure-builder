@@ -12,3 +12,5 @@ Schema: mutation-results/1.
 |---|---|---|---|---|---|---|
 | 2026-10-14T07:22:37+00:00 | CTRL-AUTHN-BEARER | - | other: injected `return None` as the first statement of get_caller | green | suite-failed | local |
 | 2026-10-14T07:22:37+00:00 | CTRL-AUTHZ-TICKET-PARTY | - | other: injected `return None` as the first statement of change_status | green | suite-failed | local |
+| 2026-10-14T07:31:31+00:00 | CTRL-AUTHN-BEARER | - | other: injected `return None` as the first statement of get_caller | green | suite-failed | local |
+| 2026-10-14T07:31:31+00:00 | CTRL-AUTHZ-TICKET-PARTY | - | other: injected `return None` as the first statement of change_status | green | suite-failed | local |

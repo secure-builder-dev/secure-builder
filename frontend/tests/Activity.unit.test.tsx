@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import CommentThread from "../src/CommentThread";
 import HistoryList from "../src/HistoryList";
 import { comment, event } from "./helpers";

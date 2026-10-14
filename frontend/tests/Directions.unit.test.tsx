@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import Directions from "../src/Directions";
 
 describe("Directions", () => {
@@ -50,7 +50,13 @@ describe("Directions", () => {
     render(<Directions onClose={onClose} />);
     const section = screen.getByRole("region", { name: "Directions" });
     const button = section.querySelector("button");
-    button?.click();
+    fireEvent.click(button!);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+
+
+  afterEach(() => {
+    cleanup();
   });
 });

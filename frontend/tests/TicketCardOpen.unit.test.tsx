@@ -27,10 +27,10 @@ describe("TicketCard onOpen prop", () => {
 
   it("calls onOpen with the ticket when Enter is pressed on focused span.hover-target", () => {
     const onOpen = vi.fn();
-    render(<TicketCard ticket={t} onOpen={onOpen} />);
-    const target = screen.getByText(t.title).parentElement?.parentElement as HTMLElement;
+    const { container } = render(<TicketCard ticket={t} onOpen={onOpen} />);
+    const target = container.querySelector('.hover-target') as HTMLElement;
     target.focus();
-    fireEvent.keyDown(target, { key: "Enter", code: "Enter" });
+    fireEvent.keyDown(target, { key: "Enter" });
     expect(onOpen).toHaveBeenCalledWith(t);
   });
 

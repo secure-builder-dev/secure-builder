@@ -208,6 +208,136 @@ async def get_me_endpoint(request: Request):
     return {"user": caller}
 
 
+@app.get("/api/tickets/{id}")
+async def get_ticket_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Get a ticket by ID."""
+    from app.rules import ticket_to_dict
+    from app.models import Ticket
+    
+    caller = get_caller(request)
+    
+    ticket = session.get(Ticket, id)
+    if ticket is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    
+    # Check user is a party
+    if caller != ticket.filed_by and caller != ticket.assigned_to:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    
+    return JSONResponse(
+        status_code=200,
+        content=ticket_to_dict(ticket)
+    )
+
+
+@app.get("/api/tickets/{id}/comments")
+async def get_comments_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Get comments for a ticket."""
+    from app.activity import list_comments
+    
+    caller = get_caller(request)
+    
+    try:
+        comments = list_comments(session, id, caller)
+        return JSONResponse(
+            status_code=200,
+            content={"comments": comments}
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+
+
+@app.post("/api/tickets/{id}/comments")
+async def add_comment_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Add a comment to a ticket."""
+    from app.activity import add_comment
+    
+    caller = get_caller(request)
+    
+    # Read and parse the body manually
+    try:
+        body_bytes = await request.body()
+        if len(body_bytes) > 65536:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "too large"}
+            )
+        body_str = body_bytes.decode("utf-8")
+        import json
+        data = json.loads(body_str)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    # Must be a dict with exactly {"body": <string>}
+    if not isinstance(data, dict):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    if set(data.keys()) != {"body"}:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    body = data["body"]
+    if not isinstance(body, str):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+    
+    try:
+        result = add_comment(session, id, caller, body)
+        return JSONResponse(
+            status_code=201,
+            content=result
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid request"}
+        )
+
+
+@app.get("/api/tickets/{id}/history")
+async def get_history_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
+    """Get history events for a ticket."""
+    from app.activity import ticket_history
+    
+    caller = get_caller(request)
+    
+    try:
+        events = ticket_history(session, id, caller)
+        return JSONResponse(
+            status_code=200,
+            content={"events": events}
+        )
+    except LookupError:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not found"}
+        )
+
+
 @app.post("/api/tickets/{id}/status")
 async def change_status_endpoint(request: Request, id: int, session: SessionLocal = Depends(get_db_session)):
     """Change the status of a ticket."""

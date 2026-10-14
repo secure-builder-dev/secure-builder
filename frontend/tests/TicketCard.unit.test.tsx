@@ -111,6 +111,7 @@ describe("TicketCard", () => {
     render(<TicketCard ticket={t} />);
     const heading = screen.getByRole("heading");
     expect(heading.textContent).toBe("<script>alert('xss')</script>");
-    expect(heading.innerHTML).toBe("<script>alert('xss')</script>");
+    // innerHTML shows the escaped markup when React renders text safely
+    expect(heading.innerHTML).toContain("&lt;script&gt;");
   });
 });

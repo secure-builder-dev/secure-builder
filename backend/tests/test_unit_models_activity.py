@@ -131,22 +131,31 @@ class TestTicketEventModel:
 class TestInitDbCreatesTables:
     """Tests that init_db() creates the comments and ticket_events tables."""
 
-    def test_init_db_creates_comments_table(self):
+    def test_init_db_creates_comments_table(self, tables):
         """init_db() creates the comments table."""
+        from app.db import init_db
+        # Tables are dropped by the fixture; init_db must create them
+        init_db()
         # Get inspector to check existing tables
         inspector = inspect(engine)
         table_names = inspector.get_table_names()
         assert "comments" in table_names
 
-    def test_init_db_creates_ticket_events_table(self):
+    def test_init_db_creates_ticket_events_table(self, tables):
         """init_db() creates the ticket_events table."""
+        from app.db import init_db
+        # Tables are dropped by the fixture; init_db must create them
+        init_db()
         # Get inspector to check existing tables
         inspector = inspect(engine)
         table_names = inspector.get_table_names()
         assert "ticket_events" in table_names
 
-    def test_init_db_creates_tickets_table(self):
+    def test_init_db_creates_tickets_table(self, tables):
         """init_db() creates the tickets table (unchanged)."""
+        from app.db import init_db
+        # Tables are dropped by the fixture; init_db must create them
+        init_db()
         # Get inspector to check existing tables
         inspector = inspect(engine)
         table_names = inspector.get_table_names()

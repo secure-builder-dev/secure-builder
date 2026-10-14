@@ -1,10 +1,15 @@
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from typing import Any
 
 USERS = ('her', 'him')
 
 VALID_PRIORITIES = ('low', 'normal', 'urgent')
 ALLOWED_DATA_KEYS = {'title', 'details', 'priority', 'due'}
+
+
+class NotEditable(Exception):
+    """Raised when a ticket cannot be edited (status is not open or acknowledged)."""
+    pass
 
 
 def ticket_to_dict(ticket: Any) -> dict:
@@ -380,4 +385,87 @@ def filed(session, user: str) -> list:
     return [ticket_to_dict(t) for t in tickets]
 
 
-from datetime import timedelta
+def edit_ticket(session, ticket_id: int, user: str, data: dict) -> dict:
+    """Edit a ticket.
+    
+    Args:
+        session: Database session
+        ticket_id: ID of the ticket to edit
+        user: User attempting the edit (must be the filer)
+        data: Dict with optional keys title, details, priority, due
+              At least one key must be present
+    
+    Returns:
+        ticket_to_dict of the updated ticket
+    
+    Raises:
+        LookupError: If ticket does not exist or user is not a party
+        ValueError: If data is not a dict, is empty, has invalid keys,
+                   or any field validation fails
+        PermissionError: If user is not the filer
+        NotEditable: If status is not open or acknowledged
+    """
+    from app.models import Ticket
+    from app.activity import record_event
+    
+    # Check 1: LookupError - ticket must exist and user must be a party
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError(f"Ticket {ticket_id} not found")
+    
+    if user != ticket.filed_by and user != ticket.assigned_to:
+        raise LookupError(f"User '{user}' is not a party to ticket {ticket_id}")
+    
+    # Check 2: ValueError - data must be a dict
+    if not isinstance(data, dict):
+        raise ValueError("data must be a dict")
+    
+    # Check 2: ValueError - data must not be empty
+    if len(data) == 0:
+        raise ValueError("data must not be empty")
+    
+    # Check 2: ValueError - data must only have valid keys
+    invalid_keys = set(data.keys()) - ALLOWED_DATA_KEYS
+    if invalid_keys:
+        raise ValueError(f"data contains invalid keys: {invalid_keys}")
+    
+    # Validate field values (raises ValueError if invalid) - do this before other checks
+    # to ensure we catch value errors before permission/status checks
+    validated_values = {}
+    if 'title' in data:
+        validated_values['title'] = _validate_title(data['title'])
+    if 'details' in data:
+        validated_values['details'] = _validate_details(data['details'])
+    if 'priority' in data:
+        validated_values['priority'] = _validate_priority(data['priority'])
+    if 'due' in data:
+        validated_values['due'] = _validate_due(data['due'])
+    
+    # Check 3: PermissionError - user must be the filer
+    if user != ticket.filed_by:
+        raise PermissionError(f"User '{user}' is not the filer of ticket {ticket_id}")
+    
+    # Check 4: NotEditable - status must be open or acknowledged
+    if ticket.status not in ('open', 'acknowledged'):
+        raise NotEditable(f"Ticket {ticket_id} with status '{ticket.status}' is not editable")
+    
+    # All checks passed - perform the update
+    now = datetime.now(timezone.utc)
+    
+    if 'title' in validated_values:
+        ticket.title = validated_values['title']
+    if 'details' in validated_values:
+        ticket.details = validated_values['details']
+    if 'priority' in validated_values:
+        ticket.priority = validated_values['priority']
+    if 'due' in validated_values:
+        ticket.due = validated_values['due']
+    
+    ticket.updated_at = now
+    
+    # Record the 'edited' event (not committed yet)
+    record_event(session, ticket, user, 'edited', from_status=None, to_status=None)
+    
+    session.commit()
+    
+    return ticket_to_dict(ticket)

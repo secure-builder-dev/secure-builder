@@ -177,17 +177,17 @@ class TestEditTicketSuccess:
         assert result['updated_at'] > original_updated_at
     
     def test_successful_edit_records_edited_event(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Test ticket'})
         ticket_id = ticket['id']
         
         edit_ticket(db, ticket_id, 'her', {'title': 'New title'})
         
         # Check that an event was recorded
-        stmt = db.execute(
-            db.query(TicketEvent).filter_by(ticket_id=ticket_id)
-        ).scalars().all()
+        stmt = select(TicketEvent).where(TicketEvent.ticket_id == ticket_id)
+        events = db.execute(stmt).scalars().all()
         
-        events = list(stmt)
         assert len(events) >= 2  # filed event + edited event
         
         # Find the edited event
@@ -272,9 +272,14 @@ class TestEditTicketFailedChangesNothing:
     """Test clause 4: a failed edit changes nothing and records nothing."""
     
     def test_failed_edit_due_to_lookup_error_changes_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Original title'})
         ticket_id = ticket['id']
-        original_updated_at = ticket['updated_at']
+        
+        # Get original updated_at as ISO string for comparison
+        stmt = select(Ticket.updated_at).where(Ticket.id == ticket_id)
+        original_updated_at = db.execute(stmt).scalar()
         
         # Try to edit with non-existent ticket
         with pytest.raises(LookupError):
@@ -283,12 +288,17 @@ class TestEditTicketFailedChangesNothing:
         # Original ticket should be unchanged
         refreshed = db.get(Ticket, ticket_id)
         assert refreshed.title == 'Original title'
-        assert refreshed.updated_at == original_updated_at
+        assert refreshed.updated_at.isoformat() == original_updated_at.isoformat()
     
     def test_failed_edit_due_to_value_error_changes_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Original title'})
         ticket_id = ticket['id']
-        original_updated_at = ticket['updated_at']
+        
+        # Get original updated_at as ISO string for comparison
+        stmt = select(Ticket.updated_at).where(Ticket.id == ticket_id)
+        original_updated_at = db.execute(stmt).scalar()
         
         # Try to edit with invalid data
         with pytest.raises(ValueError):
@@ -297,12 +307,17 @@ class TestEditTicketFailedChangesNothing:
         # Original ticket should be unchanged
         refreshed = db.get(Ticket, ticket_id)
         assert refreshed.title == 'Original title'
-        assert refreshed.updated_at == original_updated_at
+        assert refreshed.updated_at.isoformat() == original_updated_at.isoformat()
     
     def test_failed_edit_due_to_permission_error_changes_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Original title'})
         ticket_id = ticket['id']
-        original_updated_at = ticket['updated_at']
+        
+        # Get original updated_at as ISO string for comparison
+        stmt = select(Ticket.updated_at).where(Ticket.id == ticket_id)
+        original_updated_at = db.execute(stmt).scalar()
         
         # Try to edit as assignee (not filer)
         with pytest.raises(PermissionError):
@@ -311,17 +326,22 @@ class TestEditTicketFailedChangesNothing:
         # Original ticket should be unchanged
         refreshed = db.get(Ticket, ticket_id)
         assert refreshed.title == 'Original title'
-        assert refreshed.updated_at == original_updated_at
+        assert refreshed.updated_at.isoformat() == original_updated_at.isoformat()
     
     def test_failed_edit_due_to_not_editable_changes_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Original title'})
         ticket_id = ticket['id']
-        original_updated_at = ticket['updated_at']
         
         # Change status to in_progress
         from app.rules import change_status
         change_status(db, ticket_id, 'him', 'acknowledged')
         change_status(db, ticket_id, 'him', 'in_progress')
+        
+        # Get updated_at after status changes (before failed edit)
+        stmt = select(Ticket.updated_at).where(Ticket.id == ticket_id)
+        original_updated_at = db.execute(stmt).scalar()
         
         # Try to edit when not editable
         with pytest.raises(NotEditable):
@@ -330,26 +350,32 @@ class TestEditTicketFailedChangesNothing:
         # Original ticket should be unchanged
         refreshed = db.get(Ticket, ticket_id)
         assert refreshed.title == 'Original title'
-        assert refreshed.updated_at == original_updated_at
+        assert refreshed.updated_at.isoformat() == original_updated_at.isoformat()
     
     def test_failed_edit_records_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Test ticket'})
         ticket_id = ticket['id']
         
         # Count events before failed edit
-        events_before = list(db.query(TicketEvent).filter_by(ticket_id=ticket_id).all())
+        stmt = select(TicketEvent).where(TicketEvent.ticket_id == ticket_id)
+        events_before = list(db.execute(stmt).scalars().all())
         
         # Try to edit with invalid data
         with pytest.raises(ValueError):
             edit_ticket(db, ticket_id, 'her', {'invalid_key': 'value'})
         
         # Count events after failed edit
-        events_after = list(db.query(TicketEvent).filter_by(ticket_id=ticket_id).all())
+        stmt = select(TicketEvent).where(TicketEvent.ticket_id == ticket_id)
+        events_after = list(db.execute(stmt).scalars().all())
         
         # No new events should be recorded
         assert len(events_after) == len(events_before)
     
     def test_failed_edit_due_to_not_editable_records_nothing(self, db):
+        from sqlalchemy import select
+        
         ticket = create_ticket(db, 'her', {'title': 'Test ticket'})
         ticket_id = ticket['id']
         
@@ -359,14 +385,16 @@ class TestEditTicketFailedChangesNothing:
         change_status(db, ticket_id, 'him', 'in_progress')
         
         # Count events before failed edit
-        events_before = list(db.query(TicketEvent).filter_by(ticket_id=ticket_id).all())
+        stmt = select(TicketEvent).where(TicketEvent.ticket_id == ticket_id)
+        events_before = list(db.execute(stmt).scalars().all())
         
         # Try to edit when not editable
         with pytest.raises(NotEditable):
             edit_ticket(db, ticket_id, 'her', {'title': 'New title'})
         
         # Count events after failed edit
-        events_after = list(db.query(TicketEvent).filter_by(ticket_id=ticket_id).all())
+        stmt = select(TicketEvent).where(TicketEvent.ticket_id == ticket_id)
+        events_after = list(db.execute(stmt).scalars().all())
         
         # No new events should be recorded
         assert len(events_after) == len(events_before)

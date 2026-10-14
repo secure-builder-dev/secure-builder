@@ -191,9 +191,22 @@ export default function App() {
           <section className="panel" aria-label="Tickets I filed">
             <h2>Tickets I filed</h2>
             <div className="card-list">
-              {filed.map((t) => (
-                <TicketCard key={t.id} ticket={t} />
-              ))}
+              {filed.map((t) => {
+                let children: React.ReactNode;
+                if (t.status === "done") {
+                  children = (
+                    <>
+                      <button onClick={() => handleStatusChange(t.id, "closed")}>
+                        Close
+                      </button>
+                      <button onClick={() => handleStatusChange(t.id, "open")}>
+                        Reopen
+                      </button>
+                    </>
+                  );
+                }
+                return <TicketCard key={t.id} ticket={t}>{children}</TicketCard>;
+              })}
             </div>
           </section>
         )}

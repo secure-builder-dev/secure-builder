@@ -147,6 +147,7 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
         PermissionError: If user is not the required party for this transition
     """
     from app.models import Ticket
+    from app.activity import record_event
     
     # Check 1: LookupError - ticket must exist and user must be a party
     ticket = session.get(Ticket, ticket_id)
@@ -176,10 +177,13 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
     if user != expected_user:
         raise PermissionError(f"User '{user}' is not authorized for this transition")
     
-    # All checks passed - perform the update
+    # All checks passed - perform the update and record event
     now = datetime.now(timezone.utc)
     ticket.status = new_status
     ticket.updated_at = now
+    
+    # Record the status change event (not committed yet)
+    record_event(session, ticket, user, 'status', from_status=current_status, to_status=new_status)
     
     session.commit()
     
@@ -203,6 +207,7 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
                    or any field validation fails
     """
     from app.models import Ticket
+    from app.activity import record_event
     
     # Validate filed_by
     if filed_by not in USERS:
@@ -242,8 +247,13 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
         updated_at=now
     )
     
-    # Add to session and commit
+    # Add ticket to session
     session.add(ticket)
+    session.flush()  # Get the ticket ID before recording event
+    
+    # Record the 'filed' event (not committed yet)
+    record_event(session, ticket, filed_by, 'filed', from_status=None, to_status='open')
+    
     session.commit()
     
     return ticket_to_dict(ticket)

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import type { Ticket, User, CommentOut, TicketEvent } from "./types";
-import { fetchComments, fetchHistory, addComment } from "./api";
+import { fetchComments, fetchHistory, addComment, editTicket } from "./api";
 import CommentThread from "./CommentThread";
 import HistoryList from "./HistoryList";
+import EditTicketForm from "./EditTicketForm";
 
 interface TicketDetailProps {
   token: string;
@@ -23,6 +24,8 @@ export default function TicketDetail({
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [addError, setAddError] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     setComments([]);
@@ -64,6 +67,27 @@ export default function TicketDetail({
     }
   };
 
+  const handleEditSave = async (changes: { title: string; details: string; priority: "low" | "normal" | "urgent"; due: string | null }) => {
+    try {
+      const updatedTicket = await editTicket(token, ticket.id, changes);
+      setShowEdit(false);
+      setEditError(null);
+      setRefreshKey((k) => k + 1);
+      if (onSaved) {
+        onSaved(updatedTicket);
+      }
+    } catch {
+      setEditError("Could not save");
+    }
+  };
+
+  const handleEditCancel = () => {
+    setShowEdit(false);
+    setEditError(null);
+  };
+
+  const canEdit = me === ticket.filed_by && (ticket.status === "open" || ticket.status === "acknowledged");
+
   const statusText = ticket.status.replace("_", " ");
 
   return (
@@ -80,18 +104,34 @@ export default function TicketDetail({
         <span className={`pill status-${ticket.status}`}>{statusText}</span>
         <span className="who">for {ticket.assigned_to}</span>
       </div>
-      {addError && (
-        <p role="alert" className="error">
-          {addError}
-        </p>
+      {canEdit && (
+        <button onClick={() => setShowEdit(true)}>Edit</button>
       )}
-      <h3>Comments</h3>
-      <CommentThread comments={comments} onAdd={handleAddComment} />
-      <h3>History</h3>
-      <HistoryList events={events} />
-      <button className="close-detail" onClick={onClose}>
-        Close details
-      </button>
+      {showEdit ? (
+        <EditTicketForm
+          ticket={ticket}
+          onSave={handleEditSave}
+          onCancel={handleEditCancel}
+          error={editError || undefined}
+        />
+      ) : (
+        <>
+          {addError && (
+            <p role="alert" className="error">
+              {addError}
+            </p>
+          )}
+          <h3>Comments</h3>
+          <CommentThread comments={comments} onAdd={handleAddComment} />
+          <h3>History</h3>
+          <HistoryList events={events} />
+        </>
+      )}
+      {!showEdit && (
+        <button className="close-detail" onClick={onClose}>
+          Close details
+        </button>
+      )}
     </section>
   );
 }

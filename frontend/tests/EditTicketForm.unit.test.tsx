@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Ticket } from "../src/types";
 import EditTicketForm from "../src/EditTicketForm";
 
@@ -29,6 +29,10 @@ function renderForm(t: Ticket = ticket, error?: string) {
 describe("EditTicketForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("renders form.edit-ticket with aria-label Edit ticket", () => {

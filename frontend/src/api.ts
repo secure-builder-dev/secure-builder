@@ -1,4 +1,4 @@
-import type { Board, Filed, Ticket, NewTicket, Status, Me } from "./types";
+import type { Board, Filed, Ticket, NewTicket, Status, Me, Comments, History, CommentOut } from "./types";
 
 export async function fetchDashboard(token: string): Promise<Board> {
   const res = await fetch("/api/dashboard", {
@@ -57,6 +57,46 @@ export async function fetchMe(token: string): Promise<Me> {
   const res = await fetch("/api/me", {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+export async function fetchTicket(token: string, id: number): Promise<Ticket> {
+  const res = await fetch(`/api/tickets/${id}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+export async function fetchComments(token: string, id: number): Promise<Comments> {
+  const res = await fetch(`/api/tickets/${id}/comments`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+export async function fetchHistory(token: string, id: number): Promise<History> {
+  const res = await fetch(`/api/tickets/${id}/history`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+export async function addComment(token: string, id: number, body: string): Promise<CommentOut> {
+  const res = await fetch(`/api/tickets/${id}/comments`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body }),
   });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();

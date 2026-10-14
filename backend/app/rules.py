@@ -29,9 +29,9 @@ def ticket_to_dict(ticket: Any) -> dict:
     else:
         result['due'] = None
     
-    # Format timestamps as ISO-8601
-    result['created_at'] = ticket.created_at.isoformat()
-    result['updated_at'] = ticket.updated_at.isoformat()
+    # Format timestamps as ISO-8601 in UTC
+    result['created_at'] = ticket.created_at.astimezone(timezone.utc).isoformat()
+    result['updated_at'] = ticket.updated_at.astimezone(timezone.utc).isoformat()
     
     return result
 

@@ -28,7 +28,7 @@ describe("TicketCard onOpen prop", () => {
   it("calls onOpen with the ticket when Enter is pressed on focused span.hover-target", () => {
     const onOpen = vi.fn();
     render(<TicketCard ticket={t} onOpen={onOpen} />);
-    const target = screen.getByText(t.title).parentElement as HTMLElement;
+    const target = screen.getByText(t.title).parentElement?.parentElement as HTMLElement;
     target.focus();
     fireEvent.keyDown(target, { key: "Enter", code: "Enter" });
     expect(onOpen).toHaveBeenCalledWith(t);
@@ -50,7 +50,7 @@ describe("TicketCard onOpen prop", () => {
   it("does not add a new button when onOpen is provided", () => {
     const onOpen = vi.fn();
     render(<TicketCard ticket={t} onOpen={onOpen} />);
-    const buttons = screen.getAllByRole("button");
+    const buttons = screen.queryAllByRole("button");
     expect(buttons).toHaveLength(0);
   });
 });

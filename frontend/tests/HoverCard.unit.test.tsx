@@ -23,16 +23,17 @@ describe("HoverCard", () => {
   });
 
   it("renders children inside a span with class hover-target and tabIndex 0", () => {
-    render(<HoverCard ticket={baseTicket}><span>Click me</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={baseTicket}><span>Click me</span></HoverCard>);
+    const target = container.querySelector(".hover-target");
+    expect(target).toBeInTheDocument();
     expect(target).toHaveClass("hover-target");
     expect(target).toHaveAttribute("tabIndex", "0");
     expect(target.textContent).toBe("Click me");
   });
 
   it("shows tooltip on mouseenter with correct content", () => {
-    render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.mouseEnter(target);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toHaveClass("hover-card");
@@ -43,8 +44,8 @@ describe("HoverCard", () => {
   });
 
   it("hides tooltip on mouseleave", () => {
-    render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.mouseEnter(target);
     expect(screen.queryByRole("tooltip")).toBeInTheDocument();
     fireEvent.mouseLeave(target);
@@ -52,8 +53,8 @@ describe("HoverCard", () => {
   });
 
   it("shows tooltip on focus and hides on blur", () => {
-    render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={baseTicket}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.focus(target);
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
     fireEvent.blur(target);
@@ -62,8 +63,8 @@ describe("HoverCard", () => {
 
   it("shows 'No details' when details is empty", () => {
     const ticketWithEmptyDetails = { ...baseTicket, details: "" };
-    render(<HoverCard ticket={ticketWithEmptyDetails}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={ticketWithEmptyDetails}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.mouseEnter(target);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toContainHTML("<p>No details</p>");
@@ -71,8 +72,8 @@ describe("HoverCard", () => {
 
   it("shows 'No details' when details is whitespace only", () => {
     const ticketWithWhitespaceDetails = { ...baseTicket, details: "   \n\t   " };
-    render(<HoverCard ticket={ticketWithWhitespaceDetails}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={ticketWithWhitespaceDetails}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.mouseEnter(target);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toContainHTML("<p>No details</p>");
@@ -80,8 +81,8 @@ describe("HoverCard", () => {
 
   it("truncates created_at to first 10 characters", () => {
     const ticketWithLongDate = { ...baseTicket, created_at: "2026-12-25T23:59:59.999Z" };
-    render(<HoverCard ticket={ticketWithLongDate}><span>Title</span></HoverCard>);
-    const target = screen.getByRole("generic", { hidden: true });
+    const { container } = render(<HoverCard ticket={ticketWithLongDate}><span>Title</span></HoverCard>);
+    const target = container.querySelector(".hover-target")!;
     fireEvent.mouseEnter(target);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toContainHTML("<p>Created 2026-12-25</p>");

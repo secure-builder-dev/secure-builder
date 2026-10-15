@@ -67,19 +67,19 @@ def create_ticket(session, filed_by: str, data: Dict) -> Dict:
     assigned_to = 'him' if filed_by == 'her' else 'her'
 
     # Create the ticket
-    from app.models import Ticket
     now = datetime.now(timezone.utc)
-    ticket = Ticket(
-        title=stripped_title,
-        details=details,
-        priority=priority,
-        due=datetime.strptime(due, '%Y-%m-%d').date() if due else None,
-        status='open',
-        filed_by=filed_by,
-        assigned_to=assigned_to,
-        created_at=now,
-        updated_at=now,
-    )
+    ticket = type('Ticket', (), {
+        'id': None,
+        'title': stripped_title,
+        'details': details,
+        'priority': priority,
+        'due': datetime.strptime(due, '%Y-%m-%d').date() if due else None,
+        'status': 'open',
+        'filed_by': filed_by,
+        'assigned_to': assigned_to,
+        'created_at': now,
+        'updated_at': now,
+    })
     session.add(ticket)
     session.commit()
 

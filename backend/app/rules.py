@@ -133,6 +133,8 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> Dict:
 
 def dashboard(session, user: str, today: datetime.date) -> Dict:
     """Return the personal dashboard for a user."""
+    from datetime import timedelta
+    
     # Get all tickets assigned to the user
     tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
     
@@ -147,7 +149,7 @@ def dashboard(session, user: str, today: datetime.date) -> Dict:
             # Determine group
             if ticket.priority == 'urgent' or (ticket.due and ticket.due < today):
                 group = 0
-            elif ticket.due and (ticket.due <= today or (today <= ticket.due <= today + datetime.timedelta(days=3))):
+            elif ticket.due and (ticket.due == today or today <= ticket.due <= today + timedelta(days=3)):
                 group = 1
             else:
                 group = 2
@@ -157,7 +159,7 @@ def dashboard(session, user: str, today: datetime.date) -> Dict:
             # Determine group
             if ticket.priority == 'urgent' or (ticket.due and ticket.due < today):
                 group = 0
-            elif ticket.due and (ticket.due <= today or (today <= ticket.due <= today + datetime.timedelta(days=3))):
+            elif ticket.due and (ticket.due <= today or (today <= ticket.due <= today + timedelta(days=3))):
                 group = 1
             else:
                 group = 2
@@ -166,7 +168,7 @@ def dashboard(session, user: str, today: datetime.date) -> Dict:
         elif ticket.status in ('done', 'closed'):
             # Check if updated_at is within the last 7 days
             updated_date = ticket.updated_at.date()
-            if today - datetime.timedelta(days=6) <= updated_date <= today:
+            if today - timedelta(days=6) <= updated_date <= today:
                 completed.append(ticket_dict)
     
     # Sort todo and in_progress by group, then due date, then created_at

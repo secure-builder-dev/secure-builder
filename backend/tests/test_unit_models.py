@@ -1,4 +1,5 @@
 """Unit tests for models (given by the plan; read-only)."""
+import os
 import subprocess
 import sys
 
@@ -14,7 +15,7 @@ class TestDbModule:
         env = {k: v for k, v in dict(**sys.modules["os"].environ).items() if k != "TICKETER_DATABASE_URL"}
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd="backend/app",
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             env=env,
             capture_output=True,
             text=True,
@@ -27,7 +28,7 @@ class TestDbModule:
         env = {**sys.modules["os"].environ, "TICKETER_DATABASE_URL": ""}
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd="backend/app",
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             env=env,
             capture_output=True,
             text=True,

@@ -101,6 +101,13 @@ def api_filed(caller: str = Depends(get_caller), db: Session = Depends(get_db)):
     return {"tickets": filed(db, caller)}
 
 
+@app.get("/api/board")
+def api_board(caller: str = Depends(get_caller), db: Session = Depends(get_db)):
+    today = datetime.now(timezone.utc).date()
+    from app.household import household_board
+    return household_board(db, today)
+
+
 @app.post("/api/tickets")
 async def api_create_ticket(request: Request, caller: str = Depends(get_caller), db: Session = Depends(get_db)):
     try:

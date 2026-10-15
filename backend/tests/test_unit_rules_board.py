@@ -1,12 +1,13 @@
 import unittest
 from datetime import date, datetime, timezone
+from unittest.mock import Mock
 from app.rules import dashboard, filed, ticket_to_dict
 from app.models import Ticket
 
 
 class TestDashboard(unittest.TestCase):
     def setUp(self):
-        self.session = unittest.mock.Mock()
+        self.session = Mock()
         self.today = date(2024, 1, 1)
 
     def test_clause_1_dashboard_returns_correct_structure(self):

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from app.models import Ticket
 
 USERS = ('her', 'him')
@@ -129,3 +129,71 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> Dict:
     session.commit()
 
     return ticket_to_dict(ticket)
+
+
+def dashboard(session, user: str, today: datetime.date) -> Dict:
+    """Return the personal dashboard for a user."""
+    # Get all tickets assigned to the user
+    tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
+    
+    todo = []
+    in_progress = []
+    completed = []
+    
+    for ticket in tickets:
+        ticket_dict = ticket_to_dict(ticket)
+        
+        if ticket.status in ('open', 'acknowledged'):
+            # Determine group
+            if ticket.priority == 'urgent' or (ticket.due and ticket.due < today):
+                group = 0
+            elif ticket.due and (ticket.due <= today or (today <= ticket.due <= today + datetime.timedelta(days=3))):
+                group = 1
+            else:
+                group = 2
+            ticket_dict['group'] = group
+            todo.append(ticket_dict)
+        elif ticket.status == 'in_progress':
+            # Determine group
+            if ticket.priority == 'urgent' or (ticket.due and ticket.due < today):
+                group = 0
+            elif ticket.due and (ticket.due <= today or (today <= ticket.due <= today + datetime.timedelta(days=3))):
+                group = 1
+            else:
+                group = 2
+            ticket_dict['group'] = group
+            in_progress.append(ticket_dict)
+        elif ticket.status in ('done', 'closed'):
+            # Check if updated_at is within the last 7 days
+            updated_date = ticket.updated_at.date()
+            if today - datetime.timedelta(days=6) <= updated_date <= today:
+                completed.append(ticket_dict)
+    
+    # Sort todo and in_progress by group, then due date, then created_at
+    def sort_key(ticket_dict):
+        group = ticket_dict['group']
+        due = ticket_dict['due']
+        created_at = ticket_dict['created_at']
+        
+        # Convert due to date for comparison
+        due_date = datetime.strptime(due, '%Y-%m-%d').date() if due else None
+        
+        return (group, due_date, created_at)
+    
+    todo.sort(key=sort_key)
+    in_progress.sort(key=sort_key)
+    
+    # Sort completed by updated_at newest first
+    completed.sort(key=lambda x: x['updated_at'], reverse=True)
+    
+    return {
+        'todo': todo,
+        'in_progress': in_progress,
+        'completed': completed,
+    }
+
+
+def filed(session, user: str) -> List[Dict]:
+    """Return all tickets filed by a user, newest first."""
+    tickets = session.query(Ticket).filter(Ticket.filed_by == user).order_by(Ticket.created_at.desc()).all()
+    return [ticket_to_dict(ticket) for ticket in tickets]

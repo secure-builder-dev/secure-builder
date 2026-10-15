@@ -46,7 +46,7 @@ def test_clause_1(db, today):
             filed_by="her",
             assigned_to="him",
             created_at=at("2023-12-29"),
-            updated_at=at("2024-1-1"),
+            updated_at=at("2024-01-01"),
         ),
     ]
     db.add_all(tickets)
@@ -205,7 +205,7 @@ def test_clause_3_completed_order(db, today):
             filed_by="her",
             assigned_to="him",
             created_at=at("2023-12-31"),
-            updated_at=at("2024-1-1"),
+            updated_at=at("2024-01-01"),
         ),
     ]
     db.add_all(tickets_in_window)

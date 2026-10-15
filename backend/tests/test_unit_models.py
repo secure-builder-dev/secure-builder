@@ -68,5 +68,5 @@ class TestTicketModel:
         assert columns["status"].type.python_type == str
         assert columns["filed_by"].type.python_type == str
         assert columns["assigned_to"].type.python_type == str
-        assert columns["created_at"].type.python_type == str
-        assert columns["updated_at"].type.python_type == str
+        assert columns["created_at"].type.python_type == datetime
+        assert columns["updated_at"].type.python_type == datetime

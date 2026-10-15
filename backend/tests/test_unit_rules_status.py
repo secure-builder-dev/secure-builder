@@ -25,19 +25,22 @@ class TestChangeStatus:
         db.commit()
 
         # Test open -> acknowledged
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "him", "acknowledged")
         assert result["status"] == "acknowledged"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
         # Test acknowledged -> in_progress
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "him", "in_progress")
         assert result["status"] == "in_progress"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
         # Test in_progress -> done
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "him", "done")
         assert result["status"] == "done"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
     def test_valid_moves_by_filer(self, db):
         """Clause 1: Valid moves by filer work."""
@@ -57,19 +60,22 @@ class TestChangeStatus:
         db.commit()
 
         # Test done -> closed
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "her", "closed")
         assert result["status"] == "closed"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
         # Test done -> open (reopen)
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "her", "open")
         assert result["status"] == "open"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
         # Test closed -> open (reopen)
+        before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "her", "open")
         assert result["status"] == "open"
-        assert result["updated_at"] != ticket.updated_at.isoformat()
+        assert result["updated_at"] != before
 
     def test_lookup_error_when_ticket_missing(self, db):
         """Clause 2: LookupError when ticket does not exist."""

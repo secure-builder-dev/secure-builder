@@ -39,9 +39,10 @@ class TestDbModule:
     def test_exports_exist(self):
         """Clause 2: engine, Base, SessionLocal, init_db are exported."""
         from app.db import Base, SessionLocal, engine, init_db
+        from sqlalchemy.orm import DeclarativeBase
 
         assert engine is not None
-        assert isinstance(Base, type) and issubclass(Base, inspect(Base).mapper.class_)
+        assert isinstance(Base, type) and issubclass(Base, DeclarativeBase)
         assert SessionLocal is not None
         assert callable(init_db)
 
@@ -52,6 +53,7 @@ class TestTicketModel:
     def test_table_name_and_columns(self, db):
         """Clause 3: Ticket.__table__.name is 'tickets' and columns match exactly."""
         from app.models import Ticket
+        from datetime import datetime
 
         table = Ticket.__table__
         assert table.name == "tickets"
@@ -59,9 +61,9 @@ class TestTicketModel:
         assert columns["id"].type.python_type == int
         assert columns["title"].type.length == 120
         assert columns["details"].type.length == 1000
-        assert columns["details"].default.value == ""
+        assert columns["details"].default.arg == ""
         assert columns["priority"].type.python_type == str
-        assert columns["due"].type.python_type == str
+        assert columns["due"].type.python_type == datetime.date
         assert columns["due"].nullable is True
         assert columns["status"].type.python_type == str
         assert columns["filed_by"].type.python_type == str

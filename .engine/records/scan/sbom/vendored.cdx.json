@@ -1,0 +1,34 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "honey-do"
+    }
+  },
+  "components": [
+    {
+      "type": "framework",
+      "name": "python",
+      "version": "3.12.13",
+      "cpe": "cpe:2.3:a:python:python:3.12.13:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/python@3.12.13"
+    },
+    {
+      "type": "framework",
+      "name": "node.js",
+      "version": "24.16.0",
+      "cpe": "cpe:2.3:a:nodejs:node.js:24.16.0:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/node@24.16.0"
+    },
+    {
+      "type": "framework",
+      "name": "postgresql",
+      "version": "17.8",
+      "cpe": "cpe:2.3:a:postgresql:postgresql:17.8:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/postgresql@17.8"
+    }
+  ]
+}

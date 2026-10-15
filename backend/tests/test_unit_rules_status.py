@@ -65,13 +65,29 @@ class TestChangeStatus:
         assert result["status"] == "closed"
         assert result["updated_at"] != before
 
-        # Test done -> open (reopen)
+        # Test closed -> open (reopen)
         before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "her", "open")
         assert result["status"] == "open"
         assert result["updated_at"] != before
 
-        # Test closed -> open (reopen)
+        # Test open -> done (through acknowledged and in_progress)
+        before = ticket.updated_at.isoformat()
+        result = change_status(db, ticket.id, "him", "acknowledged")
+        assert result["status"] == "acknowledged"
+        assert result["updated_at"] != before
+
+        before = ticket.updated_at.isoformat()
+        result = change_status(db, ticket.id, "him", "in_progress")
+        assert result["status"] == "in_progress"
+        assert result["updated_at"] != before
+
+        before = ticket.updated_at.isoformat()
+        result = change_status(db, ticket.id, "him", "done")
+        assert result["status"] == "done"
+        assert result["updated_at"] != before
+
+        # Test done -> open (reopen)
         before = ticket.updated_at.isoformat()
         result = change_status(db, ticket.id, "her", "open")
         assert result["status"] == "open"

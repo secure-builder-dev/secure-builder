@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Dict, Optional
+from app.models import Ticket
 
 USERS = ('her', 'him')
 
@@ -81,6 +82,50 @@ def create_ticket(session, filed_by: str, data: Dict) -> Dict:
         'updated_at': now,
     })
     session.add(ticket)
+    session.commit()
+
+    return ticket_to_dict(ticket)
+
+
+def change_status(session, ticket_id: int, user: str, new_status: str) -> Dict:
+    """Change the status of a ticket according to the status table."""
+    # Status table: from -> to -> who
+    status_table = {
+        'open': {'acknowledged': 'assignee'},
+        'acknowledged': {'in_progress': 'assignee'},
+        'in_progress': {'done': 'assignee'},
+        'done': {'closed': 'filer', 'open': 'filer'},
+        'closed': {'open': 'filer'},
+    }
+
+    # Get the ticket
+    ticket = session.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket is None:
+        raise LookupError("Ticket not found")
+
+    # Check if user is a party (filer or assignee)
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("User is not a party to this ticket")
+
+    # Validate new_status
+    valid_statuses = {'open', 'acknowledged', 'in_progress', 'done', 'closed'}
+    if new_status not in valid_statuses:
+        raise ValueError("Invalid status")
+
+    # Check if the move is in the table
+    if ticket.status not in status_table or new_status not in status_table[ticket.status]:
+        raise ValueError("Invalid transition")
+
+    # Check if the user has permission for this move
+    required_party = status_table[ticket.status][new_status]
+    if required_party == 'assignee' and user != ticket.assigned_to:
+        raise PermissionError("Only the assignee can make this move")
+    if required_party == 'filer' and user != ticket.filed_by:
+        raise PermissionError("Only the filer can make this move")
+
+    # Update the ticket
+    ticket.status = new_status
+    ticket.updated_at = datetime.now(timezone.utc)
     session.commit()
 
     return ticket_to_dict(ticket)

@@ -232,8 +232,8 @@ def test_clause_3_completed_order(db, today):
             status="done",
             filed_by="him",
             assigned_to="her",
-            created_at=at("2024-1-2"),
-            updated_at=at("2024-1-2"),
+            created_at=at("2024-01-02"),
+            updated_at=at("2024-01-02"),
         ),
     ]
     db.add_all(tickets_outside_window)

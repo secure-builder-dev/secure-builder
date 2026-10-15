@@ -63,7 +63,7 @@ class TestTicketModel:
         assert columns["details"].type.length == 1000
         assert columns["details"].default.arg == ""
         assert columns["priority"].type.python_type == str
-        assert columns["due"].type.python_type == datetime.date
+        assert columns["due"].type.python_type == date
         assert columns["due"].nullable is True
         assert columns["status"].type.python_type == str
         assert columns["filed_by"].type.python_type == str

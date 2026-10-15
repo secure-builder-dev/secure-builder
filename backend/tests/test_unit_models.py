@@ -14,7 +14,7 @@ class TestDbModule:
         env = {k: v for k, v in dict(**sys.modules["os"].environ).items() if k != "TICKETER_DATABASE_URL"}
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd=sys.modules["app.db"].__file__.replace("db.py", ""),
+            cwd="backend/app",
             env=env,
             capture_output=True,
             text=True,
@@ -27,7 +27,7 @@ class TestDbModule:
         env = {**sys.modules["os"].environ, "TICKETER_DATABASE_URL": ""}
         result = subprocess.run(
             [sys.executable, "-c", "import app.db"],
-            cwd=sys.modules["app.db"].__file__.replace("db.py", ""),
+            cwd="backend/app",
             env=env,
             capture_output=True,
             text=True,

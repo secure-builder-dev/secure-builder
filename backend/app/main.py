@@ -108,6 +108,11 @@ def api_board(caller: str = Depends(get_caller), db: Session = Depends(get_db)):
     return household_board(db, today)
 
 
+@app.get("/api/me")
+def api_me(caller: str = Depends(get_caller)):
+    return {"user": caller}
+
+
 @app.post("/api/tickets")
 async def api_create_ticket(request: Request, caller: str = Depends(get_caller), db: Session = Depends(get_db)):
     try:

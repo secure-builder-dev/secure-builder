@@ -53,7 +53,7 @@ class TestTicketModel:
     def test_table_name_and_columns(self, db):
         """Clause 3: Ticket.__table__.name is 'tickets' and columns match exactly."""
         from app.models import Ticket
-        from datetime import datetime
+        from datetime import date, datetime
 
         table = Ticket.__table__
         assert table.name == "tickets"

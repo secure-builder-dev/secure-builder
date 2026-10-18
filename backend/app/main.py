@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette import status
 
-# Import the app's internal modules
+from app import household
+
 from app import db as db_mod
 from app import rules
 
@@ -131,6 +132,21 @@ async def api_filed(
 ) -> dict:
     """Return the tickets filed by the authenticated caller."""
     return {"tickets": rules.filed(session, caller)}
+
+@app.get("/api/board")
+async def api_board(
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+) -> dict:
+    """Return the household board for the authenticated caller.
+
+    ``today`` is the current UTC date. The board is the same for both users.
+    """
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    # Import here to avoid circular imports at module load time
+    from app import household
+    return household.household_board(session, today)
+
 
 # ---------------------------------------------------------------------------
 # Ticket creation endpoint

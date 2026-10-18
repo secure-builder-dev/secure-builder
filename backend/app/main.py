@@ -105,13 +105,28 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
+
+@app.get("/api/me")
+async def api_me(
+    caller: str = Depends(get_caller),
+) -> dict:
+    """Return the identity of the authenticated caller.
+
+    This endpoint requires a valid bearer token and returns a JSON object
+    with the key ``user`` set to either ``"her"`` or ``"him"``.
+    """
+    return {"user": caller}
+
+
 @app.get("/health")
 async def health() -> dict:
-    """Public health check – no authentication required."""
+    """Public health check endpoint.
+
+    Returns a simple JSON payload indicating the service is up.
+    No authentication is required.
+    """
     return {"status": "ok"}
+
 
 @app.get("/api/dashboard")
 async def api_dashboard(

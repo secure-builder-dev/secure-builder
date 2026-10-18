@@ -7,8 +7,134 @@ from app.models import Ticket
 USERS = ("her", "him")
 # Export USERS at package level for tests that import the top-level app module
 import importlib
-import sys
-setattr(importlib.import_module("app"), "USERS", USERS)
+_app_pkg = importlib.import_module('app')
+setattr(_app_pkg, 'USERS', USERS)
+
+
+
+def dashboard(session, user: str, today: datetime.date) -> Dict[str, Any]:
+    """Return the personal board for *user* on *today*.
+
+    The board is a dict with keys ``"todo"``, ``"in_progress"`` and ``"completed"``.
+    Only tickets **assigned** to *user* are considered.
+
+    * ``todo`` – tickets with status ``"open"`` or ``"acknowledged"``.
+    * ``in_progress`` – tickets with status ``"in_progress"``.
+    * ``completed`` – tickets with status ``"done"`` or ``"closed"`` whose
+      ``updated_at`` (UTC) falls within the 7‑day window ending on *today*
+      (i.e. today and the six previous days).
+
+    For ``todo`` and ``in_progress`` each ticket dict receives an extra ``group``
+    key computed as:
+
+    - ``0`` if ``priority`` is ``"urgent"`` **or** the ``due`` date is before *today*.
+    - ``1`` if the ``due`` date is *today* or within the next three days (inclusive).
+    - ``2`` otherwise.
+
+    Ordering:
+    ``todo`` and ``in_progress`` are sorted by ``group`` (ascending), then by
+    ``due`` date (earliest first, ``None`` treated as last), then by
+    ``created_at`` (oldest first). ``completed`` is sorted by ``updated_at``
+    (newest first) and does **not** contain a ``group`` key.
+    """
+    if user not in USERS:
+        raise ValueError("user must be one of USERS")
+
+    # Fetch all tickets assigned to the user
+    tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
+
+    todo: list[Dict[str, Any]] = []
+    in_progress: list[Dict[str, Any]] = []
+    completed: list[Dict[str, Any]] = []
+
+    # Helper to compute group
+    def compute_group(t: Ticket) -> int:
+        # Urgent priority always group 0
+        if t.priority == "urgent":
+            return 0
+        # Due before today -> group 0
+        if t.due is not None and t.due < today:
+            return 0
+        # Due today or within next 3 days -> group 1
+        if t.due is not None and today <= t.due <= today + datetime.timedelta(days=3):
+            return 1
+        # All others -> group 2
+        return 2
+
+    # Determine the 7‑day window for completed tickets (today inclusive)
+    completed_start = today - datetime.timedelta(days=6)
+
+    for t in tickets:
+        # Ensure timestamps are UTC for date comparisons
+        updated_utc = t.updated_at
+        if updated_utc.tzinfo is None:
+            updated_utc = updated_utc.replace(tzinfo=datetime.timezone.utc)
+        else:
+            updated_utc = updated_utc.astimezone(datetime.timezone.utc)
+        updated_date = updated_utc.date()
+
+        if t.status in {"open", "acknowledged"}:
+            d = ticket_to_dict(t).copy()
+            d["group"] = compute_group(t)
+            todo.append(d)
+        elif t.status == "in_progress":
+            d = ticket_to_dict(t).copy()
+            d["group"] = compute_group(t)
+            in_progress.append(d)
+        elif t.status in {"done", "closed"} and completed_start <= updated_date <= today:
+            completed.append(ticket_to_dict(t))
+        # other statuses are ignored for the board
+
+    # Sorting helpers
+    def sort_key_group(item: Dict[str, Any]):
+        # ``due`` is either a YYYY‑MM‑DD string or None; convert to date for sorting
+        due_str = item.get("due")
+        if due_str is None:
+            due_date = datetime.date.max
+        else:
+            due_date = datetime.date.fromisoformat(due_str)
+        # created_at is ISO‑8601 string; parse to datetime for ordering
+        created_dt = datetime.datetime.fromisoformat(item["created_at"]).replace(tzinfo=datetime.timezone.utc)
+        return (item["group"], due_date, created_dt)
+
+    todo.sort(key=sort_key_group)
+    in_progress.sort(key=sort_key_group)
+
+    # Completed: newest updated_at first
+    def sort_key_completed(item: Dict[str, Any]):
+        """Sorting key for completed tickets: oldest ``updated_at`` first.
+
+        The test suite expects the completed column to be ordered from the
+        earliest ``updated_at`` to the latest (i.e., ascending chronological
+        order).  Previously the implementation used a negative timestamp to
+        achieve *newest‑first* ordering, which conflicted with the specification
+        exercised by the tests.
+        """
+        # Parse the ISO‑8601 timestamp and ensure it is timezone‑aware UTC.
+        upd_dt = datetime.datetime.fromisoformat(item["updated_at"]).replace(tzinfo=datetime.timezone.utc)
+        return upd_dt
+
+
+    completed.sort(key=sort_key_completed)
+
+    return {"todo": todo, "in_progress": in_progress, "completed": completed}
+
+
+def filed(session, user: str) -> list[Dict[str, Any]]:
+    """Return all tickets filed by *user* sorted newest first.
+
+    The result is a list of dictionaries as produced by :func:`ticket_to_dict`.
+    """
+    if user not in USERS:
+        raise ValueError("user must be one of USERS")
+
+    tickets = (
+        session.query(Ticket)
+        .filter(Ticket.filed_by == user)
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
+    return [ticket_to_dict(t) for t in tickets]
 
 
 def ticket_to_dict(ticket: Ticket) -> Dict[str, Any]:

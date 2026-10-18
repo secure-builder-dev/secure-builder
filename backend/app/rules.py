@@ -114,7 +114,7 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
     assigned_to = USERS[1] if filed_by == USERS[0] else USERS[0]
 
     # Use utcnow() so tests can monkey‑patch it, then attach UTC tzinfo
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 
     ticket = Ticket(
         title=title,

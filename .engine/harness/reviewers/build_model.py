@@ -53,7 +53,18 @@ EDIT_RULES = (
     "occur exactly once in it; include enough surrounding lines to make it unique. To create a new file give an empty "
     "`search` and the whole file as `replace`. To rewrite an existing file completely (to restructure it, or to delete a "
     "duplicated function), give `search` exactly <<WHOLE FILE>> and the complete new file as `replace`; use it for files "
-    "under 300 lines. Paths are relative to the project root, with forward slashes.")
+    "under 300 lines. In a Python file of any size, `search` exactly <<DEFINITION name>> replaces the top-level function or "
+    "class `name` (with its decorators) by `replace`, without quoting it; if `name` is defined more than once, every copy "
+    "goes and `replace` stands where the first was; an empty `replace` deletes it. Paths are relative to the project root, "
+    "with forward slashes.")
+DEFINITION = re.compile(r"^<<DEFINITION ([A-Za-z_]\w*)>>$")
+# an edit that leaves a second copy of a top-level definition is refused: a 120B model pasted whole new copies of
+# main.py and rules.py under the old ones, and every later search matched twice (honey-do TO-1, gpt-oss-120b)
+TS_DEF = re.compile(r"^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\s*\*?\s*([A-Za-z_$][\w$]*)|"
+                    r"(?:const|let|class)\s+([A-Za-z_$][\w$]*))", re.M)
+# app code that imports the test framework or patches builtins is working around a test, not passing it (TO-1b: rules.py
+# set builtins.pytest so that a test file missing `import pytest` would run)
+TEST_HACK = re.compile(r"^\s*(?:import\s+pytest\b|from\s+pytest\b|import\s+builtins\b|from\s+builtins\b)|__import__\(\s*['\"](?:pytest|builtins)", re.M)
 
 
 def read(p):
@@ -278,6 +289,56 @@ def closest(text, search):
     return best if len(best) <= HINT_MAX else best[:HINT_MAX] + "\n[... passage truncated]"
 
 
+def top_level_defs(rel, text):
+    """{name: [(first line, last line), ...]} of the top-level definitions of a Python or TypeScript file (1-based,
+    decorators included for Python); None when a Python file does not parse."""
+    out = {}
+    if rel.endswith(".py"):
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            return None
+        for d in tree.body:
+            if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                start = min([d.lineno] + [x.lineno for x in d.decorator_list])
+                out.setdefault(d.name, []).append((start, d.end_lineno))
+    elif rel.endswith((".ts", ".tsx", ".js", ".jsx")):
+        for m in TS_DEF.finditer(text):
+            n = text.count("\n", 0, m.start()) + 1
+            out.setdefault(m.group(1) or m.group(2), []).append((n, n))
+    return out
+
+
+def new_duplicates(rel, before, after):
+    """Top-level names the edit leaves defined more often than before (and more than once)."""
+    a, b = top_level_defs(rel, after), top_level_defs(rel, before) if before is not None else {}
+    if not a:
+        return []
+    b = b or {}
+    return sorted(n for n, spans in a.items() if len(spans) > 1 and len(spans) > len(b.get(n, [])))
+
+
+def is_test_path(rel):
+    name = rel.rsplit("/", 1)[-1]
+    return ("/tests/" in f"/{rel}" or "/test/" in f"/{rel}" or name.startswith("test_") or name == "conftest.py"
+            or re.search(r"\.(?:test|spec)\.[jt]sx?$", name) is not None)
+
+
+def replace_definition(text, name, replace):
+    """`text` with every top-level definition of `name` removed and `replace` put where the first one was; None when
+    the file does not parse or defines no such name."""
+    spans = (top_level_defs("x.py", text) or {}).get(name)
+    if not spans:
+        return None
+    lines = text.split("\n")
+    first = spans[0][0]
+    for start, end in sorted(spans, reverse=True):
+        del lines[start - 1:end]
+    body = replace.rstrip("\n")
+    lines[first - 1:first - 1] = body.split("\n") if body else []
+    return "\n".join(lines)
+
+
 def apply_edits(root, edits, writable, readonly):
     """Apply search/replace edits. Returns (written paths, refusals). An edit is refused, and
     nothing of it written, when its path is outside the writable directories, is a read-only
@@ -312,6 +373,13 @@ def apply_edits(root, edits, writable, readonly):
                 refused.append(f"{rel}: <<WHOLE FILE>> is for files under {WHOLE_FILE_MAX_LINES} lines; edit this one by search/replace")
                 continue
             new = replace
+        elif DEFINITION.match(search.strip()):
+            name = DEFINITION.match(search.strip()).group(1)
+            new = replace_definition(current, name, replace) if rel.endswith(".py") else None
+            if new is None:
+                refused.append(f"{rel}: <<DEFINITION {name}>> needs a Python file that parses and defines {name} at top level"
+                               + ("" if rel.endswith(".py") else "; edit this file by search/replace"))
+                continue
         elif not search.strip():
             refused.append(f"{rel}: the file exists; give the exact text to replace in `search` (an empty search only creates new files)")
             continue
@@ -340,6 +408,16 @@ def apply_edits(root, edits, writable, readonly):
             except SyntaxError as err:
                 refused.append(f"{rel}: the result does not parse — SyntaxError line {err.lineno}: {err.msg} -> {str(err.text or '').strip()[:100]}")
                 continue
+        dups = new_duplicates(rel, current, new)
+        if dups:
+            refused.append(f"{rel}: this edit leaves {', '.join(dups)} defined twice (a second copy of code that is already there) — "
+                           "change the existing definition instead of adding another"
+                           + (f" (in Python: search <<DEFINITION {dups[0]}>>, replace with the one new definition)" if rel.endswith(".py") else ""))
+            continue
+        if not is_test_path(rel) and TEST_HACK.search(new) and not TEST_HACK.search(current or ""):
+            refused.append(f"{rel}: application code must not import pytest or builtins, or patch builtins — that works around a "
+                           "test instead of passing it. If a test is wrong, say so in notes")
+            continue
         staged[rel] = new
     for rel, new in staged.items():
         p = root / rel
@@ -734,8 +812,11 @@ def main(argv=None):
         if hints:
             notes += "STATIC CHECK OF YOUR SOURCE (fix these first; no test reports them):\n" + "\n".join(hints) + "\n\n"
             if any("is defined again" in h for h in hints):
-                notes += ("A duplicated definition is easiest to remove by rewriting the file whole: search <<WHOLE FILE>>, "
-                          "replace with the complete file containing each function once.\n\n")
+                # the hint once said <<WHOLE FILE>> whatever the file's size, and edits to files over the cap were then
+                # refused every round (honey-do TO-1, gpt-oss-120b: 20 rounds on a 558-line rules.py)
+                notes += ("A duplicated definition in a Python file is removed with one edit: search <<DEFINITION name>>, "
+                          "replace with the single definition to keep (every copy of that name is replaced by it). In a "
+                          f"file under {WHOLE_FILE_MAX_LINES} lines you may instead rewrite it whole with <<WHOLE FILE>>.\n\n")
             print(f"build_model: static check: {len(hints)} problem(s): {hints[0]}")
         if a.phase == "tests":
             new_tests = set(snapshot(root, tests)) - start_files

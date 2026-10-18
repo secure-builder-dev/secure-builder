@@ -116,7 +116,7 @@
   ".engine/harness/hooks/pre-commit.py": "224814f77c2c4a48fdf45c52497d187dc0e2f5a4c6e98433c5169a64dd3bf048",
   ".engine/harness/reviewers/MODELS.md": "6985e78f9c08db7a3abb24d377f1f24b4f213644db57bd32e59a4122150f9075",
   ".engine/harness/reviewers/bakeoff.py": "672491fce0900baec8e307bef56ab0e21111181c6381a0f8f7b89818a8a62008",
-  ".engine/harness/reviewers/build_model.py": "5a12eff2f30207de72fb573d7838666cd56308b7849aec027a6887beb89a8300",
+  ".engine/harness/reviewers/build_model.py": "d4b4b654293be05d2cc4d48a83d6b5ca604caf5656d7282dbe4d87baa1599272",
   ".engine/harness/reviewers/local_model.py": "f148780fe206464a54467879bc83d83b8aa21d7fbdf623693cc615dabc4c830c",
   ".engine/harness/run.py": "1f56adf5344276e711b5a5f9be5974fb41e90eb55faf36fecace7870fc2688ff",
   ".engine/harness/selftest/__init__.py": "48331e607da5f91cb62be03c0e868c9f2a020fa4f1a80f3e4d32d5d5d3ba8354",

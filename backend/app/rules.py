@@ -140,3 +140,70 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
     return ticket_to_dict(ticket)
 
 
+def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
+    """Change the status of a ticket according to the design rules.
+
+    Parameters
+    ----------
+    session: SQLAlchemy session.
+    ticket_id: ID of the ticket to modify.
+    user: The caller's username (must be one of the fixed USERS).
+    new_status: Desired new status string.
+
+    Returns
+    -------
+    dict representation of the updated ticket.
+
+    Raises
+    ------
+    LookupError
+        If the ticket does not exist or ``user`` is neither the filer nor the assignee.
+    ValueError
+        If ``new_status`` is not a valid status or the transition is not allowed.
+    PermissionError
+        If the transition is allowed but ``user`` is not the party permitted to make it.
+    """
+    # Fetch the ticket; raise if missing
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError("ticket not found")
+
+    # Verify user is a party to the ticket
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("user not a party to the ticket")
+
+    # Define allowed statuses
+    allowed_statuses = {"open", "acknowledged", "in_progress", "done", "closed"}
+    if new_status not in allowed_statuses:
+        raise ValueError("invalid status")
+
+    # Define the transition table: (from, to) -> party allowed to perform
+    transition_table = {
+        ("open", "acknowledged"): "assignee",
+        ("acknowledged", "in_progress"): "assignee",
+        ("in_progress", "done"): "assignee",
+        ("done", "closed"): "filer",
+        ("done", "open"): "filer",  # reopen
+        ("closed", "open"): "filer",  # reopen
+    }
+
+    current = ticket.status
+    key = (current, new_status)
+    if key not in transition_table:
+        raise ValueError("invalid transition")
+
+    required_party = transition_table[key]
+    if required_party == "assignee" and user != ticket.assigned_to:
+        raise PermissionError("only assignee may perform this transition")
+    if required_party == "filer" and user != ticket.filed_by:
+        raise PermissionError("only filer may perform this transition")
+
+    # All checks passed – perform the status change
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    ticket.status = new_status
+    ticket.updated_at = now
+    session.commit()
+    return ticket_to_dict(ticket)
+
+
+

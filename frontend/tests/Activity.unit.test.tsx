@@ -1,10 +1,16 @@
 // Activity.unit.test.tsx – tests for CommentThread and HistoryList components
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, test, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, test, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import CommentThread from "../src/CommentThread";
 import HistoryList from "../src/HistoryList";
 
+// Ensure each test runs with a clean DOM
+afterEach(() => {
+  cleanup();
+});
+
+describe("CommentThread component", () => {
 describe("CommentThread component", () => {
   const sampleComments = [
     {

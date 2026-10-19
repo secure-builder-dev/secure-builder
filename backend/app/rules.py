@@ -339,4 +339,160 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
     return ticket_to_dict(ticket)
 
 
+# Exception raised when a ticket cannot be edited due to its status
+class NotEditable(Exception):
+    """Raised by :func:`edit_ticket` when the ticket's status disallows editing.
+
+    It is a direct subclass of :class:`Exception` and **not** a subclass of
+    :class:`ValueError` or :class:`PermissionError`.
+    """
+    pass
+
+
+def edit_ticket(session, ticket_id: int, user: str, data) -> dict:
+    """Edit a ticket's mutable fields.
+
+    Parameters
+    ----------
+    session: SQLAlchemy session.
+    ticket_id: ID of the ticket to edit.
+    user: Username performing the edit.
+    data: Mapping of fields to new values. Allowed keys are ``title``, ``details``,
+    ``priority`` and ``due``.
+
+    Returns
+    -------
+    dict representation of the edited ticket.
+
+    Errors are raised in the following order:
+    * ``LookupError`` – ticket does not exist or ``user`` is not a party.
+    * ``ValueError`` – ``data`` is not a dict, is empty, contains unexpected keys,
+      or any value would be rejected by :func:`create_ticket` validation.
+    * ``PermissionError`` – ``user`` is not the filer of the ticket.
+    * ``NotEditable`` – ticket status is not ``open`` or ``acknowledged``.
+    """
+    # 1. Lookup ticket and verify party
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError("ticket not found")
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("user not a party to the ticket")
+
+    # 2. Validate data structure
+    if not isinstance(data, dict):
+        raise ValueError("data must be a dict")
+    if not data:
+        raise ValueError("data cannot be empty")
+    allowed_keys = {"title", "details", "priority", "due"}
+    extra = set(data.keys()) - allowed_keys
+    if extra:
+        raise ValueError(f"unexpected keys: {extra}")
+
+    # 3. Validate each provided field using the same helpers as create_ticket
+    #    Validation is performed before any mutation to preserve atomicity.
+    validated = {}
+    if "title" in data:
+        validated["title"] = _validate_title(data["title"])
+    if "details" in data:
+        validated["details"] = _validate_details(data["details"])
+    if "priority" in data:
+        validated["priority"] = _validate_priority(data["priority"])
+    if "due" in data:
+        validated["due"] = _validate_due(data["due"])
+
+    # 4. Permission: only the filer may edit
+    if user != ticket.filed_by:
+        raise PermissionError("only filer may edit the ticket")
+
+    # 5. Status must allow editing
+    if ticket.status not in {"open", "acknowledged"}:
+        raise NotEditable("ticket status does not allow editing")
+
+    # 6. Apply changes atomically
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    if "title" in validated:
+        ticket.title = validated["title"]
+    if "details" in validated:
+        ticket.details = validated["details"]
+    if "priority" in validated:
+        ticket.priority = validated["priority"]
+    if "due" in validated:
+        ticket.due = validated["due"]
+    ticket.updated_at = now
+
+    # Record edited event (no status change)
+    from app.activity import record_event
+    record_event(session, ticket, user, "edited", None, None)
+    session.commit()
+    return ticket_to_dict(ticket)
+
+    """Change the status of a ticket according to the design rules.
+
+    Parameters
+    ----------
+    session: SQLAlchemy session.
+    ticket_id: ID of the ticket to modify.
+    user: The caller's username (must be one of the fixed USERS).
+    new_status: Desired new status string.
+
+    Returns
+    -------
+    dict representation of the updated ticket.
+
+    Raises
+    ------
+    LookupError
+        If the ticket does not exist or ``user`` is neither the filer nor the assignee.
+    ValueError
+        If ``new_status`` is not a valid status or the transition is not allowed.
+    PermissionError
+        If the transition is allowed but ``user`` is not the party permitted to make it.
+    """
+    # Fetch the ticket; raise if missing
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError("ticket not found")
+
+    # Verify user is a party to the ticket
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("user not a party to the ticket")
+
+    # Define allowed statuses
+    allowed_statuses = {"open", "acknowledged", "in_progress", "done", "closed"}
+    if new_status not in allowed_statuses:
+        raise ValueError("invalid status")
+
+    # Define the transition table: (from, to) -> party allowed to perform
+    transition_table = {
+        ("open", "acknowledged"): "assignee",
+        ("acknowledged", "in_progress"): "assignee",
+        ("in_progress", "done"): "assignee",
+        ("done", "closed"): "filer",
+        ("done", "open"): "filer",  # reopen
+        ("closed", "open"): "filer",  # reopen
+    }
+
+    current = ticket.status
+    key = (current, new_status)
+    if key not in transition_table:
+        raise ValueError("invalid transition")
+
+    required_party = transition_table[key]
+    if required_party == "assignee" and user != ticket.assigned_to:
+        raise PermissionError("only assignee may perform this transition")
+    if required_party == "filer" and user != ticket.filed_by:
+        raise PermissionError("only filer may perform this transition")
+
+    # All checks passed – perform the status change and record event
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    old_status = ticket.status
+    ticket.status = new_status
+    ticket.updated_at = now
+    # Record the status change event in the same transaction
+    from app.activity import record_event
+    record_event(session, ticket, user, "status", old_status, new_status)
+    session.commit()
+    return ticket_to_dict(ticket)
+
+
 

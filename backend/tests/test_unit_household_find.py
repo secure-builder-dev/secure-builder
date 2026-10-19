@@ -1,13 +1,13 @@
 import datetime
 import pytest
 from app import household, rules
-from tests.conftest import HER, HIM, at, set_times
+from tests.conftest import at, set_times
 
 
 def create_ticket(session, filed_by, title, details="", priority="normal", due=None, status="open", assigned_to=None, created_at=None, updated_at=None):
     # Helper to directly insert a ticket with given fields
     if assigned_to is None:
-        assigned_to = HER if filed_by == HIM else HIM
+        assigned_to = "her" if filed_by == "him" else "him"
     now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ticket = rules.Ticket(
         title=title,
@@ -28,13 +28,13 @@ def create_ticket(session, filed_by, title, details="", priority="normal", due=N
 def test_household_board_filters(db):
     today = datetime.date(2023, 5, 10)
     # Ticket matching q and priority and assigned_to
-    t1 = create_ticket(db, HER, "Fix sink", "Details about sink", priority="urgent", due=today, status="open")
+    t1 = create_ticket(db, "her", "Fix sink", "Details about sink", priority="urgent", due=today, status="open")
     # Ticket not matching q
-    t2 = create_ticket(db, HER, "Paint wall", "Details about wall", priority="low", status="open")
+    t2 = create_ticket(db, "her", "Paint wall", "Details about wall", priority="low", status="open")
     # Ticket matching only priority
-    t3 = create_ticket(db, HER, "Buy milk", "", priority="urgent", status="open")
+    t3 = create_ticket(db, "her", "Buy milk", "", priority="urgent", status="open")
     # Ticket matching only assigned_to (him)
-    t4 = create_ticket(db, HER, "Clean garage", "", priority="normal", assigned_to=HIM, status="open")
+    t4 = create_ticket(db, "her", "Clean garage", "", priority="normal", assigned_to="him", status="open")
     db.commit()
 
     # No filters – all tickets appear
@@ -52,7 +52,7 @@ def test_household_board_filters(db):
     assert ids_pri == {t1.id, t3.id}
 
     # Filter by assigned_to
-    board_assigned = household.household_board(db, today, assigned_to=HIM)
+    board_assigned = household.household_board(db, today, assigned_to="him")
     ids_assigned = {t["id"] for t in board_assigned["todo"]}
     assert ids_assigned == {t4.id}
 
@@ -69,22 +69,22 @@ def test_household_board_filters(db):
 def test_household_summary_counts(db):
     today = datetime.date(2023, 5, 10)
     # Open tickets assigned to her
-    create_ticket(db, HIM, "Task 1", status="open", due=today - datetime.timedelta(days=1), assigned_to=HER)
-    create_ticket(db, HIM, "Task 2", status="open", due=today, assigned_to=HER)
-    create_ticket(db, HIM, "Task 3", status="open", due=None, assigned_to=HER)
+    create_ticket(db, "him", "Task 1", status="open", due=today - datetime.timedelta(days=1), assigned_to="her")
+    create_ticket(db, "him", "Task 2", status="open", due=today, assigned_to="her")
+    create_ticket(db, "him", "Task 3", status="open", due=None, assigned_to="her")
     # Done ticket should be ignored
-    create_ticket(db, HIM, "Task 4", status="done", due=today - datetime.timedelta(days=2), assigned_to=HER)
+    create_ticket(db, "him", "Task 4", status="done", due=today - datetime.timedelta(days=2), assigned_to="her")
     # Closed ticket should be ignored
-    create_ticket(db, HIM, "Task 5", status="closed", due=today, assigned_to=HER)
+    create_ticket(db, "him", "Task 5", status="closed", due=today, assigned_to="her")
     db.commit()
 
-    summary = household.summary(db, HER, today)
+    summary = household.summary(db, "her", today)
     assert summary["open"] == 3
     assert summary["overdue"] == 1  # Task 1
     assert summary["due_today"] == 1  # Task 2
 
     # Summary for him (no tickets)
-    summary_him = household.summary(db, HIM, today)
+    summary_him = household.summary(db, "him", today)
     assert summary_him == {"overdue": 0, "due_today": 0, "open": 0}
 
     # Invalid user raises

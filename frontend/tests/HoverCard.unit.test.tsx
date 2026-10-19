@@ -1,9 +1,15 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, test, vi } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { describe, expect, test, vi, afterEach } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
+
 vi.mock("../src/HoverCard", () => ({
   default: () => null,
 }));
+
 import HoverCard from "../src/HoverCard";
 
 type Ticket = {

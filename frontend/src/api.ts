@@ -91,3 +91,31 @@ export async function fetchBoard(token: string) {
   return get<any>("/api/board", token);
 }
 
+/**
+ * Fetch a single ticket by ID.
+ */
+export async function fetchTicket(token: string, id: number) {
+  return get<any>(`/api/tickets/${id}`, token);
+}
+
+/**
+ * Fetch comments for a ticket.
+ */
+export async function fetchComments(token: string, id: number) {
+  return get<any>(`/api/tickets/${id}/comments`, token);
+}
+
+/**
+ * Fetch history (events) for a ticket.
+ */
+export async function fetchHistory(token: string, id: number) {
+  return get<any>(`/api/tickets/${id}/history`, token);
+}
+
+/**
+ * Add a comment to a ticket.
+ */
+export async function addComment(token: string, id: number, body: string) {
+  return post<any, { body: string }>(`/api/tickets/${id}/comments`, token, { body });
+}
+

@@ -22,7 +22,6 @@ const HoverCard: React.FC<HoverCardProps> = ({ ticket, children }) => {
     <span
       className="hover-target"
       tabIndex={0}
-      role="button"
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocus={show}

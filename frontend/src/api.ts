@@ -2,7 +2,6 @@
 // These functions wrap fetch calls to the backend API, handling authentication headers,
 // JSON bodies, and error handling as specified in the design plan.
 
-
 /**
  * Perform a GET request to the given endpoint with the Authorization header.
  * Returns the parsed JSON if the response is ok, otherwise throws an Error with the status code.
@@ -27,6 +26,25 @@ async function get<T>(url: string, token: string): Promise<T> {
 async function post<T, B>(url: string, token: string, body: B): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(String(response.status));
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Perform a PATCH request with a JSON body to the given endpoint with the Authorization header.
+ * Returns the parsed JSON if the response is ok, otherwise throws an Error with the status code.
+ */
+async function patch<T, B>(url: string, token: string, body: B): Promise<T> {
+  const response = await fetch(url, {
+    method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -73,17 +91,27 @@ export async function changeStatus(token: string, id: number, status: string) {
 }
 
 /**
- * Fetch the household board.
+ * Fetch the current user's identity.
  */
 export async function fetchMe(token: string) {
   return get<any>("/api/me", token);
 }
 
 /**
- * Fetch the household board.
+ * Fetch the household board, optionally filtered.
+ * If a filter is provided, only non‑empty fields are sent as query parameters.
  */
-export async function fetchBoard(token: string) {
-  return get<any>("/api/board", token);
+export async function fetchBoard(token: string, filter?: { q: string; priority: string; assigned_to: string }) {
+  if (!filter) {
+    return get<any>("/api/board", token);
+  }
+  const params = new URLSearchParams();
+  if (filter.q) params.append("q", filter.q);
+  if (filter.priority) params.append("priority", filter.priority);
+  if (filter.assigned_to) params.append("assigned_to", filter.assigned_to);
+  const query = params.toString();
+  const url = query ? `/api/board?${query}` : "/api/board";
+  return get<any>(url, token);
 }
 
 /**
@@ -114,3 +142,17 @@ export async function addComment(token: string, id: number, body: string) {
   return post<any, { body: string }>(`/api/tickets/${id}/comments`, token, { body });
 }
 
+/**
+ * Edit a ticket (E4).
+ * Sends a PATCH request with the provided changes and returns the parsed ticket.
+ */
+export async function editTicket(token: string, id: number, changes: any) {
+  return patch<any, any>(`/api/tickets/${id}`, token, changes);
+}
+
+/**
+ * Fetch the summary for the current user (E4).
+ */
+export async function fetchSummary(token: string) {
+  return get<any>("/api/summary", token);
+}

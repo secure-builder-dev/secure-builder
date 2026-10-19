@@ -5,15 +5,15 @@ from app.models import Ticket, Comment, TicketEvent
 
 
 def _ensure_ticket_and_user(session, ticket_id: int, user: str) -> Ticket:
-    """Fetch ticket and verify *user* is the filer.
+    """Fetch ticket and verify *user* is a party (filer or assignee).
 
     Returns the Ticket object if valid, otherwise raises ``LookupError``.
     """
     ticket = session.get(Ticket, ticket_id)
     if ticket is None:
         raise LookupError("ticket not found")
-    # Only the filer (the user who created the ticket) is allowed to view comments or history.
-    if user != ticket.filed_by:
+    # Allow either the filer (the user who created the ticket) or the assignee to view comments or history.
+    if user not in (ticket.filed_by, ticket.assigned_to):
         raise LookupError("user not a party to the ticket")
     return ticket
 

@@ -12,6 +12,11 @@ from app import household
 from app import db as db_mod
 from app import rules
 
+# New imports for ticket and activity handling
+from app.models import Ticket
+import app.activity as activity
+
+
 app = FastAPI()
 
 # ---------------------------------------------------------------------------
@@ -89,9 +94,7 @@ async def method_not_allowed_handler(request: Request, exc):
     return JSONResponse(status_code=405, content={"error": "method not allowed"})
 
 # Replace FastAPI's default 422 validation error with a 400 JSON response
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(status_code=400, content={"error": "invalid request"})
+
 
 # ---------------------------------------------------------------------------
 # Middleware – add the required security headers to every response
@@ -163,8 +166,105 @@ async def api_board(
     return household.household_board(session, today)
 
 
-# ---------------------------------------------------------------------------
-# Ticket creation endpoint
+@app.get("/api/tickets/{ticket_id}")
+async def get_ticket_endpoint(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+):
+    """Return a ticket by ID.
+
+    200 with ticket dict, 404 if not found, 400 for non‑integer ID.
+    """
+    try:
+        tid = int(ticket_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid request")
+    ticket = session.get(Ticket, tid)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="not found")
+    return rules.ticket_to_dict(ticket)
+
+
+@app.get("/api/tickets/{ticket_id}/comments")
+async def get_comments_endpoint(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+):
+    """Return comments for a ticket.
+
+    200 with {"comments": [...]}, 404 if ticket missing, 400 for non‑integer ID.
+    """
+    try:
+        tid = int(ticket_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid request")
+    try:
+        comments = activity.list_comments(session, tid, caller)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"comments": comments}
+
+
+@app.post("/api/tickets/{ticket_id}/comments")
+async def post_comment_endpoint(
+    ticket_id: str,
+    request: Request,
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+):
+    """Add a comment to a ticket.
+
+    201 with comment dict, 404 if ticket missing, 400 for malformed request or invalid body,
+    413 if body too large.
+    """
+    try:
+        tid = int(ticket_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid request")
+    raw = await request.body()
+    if len(raw) > 65536:
+        raise HTTPException(status_code=413, detail="too large")
+    try:
+        data = json.loads(raw)
+        if not (isinstance(data, dict) and set(data.keys()) == {"body"}):
+            raise ValueError
+        body = data["body"]
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="invalid request")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid request")
+    try:
+        comment = activity.add_comment(session, tid, caller, body)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="not found")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid request")
+    return JSONResponse(status_code=201, content=comment)
+
+
+@app.get("/api/tickets/{ticket_id}/history")
+async def get_history_endpoint(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+):
+    """Return the event history for a ticket.
+
+    200 with {"events": [...]}, 404 if ticket missing, 400 for non‑integer ID.
+    """
+    try:
+        tid = int(ticket_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid request")
+    try:
+        events = activity.ticket_history(session, tid, caller)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"events": events}
+
+
 # ---------------------------------------------------------------------------
 @app.post("/api/tickets")
 async def create_ticket_endpoint(

@@ -7,6 +7,7 @@ export default function App() {
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
+  const [filed, setFiled] = useState<Ticket[] | null>(null);
 
   // form state for new ticket
   const [title, setTitle] = useState("");
@@ -18,11 +19,12 @@ export default function App() {
     // clear previous state
     setError(null);
     setBoard(null);
+    setFiled(null);
     try {
       const dash = await fetchDashboard(token);
       setBoard(dash);
-      // optional: also fetch filed tickets to keep future beads happy
-      await fetchFiled(token);
+      const f = await fetchFiled(token);
+      setFiled(f.tickets);
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -35,7 +37,7 @@ export default function App() {
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
       await changeStatus(token, id, newStatus);
-      // reload the board after a successful move
+      // reload after a successful move
       await handleLoad();
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
@@ -70,7 +72,7 @@ export default function App() {
     }
   };
 
-  const renderActions = (ticket: Ticket) => {
+  const renderBoardActions = (ticket: Ticket) => {
     if (ticket.status === "open") {
       return (
         <button onClick={() => handleStatusChange(ticket.id, "acknowledged")}>Acknowledge</button>
@@ -89,6 +91,18 @@ export default function App() {
     return null;
   };
 
+  const renderFiledActions = (ticket: Ticket) => {
+    if (ticket.status === "done") {
+      return (
+        <>
+          <button onClick={() => handleStatusChange(ticket.id, "closed")}>Close</button>
+          <button onClick={() => handleStatusChange(ticket.id, "open")}>Reopen</button>
+        </>
+      );
+    }
+    return null;
+  };
+
   const renderColumn = (label: string, tickets: Ticket[]) => {
     return (
       <section className="column" aria-label={label}>
@@ -98,12 +112,28 @@ export default function App() {
         {tickets.length > 0 ? (
           tickets.map((t) => (
             <TicketCard key={t.id} ticket={t}>
-              {renderActions(t)}
+              {renderBoardActions(t)}
             </TicketCard>
           ))
         ) : (
           <p className="empty">Nothing here</p>
         )}
+      </section>
+    );
+  };
+
+  const renderFiledPanel = () => {
+    if (!filed) return null;
+    return (
+      <section className="panel" aria-label="Tickets I filed">
+        <h2>Tickets I filed</h2>
+        <div className="card-list">
+          {filed.map((t) => (
+            <TicketCard key={t.id} ticket={t}>
+              {renderFiledActions(t)}
+            </TicketCard>
+          ))}
+        </div>
       </section>
     );
   };
@@ -167,6 +197,7 @@ export default function App() {
             <button type="button" onClick={handleFileTicket}>File ticket</button>
           </form>
         </section>
+        {renderFiledPanel()}
         {board && (
           <section className="panel" aria-label="My board">
             <h2>My board</h2>

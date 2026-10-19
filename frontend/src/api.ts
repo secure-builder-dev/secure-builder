@@ -1,12 +1,7 @@
 // Frontend API helper functions
-
-// Frontend API helper functions
-// These functions wrap fetch calls to the backend API, handling authentication headers,
-
-// JSON bodies, and error handling as specified in the design plan.
-
 // These functions wrap fetch calls to the backend API, handling authentication headers,
 // JSON bodies, and error handling as specified in the design plan.
+
 
 /**
  * Perform a GET request to the given endpoint with the Authorization header.

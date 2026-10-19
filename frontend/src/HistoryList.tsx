@@ -21,12 +21,18 @@ export default function HistoryList({ events }: HistoryListProps) {
     }
   };
 
+  // Filter out any events that render to an empty string (unknown kinds)
+  const rendered = events.map(renderEvent);
+  const hasContent = rendered.some((text) => text !== "");
+
   return (
-    <>{events.length > 0 ? (
+    <>{hasContent ? (
       <ol className="history" aria-label="History">
-        {events.map((ev) => (
-          <li key={ev.id}>{renderEvent(ev)}</li>
-        ))}
+        {events.map((ev, idx) => {
+          const text = renderEvent(ev);
+          if (!text) return null;
+          return <li key={ev.id}>{text}</li>;
+        })}
       </ol>
     ) : (
       <p className="empty">No history</p>

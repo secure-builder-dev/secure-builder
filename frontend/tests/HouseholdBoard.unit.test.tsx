@@ -1,7 +1,7 @@
 // Vitest unit tests for fetchBoard and HouseholdBoard component
 import "@testing-library/jest-dom/vitest";
-import { beforeEach, describe, expect, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
 import * as api from "../src/api";
 import HouseholdBoard from "../src/HouseholdBoard";
 import TicketCard from "../src/TicketCard";
@@ -9,7 +9,11 @@ import type { Board, Ticket } from "../src/types";
 
 global.fetch = jest.fn();
 
-describe("fetchBoard", () => {
+
+afterEach(() => {
+  cleanup();
+});
+
   const token = "TOKEN";
   const mockBoard: Board = {
     todo: [],

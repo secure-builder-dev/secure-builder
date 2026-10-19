@@ -1,4 +1,14 @@
 // Frontend API helper functions
+
+// Ensure jest global is defined for tests using Vitest
+import { vi } from 'vitest';
+if (typeof (global as any).jest === 'undefined') {
+  (global as any).jest = { fn: vi.fn };
+}
+// Frontend API helper functions
+// These functions wrap fetch calls to the backend API, handling authentication headers,
+// JSON bodies, and error handling as specified in the design plan.
+
 // These functions wrap fetch calls to the backend API, handling authentication headers,
 // JSON bodies, and error handling as specified in the design plan.
 
@@ -70,3 +80,11 @@ export async function createTicket(token: string, data: any) {
 export async function changeStatus(token: string, id: number, status: string) {
   return post<any, any>(`/api/tickets/${id}/status`, token, { status });
 }
+
+/**
+ * Fetch the household board.
+ */
+export async function fetchBoard(token: string) {
+  return get<any>("/api/board", token);
+}
+

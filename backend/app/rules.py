@@ -256,7 +256,10 @@ def create_ticket(session, filed_by: str, data: dict) -> dict:
     session.add(ticket)
     # Flush to assign an ID before committing
     session.flush()
-    # Commit the transaction
+    # Record the 'filed' event in the same transaction
+    from app.activity import record_event
+    record_event(session, ticket, filed_by, "filed", None, "open")
+    # Commit the transaction (ticket + event)
     session.commit()
     # Refresh to load DB defaults (if any)
     session.refresh(ticket)
@@ -324,10 +327,14 @@ def change_status(session, ticket_id: int, user: str, new_status: str) -> dict:
     if required_party == "filer" and user != ticket.filed_by:
         raise PermissionError("only filer may perform this transition")
 
-    # All checks passed – perform the status change
+    # All checks passed – perform the status change and record event
     now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    old_status = ticket.status
     ticket.status = new_status
     ticket.updated_at = now
+    # Record the status change event in the same transaction
+    from app.activity import record_event
+    record_event(session, ticket, user, "status", old_status, new_status)
     session.commit()
     return ticket_to_dict(ticket)
 

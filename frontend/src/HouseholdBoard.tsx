@@ -40,7 +40,6 @@ export default function HouseholdBoard({ board, onOpen, children }: HouseholdBoa
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
-                  // Pass onOpen to TicketCard if provided; TicketCard will ignore it otherwise.
                   {...(onOpen ? { onOpen } : {})}
                 />
               ))

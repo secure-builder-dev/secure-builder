@@ -28,11 +28,11 @@ def create_ticket(session, filed_by, title, details="", priority="normal", due=N
 def test_household_board_filters(db):
     today = datetime.date(2023, 5, 10)
     # Ticket matching q and priority and assigned_to
-    t1 = create_ticket(db, "her", "Fix sink", "Details about sink", priority="urgent", due=today, status="open")
+    t1 = create_ticket(db, "him", "Fix sink", "Details about sink", priority="urgent", due=today, status="open")
     # Ticket not matching q
-    t2 = create_ticket(db, "her", "Paint wall", "Details about wall", priority="low", status="open")
+    t2 = create_ticket(db, "him", "Paint wall", "Details about wall", priority="low", status="open")
     # Ticket matching only priority
-    t3 = create_ticket(db, "her", "Buy milk", "", priority="urgent", status="open")
+    t3 = create_ticket(db, "him", "Buy milk", "", priority="urgent", status="open")
     # Ticket matching only assigned_to (him)
     t4 = create_ticket(db, "her", "Clean garage", "", priority="normal", assigned_to="him", status="open")
     db.commit()

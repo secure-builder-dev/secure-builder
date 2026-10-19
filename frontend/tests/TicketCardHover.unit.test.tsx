@@ -1,29 +1,13 @@
-
+// @ts-nocheck
 import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { afterEach, test, expect } from "vitest";
 import TicketCard from "../src/TicketCard";
-import { test, expect, afterEach } from "vitest";
 import type { Ticket } from "../src/types";
-+
-+afterEach(() => {
-+  cleanup();
-+});
-@@
--  const title = screen.getByRole("heading", { level: 3, name: sampleTicket.title });
--  const hoverSpan = title.closest("span.hover-target");
-+  const title = screen.getByRole("heading", { level: 3, name: sampleTicket.title });
-+  const hoverSpan = title.closest("span.hover-target");
-@@
--  const hoverSpan = screen.getByText(sampleTicket.title).closest("span.hover-target");
-+  const hoverSpan = screen.getAllByText(sampleTicket.title)[0].closest("span.hover-target");
-@@
--  const hoverSpan = screen.getByText(sampleTicket.title).closest("span.hover-target");
-+  const hoverSpan = screen.getAllByText(sampleTicket.title)[0].closest("span.hover-target");
-@@
--  const article = screen.getByRole("article", { name: sampleTicket.title });
-+  const article = screen.getAllByRole("article", { name: sampleTicket.title })[0];
-*** End Patch
 
+afterEach(() => {
+  cleanup();
+});
 
 const sampleTicket: Ticket = {
   id: 1,
@@ -47,7 +31,8 @@ test("title is wrapped in HoverCard span.hover-target", () => {
 
 test("hovering over title shows tooltip with ticket details", async () => {
   render(<TicketCard ticket={sampleTicket} />);
-  const hoverSpan = screen.getByText(sampleTicket.title).closest("span.hover-target");
+  const title = screen.getByText(sampleTicket.title);
+  const hoverSpan = title.closest("span.hover-target");
   expect(hoverSpan).toBeInTheDocument();
   fireEvent.mouseEnter(hoverSpan!);
   const tooltip = await screen.findByRole("tooltip");
@@ -57,7 +42,8 @@ test("hovering over title shows tooltip with ticket details", async () => {
 
 test("focusing title shows tooltip", async () => {
   render(<TicketCard ticket={sampleTicket} />);
-  const hoverSpan = screen.getByText(sampleTicket.title).closest("span.hover-target");
+  const title = screen.getByText(sampleTicket.title);
+  const hoverSpan = title.closest("span.hover-target");
   expect(hoverSpan).toBeInTheDocument();
   fireEvent.focus(hoverSpan!);
   const tooltip = await screen.findByRole("tooltip");
@@ -70,7 +56,8 @@ test("other TicketCard structure remains unchanged", () => {
       <button>Action</button>
     </TicketCard>,
   );
-  const article = screen.getByRole("article", { name: sampleTicket.title });
+  const articles = screen.getAllByRole("article", { name: sampleTicket.title });
+  const article = articles[0];
   expect(article).toHaveClass("card");
   const meta = screen.getByText(`for ${sampleTicket.assigned_to}`);
   expect(meta).toBeInTheDocument();

@@ -3,6 +3,7 @@ import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
+import TicketDetail from "./TicketDetail";
 import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket, fetchMe } from "./api";
 import type { Board, Ticket } from "./types";
 
@@ -15,11 +16,14 @@ const [me, setMe] = useState<string | null>(null);
   const [houseBoard, setHouseBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
   const [showDirections, setShowDirections] = useState(false);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
 
   const openDirections = () => setShowDirections(true);
   const closeDirections = () => setShowDirections(false);
 
-  // form state for new ticket
+    const handleOpen = (ticket: Ticket) => {
+    setOpenTicket(ticket);
+  };
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
@@ -31,6 +35,7 @@ const [me, setMe] = useState<string | null>(null);
     setBoard(null);
     setFiled(null);
     setMe(null);
+    setOpenTicket(null);
     try {
       // first, fetch who we are
       try {
@@ -77,8 +82,14 @@ const [me, setMe] = useState<string | null>(null);
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
       await changeStatus(token, id, newStatus);
-      // reload after a successful move
+      // Preserve the currently open ticket (if any) before reloading data.
+      const currentOpen = openTicket;
+      // reload boards and other data (this clears openTicket temporarily)
       await handleLoad();
+      // After reload, restore the open ticket with the updated status so that the detail panel stays open.
+      if (currentOpen && currentOpen.id === id) {
+        setOpenTicket({ ...currentOpen, status: newStatus as any });
+      }
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -151,7 +162,7 @@ const [me, setMe] = useState<string | null>(null);
         </h3>
         {tickets.length > 0 ? (
           tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t}>
+            <TicketCard key={t.id} ticket={t} onOpen={handleOpen}>
               {renderBoardActions(t)}
             </TicketCard>
           ))
@@ -169,7 +180,7 @@ const [me, setMe] = useState<string | null>(null);
         <h2>Tickets I filed</h2>
         <div className="card-list">
           {filed.map((t) => (
-            <TicketCard key={t.id} ticket={t}>
+            <TicketCard key={t.id} ticket={t} onOpen={handleOpen}>
               {renderFiledActions(t)}
             </TicketCard>
           ))}
@@ -198,7 +209,15 @@ const [me, setMe] = useState<string | null>(null);
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
-        {showDirections && <Directions onClose={closeDirections} />}
+                {showDirections && <Directions onClose={closeDirections} />}
+        {openTicket && (
+          <TicketDetail
+            token={token}
+            ticket={openTicket}
+            me={me}
+            onClose={() => setOpenTicket(null)}
+          />
+        )}
         {/* New ticket panel */}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>
@@ -252,7 +271,7 @@ const [me, setMe] = useState<string | null>(null);
         )}
         {renderFiledPanel()}
         {houseBoard && (
-          <HouseholdBoard board={houseBoard} />
+          <HouseholdBoard board={houseBoard} onOpen={handleOpen} />
         )}
       </main>
     </div>

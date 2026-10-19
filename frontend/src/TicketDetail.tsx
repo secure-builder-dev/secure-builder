@@ -77,7 +77,7 @@ export default function TicketDetail({ token, ticket, me, onClose, onSaved }: Ti
       .fetchHistory(token, ticket.id)
       .then((resp) => setEvents(resp.events))
       .catch(() => setEvents([]));
-  }, [token, ticket.id]);
+  }, [token, ticket.id, ticket.status]);
 
   const handleAddComment = async (body: string) => {
     try {

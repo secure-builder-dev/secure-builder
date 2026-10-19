@@ -1,19 +1,18 @@
 // Vitest unit tests for fetchBoard and HouseholdBoard component
 import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import * as api from "../src/api";
 import HouseholdBoard from "../src/HouseholdBoard";
-import TicketCard from "../src/TicketCard";
 import type { Board, Ticket } from "../src/types";
 
-global.fetch = jest.fn();
-
+global.fetch = vi.fn();
 
 afterEach(() => {
   cleanup();
 });
 
+describe("fetchBoard", () => {
   const token = "TOKEN";
   const mockBoard: Board = {
     todo: [],
@@ -22,11 +21,11 @@ afterEach(() => {
   };
 
   beforeEach(() => {
-    (global.fetch as jest.Mock).mockReset();
+    (global.fetch as ReturnType<typeof vi.fn>).mockReset();
   });
 
-  test("calls GET /api/board and returns parsed JSON on success", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+  test("testFetchBoardSuccess", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => mockBoard,
     });
@@ -38,12 +37,22 @@ afterEach(() => {
     expect(result).toEqual(mockBoard);
   });
 
-  test("throws Error with status code when response not ok", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
+  test("testFetchBoardError", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       status: 401,
     });
     await expect(api.fetchBoard(token)).rejects.toThrow("401");
+  });
+
+  // Clause 1: ensure fetchBoard is a named export and throws on non‑ok response
+  test("testFetchBoardExportsAndErrorHandling", async () => {
+    expect(typeof api.fetchBoard).toBe("function");
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+    await expect(api.fetchBoard(token)).rejects.toThrow("500");
   });
 });
 
@@ -67,18 +76,23 @@ describe("HouseholdBoard component", () => {
     completed: [makeTicket(2, "Done 1"), makeTicket(3, "Done 2")],
   };
 
-  test("renders panel with correct aria-label, heading and three columns", () => {
+  test("testHouseholdBoardRendersPanelAndColumnsStructure", () => {
     render(<HouseholdBoard board={board} />);
     const panel = screen.getByLabelText("Household board");
     expect(panel).toBeInTheDocument();
     expect(panel).toHaveClass("panel");
     const heading = screen.getByRole("heading", { level: 2, name: "Household board" });
     expect(heading).toBeInTheDocument();
-    const columns = screen.getAllByRole("region", { name: /To Do|In Progress|Completed/ });
-    expect(columns).toHaveLength(3);
+    const boardDiv = panel.querySelector("div.board");
+    expect(boardDiv).toBeInTheDocument();
+    const columnSections = boardDiv?.querySelectorAll("section.column");
+    expect(columnSections?.length).toBe(3);
+    const ariaLabels = Array.from(columnSections ?? []).map((c) => c.getAttribute("aria-label"));
+    expect(ariaLabels).toEqual(["To Do", "In Progress", "Completed"]);
   });
 
-  test("each column shows title with count and renders tickets or empty message", () => {
+  // Clause 3: each column title includes count and shows tickets or empty message
+  test("testHouseholdBoardColumnTitlesCountsAndTicketOrEmptyMessage", () => {
     render(<HouseholdBoard board={board} />);
     // To Do column
     const todoTitle = screen.getByText(/To Do/);

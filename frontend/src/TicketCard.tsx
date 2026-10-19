@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import type { Ticket } from "./types";
+import HoverCard from "./HoverCard";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -25,7 +26,7 @@ export default function TicketCard({ ticket, children }: TicketCardProps) {
 
   return (
     <article className={articleClass} aria-label={ticket.title}>
-      <h3 className="card-title">{ticket.title}</h3>
+            <HoverCard ticket={ticket}><h3 className="card-title">{ticket.title}</h3></HoverCard>
       <div className="card-meta">
         <span className={`badge priority-${ticket.priority}`}>{ticket.priority}</span>
         {ticket.due && <span className="due">due {ticket.due}</span>}

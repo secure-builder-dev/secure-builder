@@ -11,7 +11,6 @@ afterEach(() => {
 });
 
 describe("CommentThread component", () => {
-describe("CommentThread component", () => {
   const sampleComments = [
     {
       id: 1,
@@ -34,10 +33,14 @@ describe("CommentThread component", () => {
     render(<CommentThread comments={sampleComments} onAdd={() => {}} />);
     const container = screen.getByRole("region", { name: /comment thread/i }) ||
       screen.getByClass("comment-thread");
+    expect(container).toHaveClass("comment-thread");
     const list = container.querySelector("ol.comments");
     expect(list).toBeInTheDocument();
     const items = list?.querySelectorAll("li.comment");
     expect(items?.length).toBe(sampleComments.length);
+    // Verify form exists
+    const form = container.querySelector("form.comment-form");
+    expect(form).toBeInTheDocument();
     // Verify first comment content
     const first = items?.[0];
     expect(first?.querySelector("span.comment-author")).toHaveTextContent("her");
@@ -53,7 +56,7 @@ describe("CommentThread component", () => {
   test("test_comment_thread_form_submission_and_blank_handling", () => {
     const onAdd = vi.fn();
     render(<CommentThread comments={[]} onAdd={onAdd} />);
-    const textarea = screen.getByLabelText(/comment/i) as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText("Comment") as HTMLTextAreaElement;
     const button = screen.getByRole("button", { name: /add comment/i });
 
     // Submit non‑blank text with surrounding spaces
@@ -108,6 +111,7 @@ describe("HistoryList component", () => {
     render(<HistoryList events={sampleEvents} />);
     const list = screen.getByRole("list", { name: /history/i }) ||
       document.querySelector("ol.history");
+    expect(list).toHaveClass("history");
     expect(list).toBeInTheDocument();
     const items = list?.querySelectorAll("li");
     expect(items?.length).toBe(sampleEvents.length);

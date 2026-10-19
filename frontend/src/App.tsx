@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
-import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket } from "./api";
+import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket, fetchMe } from "./api";
 import type { Board, Ticket } from "./types";
 
 export default function App() {
@@ -10,6 +10,7 @@ export default function App() {
   const [board, setBoard] = useState<Board | null>(null);
   const [houseBoard, setHouseBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
+  const [me, setMe] = useState<"her" | "him" | null>(null);
 
   // form state for new ticket
   const [title, setTitle] = useState("");
@@ -22,7 +23,21 @@ export default function App() {
     setError(null);
     setBoard(null);
     setFiled(null);
+    setMe(null);
     try {
+      // first, fetch who we are
+      try {
+        const meResp = await fetchMe(token);
+        if (meResp && (meResp.user === "her" || meResp.user === "him")) {
+          setMe(meResp.user);
+        } else {
+          setMe(null);
+        }
+      } catch {
+        // ignore errors – no whoami shown, no error message
+        setMe(null);
+      }
+
       const dash = await fetchDashboard(token);
       setBoard(dash);
       const f = await fetchFiled(token);
@@ -171,12 +186,13 @@ export default function App() {
           </label>
           <button type="button" onClick={handleLoad}>Load</button>
         </div>
+        {me && <span className="whoami">Signed in as {me}</span>}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
         {/* New ticket panel */}
         <section className="panel new-ticket" aria-label="New ticket">
-          <h2>New ticket</h2>
+          <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>
           <form>
             <label>
               Title

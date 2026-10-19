@@ -2,6 +2,7 @@
 
 // Frontend API helper functions
 // These functions wrap fetch calls to the backend API, handling authentication headers,
+
 // JSON bodies, and error handling as specified in the design plan.
 
 // These functions wrap fetch calls to the backend API, handling authentication headers,
@@ -74,6 +75,13 @@ export async function createTicket(token: string, data: any) {
  */
 export async function changeStatus(token: string, id: number, status: string) {
   return post<any, any>(`/api/tickets/${id}/status`, token, { status });
+}
+
+/**
+ * Fetch the household board.
+ */
+export async function fetchMe(token: string) {
+  return get<any>("/api/me", token);
 }
 
 /**

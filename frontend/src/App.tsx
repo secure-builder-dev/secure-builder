@@ -1,16 +1,23 @@
 import React, { useState } from "react";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
+import Menu from "./Menu";
+import Directions from "./Directions";
 import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket, fetchMe } from "./api";
 import type { Board, Ticket } from "./types";
 
+
 export default function App() {
   const [token, setToken] = useState("");
+const [me, setMe] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
   const [houseBoard, setHouseBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
-  const [me, setMe] = useState<"her" | "him" | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
+
+  const openDirections = () => setShowDirections(true);
+  const closeDirections = () => setShowDirections(false);
 
   // form state for new ticket
   const [title, setTitle] = useState("");
@@ -175,6 +182,7 @@ export default function App() {
     <div className="app">
       <header className="topbar" role="banner">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={openDirections} />
         <div className="token-form">
           <label>
             Token
@@ -190,6 +198,7 @@ export default function App() {
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
+        {showDirections && <Directions onClose={closeDirections} />}
         {/* New ticket panel */}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>

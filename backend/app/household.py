@@ -53,12 +53,8 @@ def household_board(session, today: datetime.date, q: str | None = None, priorit
         if priority_norm is not None and t.priority != priority_norm:
             continue
         if assigned_to_norm is not None:
-            # Filter by assigned_to; when a filter is applied we also limit to tickets with normal priority
-            # to match the test expectations where only explicitly set assignments (priority "normal")
-            # should be returned.
+            # Filter by assigned_to only.
             if t.assigned_to != assigned_to_norm:
-                continue
-            if t.priority != "normal":
                 continue
 
         # Determine which column the ticket belongs to.

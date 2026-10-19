@@ -2,7 +2,7 @@ import os
 import hmac
 import datetime
 import json
-from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi import FastAPI, Depends, Request, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette import status
@@ -115,10 +115,22 @@ async def api_me(
 ) -> dict:
     """Return the identity of the authenticated caller.
 
-    This endpoint requires a valid bearer token and returns a JSON object
+    The endpoint requires a valid bearer token and returns a JSON object
     with the key ``user`` set to either ``"her"`` or ``"him"``.
     """
     return {"user": caller}
+
+async def api_summary(
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+) -> dict:
+    """Return the caller's summary for the current UTC date.
+
+    The endpoint requires a valid bearer token and returns a JSON object with
+    keys ``overdue``, ``due_today`` and ``open`` as defined in ``household.summary``.
+    """
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    return household.summary(session, caller, today)
 
 
 @app.get("/health")
@@ -155,15 +167,38 @@ async def api_filed(
 async def api_board(
     caller: str = Depends(get_caller),
     session=Depends(get_db),
+    q: str | None = Query(None),
+    priority: str | None = Query(None),
+    assigned_to: str | None = Query(None),
 ) -> dict:
     """Return the household board for the authenticated caller.
 
     ``today`` is the current UTC date. The board is the same for both users.
+    Optional query parameters ``q``, ``priority`` and ``assigned_to`` filter the board.
+    ``q`` must be ≤120 characters; ``priority`` must be one of ``low``, ``normal`` or ``urgent``;
+    ``assigned_to`` must be ``her`` or ``him``. Invalid values result in ``400``.
     """
+    # Normalise empty strings to ``None`` so they are ignored by the filter logic.
+    if q == "":
+        q = None
+    if priority == "":
+        priority = None
+    if assigned_to == "":
+        assigned_to = None
+
+    # Validate query parameters according to the spec.
+    if q is not None and len(q) > 120:
+        raise HTTPException(status_code=400, detail="invalid request")
+    if priority is not None and priority not in {"low", "normal", "urgent"}:
+        raise HTTPException(status_code=400, detail="invalid request")
+    if assigned_to is not None and assigned_to not in rules.USERS:
+        raise HTTPException(status_code=400, detail="invalid request")
+
     today = datetime.datetime.now(datetime.timezone.utc).date()
     # Import here to avoid circular imports at module load time
     from app import household
-    return household.household_board(session, today)
+    return household.household_board(session, today, q, priority, assigned_to)
+
 
 
 @app.get("/api/tickets/{ticket_id}")

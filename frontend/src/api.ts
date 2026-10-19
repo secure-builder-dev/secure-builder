@@ -1,10 +1,5 @@
 // Frontend API helper functions
 
-// Ensure jest global is defined for tests using Vitest
-import { vi } from 'vitest';
-if (typeof (global as any).jest === 'undefined') {
-  (global as any).jest = { fn: vi.fn };
-}
 // Frontend API helper functions
 // These functions wrap fetch calls to the backend API, handling authentication headers,
 // JSON bodies, and error handling as specified in the design plan.

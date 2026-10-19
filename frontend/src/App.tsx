@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import TicketCard from "./TicketCard";
-import { fetchDashboard, fetchFiled, changeStatus, createTicket } from "./api";
+import HouseholdBoard from "./HouseholdBoard";
+import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket } from "./api";
 import type { Board, Ticket } from "./types";
 
 export default function App() {
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
+  const [houseBoard, setHouseBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
 
   // form state for new ticket
@@ -25,6 +27,22 @@ export default function App() {
       setBoard(dash);
       const f = await fetchFiled(token);
       setFiled(f.tickets);
+      try {
+        const hb = await fetchBoard(token);
+        if (
+          hb &&
+          Array.isArray(hb.todo) &&
+          Array.isArray(hb.in_progress) &&
+          Array.isArray(hb.completed)
+        ) {
+          setHouseBoard(hb);
+        } else {
+          setHouseBoard(null);
+        }
+      } catch {
+        // Silently ignore board fetch errors; no error message shown.
+        setHouseBoard(null);
+      }
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -197,7 +215,6 @@ export default function App() {
             <button type="button" onClick={handleFileTicket}>File ticket</button>
           </form>
         </section>
-        {renderFiledPanel()}
         {board && (
           <section className="panel" aria-label="My board">
             <h2>My board</h2>
@@ -207,6 +224,10 @@ export default function App() {
               {renderColumn("Completed", board.completed)}
             </div>
           </section>
+        )}
+        {renderFiledPanel()}
+        {houseBoard && (
+          <HouseholdBoard board={houseBoard} />
         )}
       </main>
     </div>

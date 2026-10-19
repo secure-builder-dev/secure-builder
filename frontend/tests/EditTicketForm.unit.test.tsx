@@ -1,7 +1,9 @@
 // Unit tests for EditTicketForm and TicketDetail edit workflow
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { vi, describe, it, expect, beforeEach, 
+afterEach(() => cleanup());
+ } from "vitest";
 import * as api from "../src/api";
 import React, { useState, useEffect } from "react";
 

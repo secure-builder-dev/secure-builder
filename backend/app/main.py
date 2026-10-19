@@ -292,7 +292,53 @@ async def create_ticket_endpoint(
     return JSONResponse(status_code=201, content=ticket)
 
 # ---------------------------------------------------------------------------
-# Ticket status change endpoint
+
+@app.patch("/api/tickets/{ticket_id}")
+async def edit_ticket_endpoint(
+    ticket_id: str,
+    request: Request,
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+):
+    """Edit a ticket.
+
+    200 with the edited ticket, 404 if not found, 400 for malformed request or
+    invalid fields, 403 if caller is not the filer, 409 if ticket status does
+    not allow editing, 401 for missing/invalid token.
+    """
+    # Validate ticket_id is integer
+    try:
+        tid = int(ticket_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid request")
+
+    # Body size limit
+    raw = await request.body()
+    if len(raw) > 65536:
+        raise HTTPException(status_code=413, detail="too large")
+    # Parse JSON
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="invalid request")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid request")
+
+    # Perform edit via rules
+    try:
+        ticket = rules.edit_ticket(session, tid, caller, data)
+        return ticket
+    except LookupError:
+        raise HTTPException(status_code=404, detail="not found")
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="forbidden")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid request")
+    except rules.NotEditable:
+        raise HTTPException(status_code=409, detail="not editable")
+
 # ---------------------------------------------------------------------------
 @app.post("/api/tickets/{ticket_id}/status")
 async def change_status_endpoint(

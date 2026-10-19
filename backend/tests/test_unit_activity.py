@@ -69,7 +69,7 @@ def test_add_comment_validates_and_creates_comment(db):
         add_comment(db, ticket_id=9999, user="her", body="test")
     # User not party
     with pytest.raises(LookupError):
-        add_comment(db, ticket_id=ticket.id, user="him", body="test")
+        add_comment(db, ticket_id=ticket.id, user="stranger", body="test")
     # Invalid body types
     for bad_body in [123, None, [], {}]:
         with pytest.raises(ValueError):
@@ -128,6 +128,6 @@ def test_list_comments_and_ticket_history_sort_and_errors(db):
         ticket_history(db, ticket_id=9999, user="her")
     # Unauthorized user
     with pytest.raises(LookupError):
-        list_comments(db, ticket_id=ticket.id, user="him")
+        list_comments(db, ticket_id=ticket.id, user="stranger")
     with pytest.raises(LookupError):
-        ticket_history(db, ticket_id=ticket.id, user="him")
+        ticket_history(db, ticket_id=ticket.id, user="stranger")

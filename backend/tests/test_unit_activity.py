@@ -116,8 +116,10 @@ def test_list_comments_and_ticket_history_sort_and_errors(db):
     db.add_all([ev1, ev2])
     db.flush()
     events = ticket_history(db, ticket_id=ticket.id, user="her")
-    # Should be ordered by at then id (ids increasing)
-    assert [e["id"] for e in events] == sorted([ev1.id, ev2.id])
+    # Should be ordered by at then id (ids increasing) for status events only
+    assert [e["id"] for e in events if e["kind"] == "status"] == sorted([ev1.id, ev2.id])
+    # Exactly one filed event should be present (recorded by create_ticket)
+    assert [e["kind"] for e in events].count("filed") == 1
 
     # Errors for missing ticket or unauthorized user
     with pytest.raises(LookupError):

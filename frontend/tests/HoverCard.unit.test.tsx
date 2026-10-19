@@ -6,9 +6,6 @@ afterEach(() => {
   cleanup();
 });
 
-vi.mock("../src/HoverCard", () => ({
-  default: () => null,
-}));
 
 import HoverCard from "../src/HoverCard";
 
@@ -28,25 +25,28 @@ const mockTicket: Ticket = {
 
 describe("HoverCard component", () => {
   test("rendersChildrenInHoverTargetSpan", () => {
-    render(
+    const { container } = render(
       <HoverCard ticket={mockTicket}>
         <span data-testid="child">Child content</span>
       </HoverCard>
     );
-    const span = screen.getByRole("button", { name: /child content/i })
-      || screen.getByText("Child content");
+    const span = container.querySelector('span.hover-target');
+    expect(span).toBeInTheDocument();
     // The span should have class hover-target and tabIndex=0
     expect(span).toHaveClass("hover-target");
     expect(span).toHaveAttribute("tabindex", "0");
+    // It should contain the child text
+    expect(span).toHaveTextContent("Child content");
   });
 
   test("showsTooltipOnHoverAndFocus", async () => {
-    render(
+    const { container } = render(
       <HoverCard ticket={mockTicket}>
         <span>Hover me</span>
       </HoverCard>
     );
-    const target = screen.getByText("Hover me");
+    const target = container.querySelector('span.hover-target');
+    expect(target).toBeInTheDocument();
     // Tooltip should not be in the document initially
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     // Mouse enter
@@ -67,12 +67,13 @@ describe("HoverCard component", () => {
 
   test("tooltipContainsTicketInfo", async () => {
     const ticketWithEmptyDetails = { ...mockTicket, details: "" };
-    render(
+    const { container } = render(
       <HoverCard ticket={ticketWithEmptyDetails}>
         <span>Info</span>
       </HoverCard>
     );
-    const target = screen.getByText("Info");
+    const target = container.querySelector('span.hover-target');
+    expect(target).toBeInTheDocument();
     fireEvent.mouseEnter(target);
     const tooltip = await screen.findByRole("tooltip");
     const paragraphs = tooltip.querySelectorAll("p");
@@ -86,5 +87,17 @@ describe("HoverCard component", () => {
     // Created (first 10 chars of created_at)
     const createdPrefix = ticketWithEmptyDetails.created_at.slice(0, 10);
     expect(paragraphs[3]).toHaveTextContent(`Created ${createdPrefix}`);
+  });
+
+  test("spanHasNoRoleAttribute", () => {
+    const { container } = render(
+      <HoverCard ticket={mockTicket}>
+        <span data-testid="child">Child</span>
+      </HoverCard>
+    );
+    const span = container.querySelector('span.hover-target');
+    expect(span).toBeInTheDocument();
+    // Should not have a role attribute
+    expect(span).not.toHaveAttribute("role");
   });
 });

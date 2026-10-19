@@ -411,3 +411,18 @@ async def change_status_endpoint(
     except ValueError:
         # Invalid transition (or invalid status) maps to 409 per spec
         raise HTTPException(status_code=409, detail="invalid transition")
+
+
+@app.get("/api/summary")
+async def api_summary_route(
+    caller: str = Depends(get_caller),
+    session=Depends(get_db),
+) -> dict:
+    """Return the caller's summary for the current UTC date.
+
+    The endpoint requires a valid bearer token and returns a JSON object with
+    keys ``overdue``, ``due_today`` and ``open`` as defined in ``household.summary``.
+    """
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    return household.summary(session, caller, today)
+

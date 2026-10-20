@@ -150,16 +150,39 @@ async def api_filed(
 async def api_board(
     caller: str = Depends(get_caller),
     session = Depends(get_db),
+    q: str | None = None,
+    priority: str | None = None,
+    assigned_to: str | None = None,
 ) -> dict:
-    """Return the household board for both users.
+    """Return the household board for both users, optionally filtered.
 
-    The board is computed for the current UTC date so that both callers see the same
-    view regardless of when they request it.
+    The optional query parameters ``q``, ``priority`` and ``assigned_to`` are
+    validated according to the design:
+    * ``q`` – if present, must be at most 120 characters.
+    * ``priority`` – if present, must be one of ``low``, ``normal`` or ``urgent``.
+    * ``assigned_to`` – if present, must be ``her`` or ``him``.
+    Any validation failure results in a ``400`` response with the JSON body
+    ``{"error": "invalid request"}``.  Other query parameters are ignored.
     """
+    # Validate query parameters.
+    # Treat empty strings as not provided.
+    if q == "":
+        q = None
+    if priority == "":
+        priority = None
+    if assigned_to == "":
+        assigned_to = None
+    if q is not None and len(q) > 120:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if priority is not None and priority not in {"low", "normal", "urgent"}:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if assigned_to is not None and assigned_to not in {"her", "him"}:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+
     today = datetime.now(timezone.utc).date()
     # Import here to avoid circular imports at module load time.
     from app import household
-    return household.household_board(session, today)
+    return household.household_board(session, today, q=q, priority=priority, assigned_to=assigned_to)
 
 # ---------------------------------------------------------------------------
 # Ticket creation route
@@ -356,6 +379,19 @@ async def api_edit_ticket(
         raise HTTPException(status_code=409, detail="not editable")
     return JSONResponse(status_code=200, content=ticket)
 
-# ---------------------------------------------------------------------------
-# End of file
+
+@app.get("/api/summary")
+async def api_summary(
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> dict:
+    """Return the summary for the caller.
+
+    200 with a dict containing ``overdue``, ``due_today`` and ``open`` counts.
+    401 if the bearer token is missing or invalid.
+    """
+    today = datetime.now(timezone.utc).date()
+    from app import household
+    return household.summary(session, caller, today)
+
 # ---------------------------------------------------------------------------

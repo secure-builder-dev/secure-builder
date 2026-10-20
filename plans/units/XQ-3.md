@@ -1,4 +1,4 @@
 id: XQ-3
-state: planned
+state: building
 
 # XQ-3

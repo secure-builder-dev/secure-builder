@@ -190,3 +190,88 @@ def change_status(session, ticket_id, user, new_status):
     ticket.updated_at = dt.datetime.now(dt.timezone.utc)
     session.commit()
     return ticket_to_dict(ticket)
+
+
+def _group_for_ticket(ticket: Ticket, today: dt.date) -> int:
+    """Determine the group number for a ticket used in the personal board.
+
+    Group 0: urgent priority OR due date before today.
+    Group 1: due today or within the next three days (inclusive).
+    Group 2: everything else.
+    """
+    if ticket.priority == "urgent":
+        return 0
+    if ticket.due is not None:
+        if ticket.due < today:
+            return 0
+        delta = (ticket.due - today).days
+        if 0 <= delta <= 3:
+            return 1
+    return 2
+
+
+def dashboard(session, user: str, today: dt.date):
+    """Return the personal board for *user*.
+
+    The result is a dict with keys ``todo``, ``in_progress`` and ``completed``.
+    ``todo`` contains tickets with status ``open`` or ``acknowledged``.
+    ``in_progress`` contains tickets with status ``in_progress``.
+    ``completed`` contains tickets with status ``done`` or ``closed`` whose
+    ``updated_at`` falls within the 7‑day window ending on *today*.
+    ``todo`` and ``in_progress`` tickets include an extra ``group`` key as
+    defined by the specification and are sorted by ``group``, then due date
+    (``None`` last), then ``created_at`` oldest first. ``completed`` tickets are
+    sorted newest ``updated_at`` first and do not contain a ``group`` key.
+    """
+    # Fetch all tickets assigned to the user.
+    tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
+
+    todo = []
+    in_progress = []
+    completed = []
+
+    for t in tickets:
+        td = ticket_to_dict(t)
+        if t.status in {"open", "acknowledged"}:
+            td["group"] = _group_for_ticket(t, today)
+            todo.append(td)
+        elif t.status == "in_progress":
+            td["group"] = _group_for_ticket(t, today)
+            in_progress.append(td)
+        elif t.status in {"done", "closed"}:
+            # Check completed window
+            upd_date = t.updated_at.date()
+            if 0 <= (today - upd_date).days <= 6:
+                completed.append(td)
+        # other statuses are ignored (should not exist)
+
+    # Sorting helper for todo / in_progress
+    def sort_key(item):
+        # due may be None; treat None as after any real date
+        due = item["due"]
+        due_is_none = due is None
+        # Convert ISO string back to date for ordering, if present
+        due_date = dt.date.fromisoformat(due) if due is not None else dt.date.max
+        created = dt.datetime.fromisoformat(item["created_at"])
+        return (item["group"], due_is_none, due_date, created)
+
+    todo.sort(key=sort_key)
+    in_progress.sort(key=sort_key)
+
+    # Completed: newest updated_at first
+    completed.sort(key=lambda i: dt.datetime.fromisoformat(i["updated_at"]).replace(tzinfo=dt.timezone.utc), reverse=True)
+
+    return {"todo": todo, "in_progress": in_progress, "completed": completed}
+
+
+def filed(session, user: str):
+    """Return all tickets filed by *user* ordered newest ``created_at`` first.
+
+    Each ticket is represented as a dict via :func:`ticket_to_dict`. No ``group``
+    key is added.
+    """
+    tickets = session.query(Ticket).filter(Ticket.filed_by == user).all()
+    # Convert and sort newest first
+    dicts = [ticket_to_dict(t) for t in tickets]
+    dicts.sort(key=lambda i: dt.datetime.fromisoformat(i["created_at"]).replace(tzinfo=dt.timezone.utc), reverse=True)
+    return dicts

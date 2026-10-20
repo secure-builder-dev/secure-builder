@@ -1,4 +1,4 @@
 id: XO-3
-state: building
+state: in review
 
 # XO-3

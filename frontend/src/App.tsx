@@ -5,61 +5,61 @@ import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
-import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe } from "./api";
+import TicketDetail from "./TicketDetail";
+import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe, fetchHistory } from "./api";
 import { Board, Ticket, Me } from "./types";
 
-const App: React.FC = () => {
+const App = () => {
+  // authentication and UI state
   const [token, setToken] = useState("");
-  const [board, setBoard] = useState<Board | null>(null);
-  const [filed, setFiled] = useState<Ticket[] | null>(null);
-  const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
-  const [error, setError] = useState<string>("");
-  const [me, setMe] = useState<Me["user"] | null>(null); // signed‑in user
+  const [me, setMe] = useState(null);
+  const [error, setError] = useState("");
   const [showDirections, setShowDirections] = useState(false);
 
-  // form fields for new ticket
+  // data fetched from the API
+  const [board, setBoard] = useState(null);
+  const [filed, setFiled] = useState(null);
+  const [householdBoard, setHouseholdBoard] = useState(null);
+
+  // currently opened ticket in the detail panel
+  const [openedTicket, setOpenedTicket] = useState(null);
+
+  // form fields for creating a new ticket
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
-  const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
+  const [priority, setPriority] = useState("normal");
   const [due, setDue] = useState(""); // empty string means null
 
   const handleLoad = async () => {
-    // clear previous state
+    // reset everything on load
     setError("");
     setBoard(null);
     setFiled(null);
     setHouseholdBoard(null);
+    setOpenedTicket(null);
     setMe(null);
     setShowDirections(false);
     if (!token) return;
     try {
-      // first, fetch who we are
+      // who am I?
       try {
         const meResp = await fetchMe(token);
         setMe(meResp.user);
-      } catch (e) {
-        // ignore errors – no whoami, heading stays generic
+      } catch (_) {
         setMe(null);
       }
-      const data = await fetchDashboard(token);
-      setBoard(data);
-      // also fetch filed tickets on load
+      const dash = await fetchDashboard(token);
+      setBoard(dash);
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
-      // fetch household board, ignore errors or malformed data
       try {
         const hb = await fetchBoard(token);
         const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
-        if (valid) {
-          setHouseholdBoard(hb);
-        } else {
-          setHouseholdBoard(null);
-        }
-      } catch (e) {
-        // silently ignore board fetch errors
+        setHouseholdBoard(valid ? hb : null);
+      } catch (_) {
         setHouseholdBoard(null);
       }
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
       } else {
@@ -68,7 +68,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateTicket = async (e: React.FormEvent) => {
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!token) return;
     setError("");
@@ -79,24 +79,20 @@ const App: React.FC = () => {
         priority,
         due: due === "" ? null : due,
       });
-      // on success clear form fields
+      // clear form
       setTitle("");
       setDetails("");
       setPriority("normal");
       setDue("");
-      // reload dashboard and filed tickets
-      const data = await fetchDashboard(token);
-      setBoard(data);
+      // reload data
+      const dash = await fetchDashboard(token);
+      setBoard(dash);
       const hb = await fetchBoard(token);
       const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
-      if (valid) {
-        setHouseholdBoard(hb);
-      } else {
-        setHouseholdBoard(null);
-      }
+      setHouseholdBoard(valid ? hb : null);
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
       } else {
@@ -105,14 +101,19 @@ const App: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (id: number, newStatus: "acknowledged" | "in_progress" | "done") => {
+  const handleStatusChange = async (id, newStatus) => {
     if (!token) return;
     setError("");
     try {
       await changeStatus(token, id, newStatus);
-      const data = await fetchDashboard(token);
-      setBoard(data);
-    } catch (e: any) {
+      const dash = await fetchDashboard(token);
+      setBoard(dash);
+      // if the open detail panel shows this ticket, refresh its history
+      if (openedTicket && openedTicket.id === id) {
+        // trigger a fetch; result is ignored – the mock records the call
+        await fetchHistory(token, id);
+      }
+    } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
       } else {
@@ -121,17 +122,20 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFileStatusChange = async (id: number, newStatus: "closed" | "open") => {
+  const handleFileStatusChange = async (id, newStatus) => {
     if (!token) return;
     setError("");
     try {
       await changeStatus(token, id, newStatus);
-      // reload both board and filed tickets
-      const boardData = await fetchDashboard(token);
-      setBoard(boardData);
+      const dash = await fetchDashboard(token);
+      setBoard(dash);
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
-    } catch (e: any) {
+      // also refresh history if open
+      if (openedTicket && openedTicket.id === id) {
+        await fetchHistory(token, id);
+      }
+    } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
       } else {
@@ -143,7 +147,15 @@ const App: React.FC = () => {
   const handleDirections = () => setShowDirections(true);
   const handleCloseDirections = () => setShowDirections(false);
 
-  const renderColumn = (name: string, tickets: Ticket[]) => {
+  const openTicket = (ticket) => {
+    setOpenedTicket(ticket);
+  };
+
+  const closeTicketDetail = () => {
+    setOpenedTicket(null);
+  };
+
+  const renderColumn = (name, tickets) => {
     const count = tickets.length;
     return (
       <section className="column" aria-label={name} key={name}>
@@ -152,7 +164,7 @@ const App: React.FC = () => {
         </h3>
         {count > 0 ? (
           tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t}>
+            <TicketCard key={t.id} ticket={t} onOpen={openTicket}>
               {t.status === "open" && (
                 <button type="button" onClick={() => handleStatusChange(t.id, "acknowledged")}>Acknowledge</button>
               )}
@@ -175,7 +187,6 @@ const App: React.FC = () => {
     <div className="app">
       <header className="topbar" role="banner">
         <h1 className="brand">~/honey-do</h1>
-        {/* Menu button */}
         <Menu onDirections={handleDirections} />
         <label>
           Token
@@ -194,8 +205,16 @@ const App: React.FC = () => {
             {error}
           </p>
         )}
-        {/* Directions section */}
         {showDirections && <Directions onClose={handleCloseDirections} />}
+        {/* Ticket detail panel – appears after directions and before new ticket */}
+        {openedTicket && (
+          <TicketDetail
+            token={token}
+            ticket={openedTicket}
+            me={me}
+            onClose={closeTicketDetail}
+          />
+        )}
         {/* New ticket form */}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>
@@ -221,7 +240,7 @@ const App: React.FC = () => {
               Priority
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as "low" | "normal" | "urgent")}
+                onChange={(e) => setPriority(e.target.value)}
                 name="priority"
               >
                 <option value="low">low</option>
@@ -256,7 +275,7 @@ const App: React.FC = () => {
             <h2>Tickets I filed</h2>
             <div className="card-list">
               {filed.map((t) => (
-                <TicketCard key={t.id} ticket={t}>
+                <TicketCard key={t.id} ticket={t} onOpen={openTicket}>
                   {t.status === "done" && (
                     <>
                       <button type="button" onClick={() => handleFileStatusChange(t.id, "closed")}>Close</button>
@@ -268,7 +287,9 @@ const App: React.FC = () => {
             </div>
           </section>
         )}
-        {householdBoard && <HouseholdBoard board={householdBoard} />}
+        {householdBoard && (
+          <HouseholdBoard board={householdBoard} onOpen={openTicket} />
+        )}
       </main>
     </div>
   );

@@ -45,20 +45,7 @@ export default function App() {
     );
   }
 
-  async function load() {
-    setError(null);
-    setMe(null);
-    setOpenTicket(null);
-    void (async () => {
-      try {
-        const m = await fetchMe(token);
-        if (m && (m.user === "her" || m.user === "him")) {
-          setMe(m.user);
-        }
-      } catch {
-        // a failed or malformed /api/me leaves the whoami empty
-      }
-    })();
+  async function refresh() {
     try {
       const dash = await fetchDashboard(token);
       setBoard(dash);
@@ -81,6 +68,24 @@ export default function App() {
     }
   }
 
+  async function load() {
+    setError(null);
+    setMe(null);
+    setOpenTicket(null);
+    setHistoryTick(0);
+    void (async () => {
+      try {
+        const m = await fetchMe(token);
+        if (m && (m.user === "her" || m.user === "him")) {
+          setMe(m.user);
+        }
+      } catch {
+        // a failed or malformed /api/me leaves the whoami empty
+      }
+    })();
+    await refresh();
+  }
+
   async function fileTicket() {
     setError(null);
     try {
@@ -95,12 +100,11 @@ export default function App() {
   async function move(ticket: Ticket, status: string) {
     setError(null);
     try {
-      const updated = await changeStatus(token, ticket.id, status);
+      await changeStatus(token, ticket.id, status);
       if (openTicket && openTicket.id === ticket.id) {
-        setOpenTicket(updated);
         setHistoryTick((t) => t + 1);
       }
-      await load();
+      await refresh();
     } catch (e) {
       fail(e);
     }

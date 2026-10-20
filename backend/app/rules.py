@@ -1,0 +1,79 @@
+import datetime as dt
+
+from app.models import Ticket
+
+USERS = ("her", "him")
+
+_PRIORITIES = ("low", "normal", "urgent")
+_ALLOWED_KEYS = {"title", "details", "priority", "due"}
+
+
+def ticket_to_dict(ticket):
+    return {
+        "id": ticket.id,
+        "title": ticket.title,
+        "details": ticket.details,
+        "priority": ticket.priority,
+        "due": ticket.due.isoformat() if ticket.due is not None else None,
+        "status": ticket.status,
+        "filed_by": ticket.filed_by,
+        "assigned_to": ticket.assigned_to,
+        "created_at": ticket.created_at.isoformat(),
+        "updated_at": ticket.updated_at.isoformat(),
+    }
+
+
+def _parse_due(value):
+    if value is None:
+        return None
+    if not isinstance(value, str) or len(value) != 10:
+        raise ValueError("due must be a YYYY-MM-DD string")
+    year, month, day = value.split("-")
+    if not (year.isdigit() and month.isdigit() and day.isdigit()):
+        raise ValueError("due must be a YYYY-MM-DD string")
+    try:
+        return dt.date(int(year), int(month), int(day))
+    except ValueError:
+        raise ValueError("due must name a real date in YYYY-MM-DD form")
+
+
+def create_ticket(session, filed_by, data):
+    if filed_by not in USERS:
+        raise ValueError("filed_by must be one of USERS")
+    if not isinstance(data, dict) or any(key not in _ALLOWED_KEYS for key in data):
+        raise ValueError("data may hold only title, details, priority and due")
+
+    if "title" not in data:
+        raise ValueError("title is required")
+    title = data["title"]
+    if not isinstance(title, str):
+        raise ValueError("title must be a string")
+    title = title.strip()
+    if not (1 <= len(title) <= 120):
+        raise ValueError("title must be 1 to 120 characters after stripping")
+
+    details = data.get("details", "")
+    if not isinstance(details, str) or len(details) > 1000:
+        raise ValueError("details must be a string of at most 1000 characters")
+
+    priority = data.get("priority", "normal")
+    if priority not in _PRIORITIES:
+        raise ValueError("priority must be one of low, normal or urgent")
+
+    due = _parse_due(data.get("due"))
+
+    now = dt.datetime.now(dt.timezone.utc)
+    ticket = Ticket(
+        title=title,
+        details=details,
+        priority=priority,
+        due=due,
+        status="open",
+        filed_by=filed_by,
+        assigned_to=("him" if filed_by == "her" else "her"),
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(ticket)
+    session.commit()
+    return ticket_to_dict(ticket)

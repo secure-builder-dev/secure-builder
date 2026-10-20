@@ -1,9 +1,11 @@
 import { useState } from "react";
-import type { Board, NewTicket, Ticket, User } from "./types";
-import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled, fetchMe } from "./api";
+import type { Board, BoardFilter, NewTicket, Summary, Ticket, User } from "./types";
+import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled, fetchMe, fetchSummary } from "./api";
 import Directions from "./Directions";
+import FilterBar from "./FilterBar";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
+import SummaryBadge from "./SummaryBadge";
 import TicketCard from "./TicketCard";
 import TicketDetail from "./TicketDetail";
 
@@ -26,6 +28,8 @@ export default function App() {
   const [showDirections, setShowDirections] = useState(false);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
   const [historyTick, setHistoryTick] = useState(0);
+  const [filter, setFilter] = useState<BoardFilter>({ q: "", priority: "", assigned_to: "" });
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   function fail(e: unknown) {
     if (e instanceof Error && e.message === "401") {
@@ -45,7 +49,17 @@ export default function App() {
     );
   }
 
-  async function refresh() {
+  function isSummary(v: unknown): v is Summary {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as Summary).overdue === "number" &&
+      typeof (v as Summary).due_today === "number" &&
+      typeof (v as Summary).open === "number"
+    );
+  }
+
+  async function refresh(override?: BoardFilter) {
     try {
       const dash = await fetchDashboard(token);
       setBoard(dash);
@@ -57,7 +71,7 @@ export default function App() {
       fail(e);
     }
     try {
-      const b = await fetchBoard(token);
+      const b = await fetchBoard(token, override ?? filter);
       if (isBoard(b)) {
         setHousehold(b);
       } else {
@@ -66,6 +80,12 @@ export default function App() {
     } catch {
       setHousehold(null);
     }
+    try {
+      const s = await fetchSummary(token);
+      setSummary(isSummary(s) ? s : null);
+    } catch {
+      setSummary(null);
+    }
   }
 
   async function load() {
@@ -73,6 +93,7 @@ export default function App() {
     setMe(null);
     setOpenTicket(null);
     setHistoryTick(0);
+    setSummary(null);
     void (async () => {
       try {
         const m = await fetchMe(token);
@@ -152,6 +173,7 @@ export default function App() {
           <button type="button" onClick={() => void load()}>Load</button>
         </div>
         {me && <span className="whoami">Signed in as {me}</span>}
+        {summary && <SummaryBadge summary={summary} />}
       </header>
       <main className="content">
         {error && (
@@ -257,7 +279,16 @@ export default function App() {
             </div>
           </section>
         )}
-        {household && <HouseholdBoard board={household} onOpen={setOpenTicket} />}
+        {household && (
+          <HouseholdBoard board={household} onOpen={setOpenTicket}>
+            <FilterBar
+              onApply={(f) => {
+                setFilter(f);
+                void refresh(f);
+              }}
+            />
+          </HouseholdBoard>
+        )}
       </main>
     </div>
   );

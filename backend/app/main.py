@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import db, rules
 from app.db import SessionLocal
+from app.models import Ticket
 
 app = FastAPI()
 
@@ -217,6 +218,105 @@ async def api_change_status(
         # Invalid transition or unknown status maps to 409.
         raise HTTPException(status_code=409, detail="invalid transition")
     return JSONResponse(status_code=200, content=ticket)
+
+
+# ---------------------------------------------------------------------------
+# Ticket detail routes (E3)
+# ---------------------------------------------------------------------------
+
+from app.activity import add_comment, list_comments, ticket_history
+
+@app.get("/api/tickets/{ticket_id}")
+async def api_get_ticket(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    """Return a single ticket by id.
+
+    200 with the ticket dict, 404 if not found, 400 if id not an integer.
+    """
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    # Fetch ticket and ensure caller is a party.
+    ticket = session.get(Ticket, tid)
+    if ticket is None or caller not in (ticket.filed_by, ticket.assigned_to):
+        raise HTTPException(status_code=404)
+    return JSONResponse(status_code=200, content=rules.ticket_to_dict(ticket))
+
+@app.get("/api/tickets/{ticket_id}/comments")
+async def api_get_comments(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    """Return comments for a ticket.
+
+    200 with {"comments": [...]}, 404 if ticket missing, 400 if id not integer.
+    """
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        comments = list_comments(session, tid, caller)
+    except LookupError:
+        raise HTTPException(status_code=404)
+    return JSONResponse(status_code=200, content={"comments": comments})
+
+@app.post("/api/tickets/{ticket_id}/comments")
+async def api_post_comment(
+    ticket_id: str,
+    request: Request,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    """Add a comment to a ticket.
+
+    201 with the comment dict, 400 for malformed/invalid request, 404 if ticket missing.
+    """
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    # Parse JSON body.
+    try:
+        raw = await request.body()
+        data = json.loads(raw)
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if not isinstance(data, dict) or set(data.keys()) != {"body"}:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    body = data["body"]
+    try:
+        comment = add_comment(session, tid, caller, body)
+    except LookupError:
+        raise HTTPException(status_code=404)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    return JSONResponse(status_code=201, content=comment)
+
+@app.get("/api/tickets/{ticket_id}/history")
+async def api_get_history(
+    ticket_id: str,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    """Return the event history for a ticket.
+
+    200 with {"events": [...]}, 404 if ticket missing, 400 if id not integer.
+    """
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        events = ticket_history(session, tid, caller)
+    except LookupError:
+        raise HTTPException(status_code=404)
+    return JSONResponse(status_code=200, content={"events": events})
 
 # ---------------------------------------------------------------------------
 # End of file

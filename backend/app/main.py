@@ -318,6 +318,44 @@ async def api_get_history(
         raise HTTPException(status_code=404)
     return JSONResponse(status_code=200, content={"events": events})
 
+
+@app.patch("/api/tickets/{ticket_id}")
+async def api_edit_ticket(
+    ticket_id: str,
+    request: Request,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    """Edit a ticket.
+
+    200 with the edited ticket dict, 404 if not found, 400 for malformed/invalid request,
+    403 if caller is not the filer, 409 if ticket status is not editable.
+    """
+    # Validate ticket_id is an integer.
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    # Parse JSON body.
+    try:
+        raw = await request.body()
+        data = json.loads(raw)
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if not isinstance(data, dict):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        ticket = rules.edit_ticket(session, tid, caller, data)
+    except LookupError:
+        raise HTTPException(status_code=404)
+    except PermissionError:
+        raise HTTPException(status_code=403)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    except rules.NotEditable:
+        raise HTTPException(status_code=409, detail="not editable")
+    return JSONResponse(status_code=200, content=ticket)
+
 # ---------------------------------------------------------------------------
 # End of file
 # ---------------------------------------------------------------------------

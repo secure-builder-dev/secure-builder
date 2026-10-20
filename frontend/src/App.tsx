@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Board, NewTicket, Ticket, User } from "./types";
 import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled, fetchMe } from "./api";
+import Directions from "./Directions";
 import HouseholdBoard from "./HouseholdBoard";
+import Menu from "./Menu";
 import TicketCard from "./TicketCard";
 
 const COLUMNS: Array<{ key: keyof Board; label: string }> = [
@@ -20,6 +22,7 @@ export default function App() {
   const [me, setMe] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<NewTicket>(EMPTY_FORM);
+  const [showDirections, setShowDirections] = useState(false);
 
   function fail(e: unknown) {
     if (e instanceof Error && e.message === "401") {
@@ -124,6 +127,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <h1 className="brand">~/honey-do</h1>
+        <Menu onDirections={() => setShowDirections(true)} />
         <div className="token-form">
           <label>
             Token{" "}
@@ -141,6 +145,7 @@ export default function App() {
         {error && (
           <p role="alert" className="error">{error}</p>
         )}
+        {showDirections && <Directions onClose={() => setShowDirections(false)} />}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form

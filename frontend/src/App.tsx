@@ -4,26 +4,34 @@ import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
 import TicketDetail from "./TicketDetail";
-import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket, fetchMe } from "./api";
-import type { Board, Ticket } from "./types";
-
+import FilterBar from "./FilterBar";
+import SummaryBadge from "./SummaryBadge";
+import { fetchDashboard, fetchFiled, fetchBoard, changeStatus, createTicket, fetchMe, fetchSummary } from "./api";
+import type { Board, Ticket, Summary } from "./types";
 
 export default function App() {
   const [token, setToken] = useState("");
-const [me, setMe] = useState<string | null>(null);
+  const [me, setMe] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
   const [houseBoard, setHouseBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [boardFilter, setBoardFilter] = useState<{ q: string; priority: string; assigned_to: string }>({
+    q: "",
+    priority: "",
+    assigned_to: "",
+  });
 
   const openDirections = () => setShowDirections(true);
   const closeDirections = () => setShowDirections(false);
 
-    const handleOpen = (ticket: Ticket) => {
+  const handleOpen = (ticket: Ticket) => {
     setOpenTicket(ticket);
   };
+
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
@@ -36,6 +44,7 @@ const [me, setMe] = useState<string | null>(null);
     setFiled(null);
     setMe(null);
     setOpenTicket(null);
+    setSummary(null);
     try {
       // first, fetch who we are
       try {
@@ -54,8 +63,10 @@ const [me, setMe] = useState<string | null>(null);
       setBoard(dash);
       const f = await fetchFiled(token);
       setFiled(f.tickets);
+
+      // fetch household board using current filter
       try {
-        const hb = await fetchBoard(token);
+        const hb = await fetchBoard(token, boardFilter);
         if (
           hb &&
           Array.isArray(hb.todo) &&
@@ -69,6 +80,22 @@ const [me, setMe] = useState<string | null>(null);
       } catch {
         // Silently ignore board fetch errors; no error message shown.
         setHouseBoard(null);
+      }
+
+      // fetch summary
+      try {
+        const sum = await fetchSummary(token);
+        if (
+          typeof sum.overdue === "number" &&
+          typeof sum.due_today === "number" &&
+          typeof sum.open === "number"
+        ) {
+          setSummary(sum);
+        } else {
+          setSummary(null);
+        }
+      } catch {
+        setSummary(null);
       }
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
@@ -112,7 +139,7 @@ const [me, setMe] = useState<string | null>(null);
       setDetails("");
       setPriority("normal");
       setDue("");
-      // reload board and filed tickets
+      // reload board and filed tickets (and summary)
       await handleLoad();
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
@@ -121,6 +148,29 @@ const [me, setMe] = useState<string | null>(null);
         setError("Something went wrong");
       }
     }
+  };
+
+  const handleFilterApply = (filter: { q: string; priority: string; assigned_to: string }) => {
+    // store filter and refetch board
+    setBoardFilter(filter);
+    // fetch board with new filter
+    (async () => {
+      try {
+        const hb = await fetchBoard(token, filter);
+        if (
+          hb &&
+          Array.isArray(hb.todo) &&
+          Array.isArray(hb.in_progress) &&
+          Array.isArray(hb.completed)
+        ) {
+          setHouseBoard(hb);
+        } else {
+          setHouseBoard(null);
+        }
+      } catch {
+        setHouseBoard(null);
+      }
+    })();
   };
 
   const renderBoardActions = (ticket: Ticket) => {
@@ -206,10 +256,11 @@ const [me, setMe] = useState<string | null>(null);
           <button type="button" onClick={handleLoad}>Load</button>
         </div>
         {me && <span className="whoami">Signed in as {me}</span>}
+        {summary && <SummaryBadge summary={summary} />}
       </header>
       <main className="content">
         {error && <p role="alert" className="error">{error}</p>}
-                {showDirections && <Directions onClose={closeDirections} />}
+        {showDirections && <Directions onClose={closeDirections} />}
         {openTicket && (
           <TicketDetail
             token={token}
@@ -271,7 +322,9 @@ const [me, setMe] = useState<string | null>(null);
         )}
         {renderFiledPanel()}
         {houseBoard && (
-          <HouseholdBoard board={houseBoard} onOpen={handleOpen} />
+          <HouseholdBoard board={houseBoard} onOpen={handleOpen}>
+            <FilterBar onApply={handleFilterApply} />
+          </HouseholdBoard>
         )}
       </main>
     </div>

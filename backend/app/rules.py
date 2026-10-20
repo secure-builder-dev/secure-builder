@@ -283,3 +283,96 @@ def filed(session, user: str):
     dicts = [ticket_to_dict(t) for t in tickets]
     dicts.sort(key=lambda i: dt.datetime.fromisoformat(i["created_at"]).replace(tzinfo=dt.timezone.utc), reverse=True)
     return dicts
+
+
+class NotEditable(Exception):
+    """Raised when a ticket cannot be edited because its status is not editable."""
+    pass
+
+def edit_ticket(session, ticket_id, user, data):
+    """Edit a ticket's mutable fields.
+
+    Validation order (as required by the tests):
+    1. ``LookupError`` if the ticket does not exist or *user* is not a party.
+    2. ``ValueError`` if *data* is not a mapping, is empty, contains unknown keys,
+       or any provided value would be rejected by ``create_ticket``.
+    3. ``PermissionError`` if *user* is not the filer of the ticket.
+    4. ``NotEditable`` if the ticket's status is not ``open`` or ``acknowledged``.
+
+    On success the given fields are updated (title is stripped), ``updated_at`` is set
+    to the current UTC time, an ``edited`` event is recorded, the session is committed,
+    and the updated ticket dict is returned.
+    """
+    # 1. Lookup ticket and verify user is a party.
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None or user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("ticket not found or user not a party")
+
+    # 2. Validate *data*.
+    from collections.abc import Mapping as _Mapping
+    if not isinstance(data, _Mapping):
+        raise ValueError("data must be a mapping")
+    if not data:
+        raise ValueError("data cannot be empty")
+    allowed_keys = {"title", "details", "priority", "due"}
+    extra = set(data) - allowed_keys
+    if extra:
+        raise ValueError(f"unexpected keys: {extra}")
+
+    # Prepare a dict of validated fields.
+    updates = {}
+    if "title" in data:
+        title = data["title"]
+        if not isinstance(title, str):
+            raise ValueError("title must be a string")
+        title = title.strip()
+        if not (1 <= len(title) <= 120):
+            raise ValueError("title length must be 1..120 after stripping")
+        updates["title"] = title
+    if "details" in data:
+        details = data["details"]
+        if not isinstance(details, str):
+            raise ValueError("details must be a string")
+        if len(details) > 1000:
+            raise ValueError("details length must be <= 1000")
+        updates["details"] = details
+    if "priority" in data:
+        priority = data["priority"]
+        if not isinstance(priority, str):
+            raise ValueError("priority must be a string")
+        if priority not in {"low", "normal", "urgent"}:
+            raise ValueError("priority must be one of 'low', 'normal', 'urgent'")
+        updates["priority"] = priority
+    if "due" in data:
+        due_raw = data["due"]
+        if due_raw is None:
+            due = None
+        else:
+            if not isinstance(due_raw, str):
+                raise ValueError("due must be a string in YYYY-MM-DD format or None")
+            try:
+                due = dt.date.fromisoformat(due_raw)
+            except Exception as exc:
+                raise ValueError("due must be a valid date in YYYY-MM-DD format") from exc
+        updates["due"] = due
+
+    # 3. Permission: only the filer may edit.
+    if user != ticket.filed_by:
+        raise PermissionError("only filer may edit the ticket")
+
+    # 4. Status must be editable.
+    if ticket.status not in {"open", "acknowledged"}:
+        raise NotEditable("ticket status not editable")
+
+    # Apply updates.
+    for attr, value in updates.items():
+        setattr(ticket, attr, value)
+    ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+
+    # Record edited event.
+    from app.activity import record_event
+    record_event(session, ticket, user, "edited", from_status=None, to_status=None)
+    session.commit()
+    return ticket_to_dict(ticket)
+
+

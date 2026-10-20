@@ -111,6 +111,53 @@ def filed(session, user):
     return [ticket_to_dict(t) for t in tickets]
 
 
+class NotEditable(Exception):
+    pass
+
+
+def _validate_field(key, value):
+    if key == "title":
+        if not isinstance(value, str):
+            raise ValueError("title must be a string")
+        stripped = value.strip()
+        if not (1 <= len(stripped) <= 120):
+            raise ValueError("title must be 1 to 120 characters after stripping")
+    elif key == "details":
+        if not isinstance(value, str) or len(value) > 1000:
+            raise ValueError("details must be a string of at most 1000 characters")
+    elif key == "priority":
+        if value not in _PRIORITIES:
+            raise ValueError("priority must be one of low, normal or urgent")
+    elif key == "due":
+        _parse_due(value)
+
+
+def edit_ticket(session, ticket_id, user, data):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None or user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("ticket not found")
+    if not isinstance(data, dict) or not data:
+        raise ValueError("data must be a non-empty dict")
+    for key in data:
+        if key not in _ALLOWED_KEYS:
+            raise ValueError("data may hold only title, details, priority and due")
+    for key, value in data.items():
+        _validate_field(key, value)
+    if user != ticket.filed_by:
+        raise PermissionError("only the filer may edit a ticket")
+    if ticket.status not in ("open", "acknowledged"):
+        raise NotEditable("ticket is no longer editable")
+    for key, value in data.items():
+        if key == "title":
+            ticket.title = value.strip()
+        else:
+            setattr(ticket, key, _parse_due(value) if key == "due" else value)
+    ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+    record_event(session, ticket, user, "edited")
+    session.commit()
+    return ticket_to_dict(ticket)
+
+
 def create_ticket(session, filed_by, data):
     if filed_by not in USERS:
         raise ValueError("filed_by must be one of USERS")

@@ -92,6 +92,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
+
 # ---------------------------------------------------------------------------
 # Exception handling – JSON error bodies
 # ---------------------------------------------------------------------------

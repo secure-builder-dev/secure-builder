@@ -5,6 +5,7 @@ import Directions from "./Directions";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import TicketCard from "./TicketCard";
+import TicketDetail from "./TicketDetail";
 
 const COLUMNS: Array<{ key: keyof Board; label: string }> = [
   { key: "todo", label: "To Do" },
@@ -23,6 +24,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<NewTicket>(EMPTY_FORM);
   const [showDirections, setShowDirections] = useState(false);
+  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [historyTick, setHistoryTick] = useState(0);
 
   function fail(e: unknown) {
     if (e instanceof Error && e.message === "401") {
@@ -45,6 +48,7 @@ export default function App() {
   async function load() {
     setError(null);
     setMe(null);
+    setOpenTicket(null);
     void (async () => {
       try {
         const m = await fetchMe(token);
@@ -91,7 +95,11 @@ export default function App() {
   async function move(ticket: Ticket, status: string) {
     setError(null);
     try {
-      await changeStatus(token, ticket.id, status);
+      const updated = await changeStatus(token, ticket.id, status);
+      if (openTicket && openTicket.id === ticket.id) {
+        setOpenTicket(updated);
+        setHistoryTick((t) => t + 1);
+      }
       await load();
     } catch (e) {
       fail(e);
@@ -146,6 +154,15 @@ export default function App() {
           <p role="alert" className="error">{error}</p>
         )}
         {showDirections && <Directions onClose={() => setShowDirections(false)} />}
+        {openTicket && (
+          <TicketDetail
+            token={token}
+            ticket={openTicket}
+            me={me}
+            historyTick={historyTick}
+            onClose={() => setOpenTicket(null)}
+          />
+        )}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form
@@ -209,7 +226,7 @@ export default function App() {
                       tickets.map((t) => {
                         const actions = actionsFor(t);
                         return (
-                          <TicketCard key={t.id} ticket={t}>
+                          <TicketCard key={t.id} ticket={t} onOpen={setOpenTicket}>
                             {actions}
                           </TicketCard>
                         );
@@ -228,7 +245,7 @@ export default function App() {
               {filed.map((t) => {
                 const actions = filedActionsFor(t);
                 return (
-                  <TicketCard key={t.id} ticket={t}>
+                  <TicketCard key={t.id} ticket={t} onOpen={setOpenTicket}>
                     {actions}
                   </TicketCard>
                 );
@@ -236,7 +253,7 @@ export default function App() {
             </div>
           </section>
         )}
-        {household && <HouseholdBoard board={household} />}
+        {household && <HouseholdBoard board={household} onOpen={setOpenTicket} />}
       </main>
     </div>
   );

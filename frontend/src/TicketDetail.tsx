@@ -8,11 +8,12 @@ interface Props {
   token: string;
   ticket: Ticket;
   me: User | null;
+  historyTick?: number;
   onClose(): void;
   onSaved?(ticket: Ticket): void;
 }
 
-export default function TicketDetail({ token, ticket, me, onClose }: Props) {
+export default function TicketDetail({ token, ticket, me, historyTick = 0, onClose }: Props) {
   const [comments, setComments] = useState<CommentOut[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
     return () => {
       alive = false;
     };
-  }, [token, ticket.id]);
+  }, [token, ticket.id, historyTick]);
 
   async function onAdd(body: string) {
     setError(null);

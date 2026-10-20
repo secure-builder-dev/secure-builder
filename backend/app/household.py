@@ -5,7 +5,7 @@ from app.rules import ticket_to_dict
 
 
 def _matches(ticket, q=None, priority=None, assigned_to=None):
-    if q:
+    if q is not None and q != "":
         needle = q.lower()
         if needle not in ticket.title.lower() and needle not in (ticket.details or "").lower():
             return False

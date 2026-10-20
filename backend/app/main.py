@@ -87,9 +87,24 @@ def filed(session=Depends(get_db), caller=Depends(get_caller)):
 
 
 @app.get("/api/board")
-def board(session=Depends(get_db), caller=Depends(get_caller)):
+def board(request: Request, session=Depends(get_db), caller=Depends(get_caller)):
+    q = request.query_params.get("q")
+    priority = request.query_params.get("priority")
+    assigned_to = request.query_params.get("assigned_to")
+    if q is not None and len(q) > 120:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if priority is not None and priority != "" and priority not in ("low", "normal", "urgent"):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if assigned_to is not None and assigned_to != "" and assigned_to not in ("her", "him"):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
     today = dt.datetime.now(dt.timezone.utc).date()
-    return household.household_board(session, today)
+    return household.household_board(session, today, q=q, priority=priority, assigned_to=assigned_to)
+
+
+@app.get("/api/summary")
+def summary_route(session=Depends(get_db), caller=Depends(get_caller)):
+    today = dt.datetime.now(dt.timezone.utc).date()
+    return household.summary(session, caller, today)
 
 
 @app.get("/api/me")

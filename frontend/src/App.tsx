@@ -14,6 +14,7 @@ const EMPTY_FORM: NewTicket = { title: "", details: "", priority: "normal", due:
 export default function App() {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
+  const [filed, setFiled] = useState<Ticket[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<NewTicket>(EMPTY_FORM);
 
@@ -30,9 +31,11 @@ export default function App() {
     try {
       const dash = await fetchDashboard(token);
       setBoard(dash);
-      await fetchFiled(token);
+      const f = await fetchFiled(token);
+      setFiled(f.tickets);
     } catch (e) {
       setBoard(null);
+      setFiled([]);
       fail(e);
     }
   }
@@ -69,6 +72,18 @@ export default function App() {
       return <button type="button" onClick={() => void move(t, "done")}>Done</button>;
     }
     return null;
+  }
+
+  function filedActionsFor(t: Ticket) {
+    if (t.status !== "done") {
+      return null;
+    }
+    return (
+      <>
+        <button type="button" onClick={() => void move(t, "closed")}>Close</button>{" "}
+        <button type="button" onClick={() => void move(t, "open")}>Reopen</button>
+      </>
+    );
   }
 
   return (
@@ -161,6 +176,21 @@ export default function App() {
                       })
                     )}
                   </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        {board && (
+          <section className="panel" aria-label="Tickets I filed">
+            <h2>Tickets I filed</h2>
+            <div className="card-list">
+              {filed.map((t) => {
+                const actions = filedActionsFor(t);
+                return (
+                  <TicketCard key={t.id} ticket={t}>
+                    {actions}
+                  </TicketCard>
                 );
               })}
             </div>

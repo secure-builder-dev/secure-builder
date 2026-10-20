@@ -1,7 +1,10 @@
+// Updated App component with Menu and Directions integration
 import React, { useState } from "react";
 import "./styles.css";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
+import Menu from "./Menu";
+import Directions from "./Directions";
 import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe } from "./api";
 import { Board, Ticket, Me } from "./types";
 
@@ -12,6 +15,7 @@ const App: React.FC = () => {
   const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string>("");
   const [me, setMe] = useState<Me["user"] | null>(null); // signed‑in user
+  const [showDirections, setShowDirections] = useState(false);
 
   // form fields for new ticket
   const [title, setTitle] = useState("");
@@ -26,6 +30,7 @@ const App: React.FC = () => {
     setFiled(null);
     setHouseholdBoard(null);
     setMe(null);
+    setShowDirections(false);
     if (!token) return;
     try {
       // first, fetch who we are
@@ -135,6 +140,9 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDirections = () => setShowDirections(true);
+  const handleCloseDirections = () => setShowDirections(false);
+
   const renderColumn = (name: string, tickets: Ticket[]) => {
     const count = tickets.length;
     return (
@@ -167,6 +175,8 @@ const App: React.FC = () => {
     <div className="app">
       <header className="topbar" role="banner">
         <h1 className="brand">~/honey-do</h1>
+        {/* Menu button */}
+        <Menu onDirections={handleDirections} />
         <label>
           Token
           <input
@@ -184,6 +194,8 @@ const App: React.FC = () => {
             {error}
           </p>
         )}
+        {/* Directions section */}
+        {showDirections && <Directions onClose={handleCloseDirections} />}
         {/* New ticket form */}
         <section className="panel new-ticket" aria-label="New ticket">
           <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>
@@ -263,4 +275,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

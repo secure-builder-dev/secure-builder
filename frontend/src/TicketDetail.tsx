@@ -83,11 +83,15 @@ export default function TicketDetail({ token, ticket: initialTicket, me, onClose
       setTicket(updated);
       setEditing(false);
       setEditError(null);
-      // refetch history after successful edit
-      const hist = await fetchHistory(token, ticket.id);
-      if (hist && Array.isArray(hist.events)) {
-        setEvents(hist.events);
-      } else {
+      // refetch history after successful edit, ignoring errors
+      try {
+        const hist = await fetchHistory(token, ticket.id);
+        if (hist && Array.isArray(hist.events)) {
+          setEvents(hist.events);
+        } else {
+          setEvents([]);
+        }
+      } catch (_) {
         setEvents([]);
       }
       if (onSaved) onSaved(updated);

@@ -1,4 +1,13 @@
-import type { Board, Filed, Me, NewTicket, Ticket } from "./types";
+import type {
+  Board,
+  CommentOut,
+  Comments,
+  Filed,
+  History,
+  Me,
+  NewTicket,
+  Ticket,
+} from "./types";
 
 async function call(
   token: string,
@@ -53,4 +62,33 @@ export async function changeStatus(
     method: "POST",
     body: JSON.stringify({ status }),
   })) as Ticket;
+}
+
+export async function fetchTicket(token: string, id: number): Promise<Ticket> {
+  return (await call(token, `/api/tickets/${id}`)) as Ticket;
+}
+
+export async function fetchComments(
+  token: string,
+  id: number,
+): Promise<Comments> {
+  return (await call(token, `/api/tickets/${id}/comments`)) as Comments;
+}
+
+export async function addComment(
+  token: string,
+  id: number,
+  body: string,
+): Promise<CommentOut> {
+  return (await call(token, `/api/tickets/${id}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  })) as CommentOut;
+}
+
+export async function fetchHistory(
+  token: string,
+  id: number,
+): Promise<History> {
+  return (await call(token, `/api/tickets/${id}/history`)) as History;
 }

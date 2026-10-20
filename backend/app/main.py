@@ -61,7 +61,27 @@ def get_caller(request: Request) -> str:
     raise HTTPException(status_code=401, detail="unauthorized")
 
 # ---------------------------------------------------------------------------
-# Middleware: security headers on every response
+
+# Middleware: body size limit (413) and security headers on every response
+@app.middleware("http")
+async def body_size_and_security_headers(request: Request, call_next):
+    # Check Content-Length header for body size limit before reading the body.
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > 65536:
+                return JSONResponse(status_code=413, content={"error": "too large"})
+        except ValueError:
+            # If header is malformed, ignore and let the route handle it.
+            pass
+    # Proceed with the request.
+    response = await call_next(request)
+    # Add security headers to every response.
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = "default-src 'none'"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):

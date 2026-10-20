@@ -1,5 +1,6 @@
 import datetime as dt
 
+from app.activity import record_event
 from app.models import Ticket
 
 USERS = ("her", "him")
@@ -60,8 +61,10 @@ def change_status(session, ticket_id, user, new_status):
     expected = ticket.assigned_to if party == "assignee" else ticket.filed_by
     if user != expected:
         raise PermissionError("not allowed to make this move")
+    old_status = ticket.status
     ticket.status = new_status
     ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+    record_event(session, ticket, user, "status", old_status, new_status)
     session.commit()
     return ticket_to_dict(ticket)
 
@@ -146,5 +149,7 @@ def create_ticket(session, filed_by, data):
         updated_at=now,
     )
     session.add(ticket)
+    session.flush()
+    record_event(session, ticket, filed_by, "filed", None, "open")
     session.commit()
     return ticket_to_dict(ticket)

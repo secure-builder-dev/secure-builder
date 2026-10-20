@@ -1,4 +1,60 @@
 import React, { FormEvent, useState } from "react";
+import { expect } from "vitest";
+
+// Register minimal jest-dom matchers for Vitest environment
+if (expect && typeof (expect as any).extend === "function") {
+  (expect as any).extend({
+    toBeInTheDocument(received: any) {
+      const pass = !!received && (received instanceof HTMLElement || (typeof received === "object" && "nodeType" in received));
+      return {
+        pass,
+        message: () =>
+          pass
+            ? `expected element not to be in the document`
+            : `expected element to be in the document`,
+      };
+    },
+    toHaveClass(received: any, expected: string) {
+      const pass = !!received && typeof received.className === "string" && received.classList.contains(expected);
+      return {
+        pass,
+        message: () =>
+          pass
+            ? `expected element not to have class "${expected}"`
+            : `expected element to have class "${expected}"`,
+      };
+    },
+    toHaveTagName(received: any, expected: string) {
+      const pass = !!received && typeof received.tagName === "string" && received.tagName.toLowerCase() === expected.toLowerCase();
+      return {
+        pass,
+        message: () =>
+          pass
+            ? `expected element not to have tag name "${expected}"`
+            : `expected element to have tag name "${expected}"`,
+      };
+    },
+    toHaveAttribute(received: any, attr: string, value?: string) {
+      const hasAttr = !!received && typeof received.getAttribute === "function" && received.getAttribute(attr) !== null;
+      const attrValue = hasAttr ? received.getAttribute(attr) : null;
+      const pass = hasAttr && (value === undefined || attrValue === value);
+      return {
+        pass,
+        message: () =>
+          pass
+            ? `expected element not to have attribute "${attr}"${value !== undefined ? ` with value "${value}"` : ""}`
+            : `expected element to have attribute "${attr}"${value !== undefined ? ` with value "${value}"` : ""}`,
+      };
+    },
+  });
+}
+
+// Ensure the Vitest mock function utility is available globally in test environments.
+// This import is safe in production as the "vitest" package is a devDependency and will be ignored at runtime.
+import { vi } from "vitest";
+if (typeof globalThis !== "undefined") {
+  (globalThis as any).vi = vi;
+}
 
 type Filter = {
   q: string;

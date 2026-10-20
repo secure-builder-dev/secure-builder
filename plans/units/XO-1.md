@@ -1,4 +1,4 @@
 id: XO-1
-state: planned
+state: building
 
 # XO-1

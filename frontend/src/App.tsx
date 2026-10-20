@@ -1,34 +1,44 @@
-// Updated App component with Menu and Directions integration
-import React, { useState } from "react";
+// Updated App component with Menu, Directions, FilterBar, and SummaryBadge integration
+import React, { useState, FormEvent } from "react";
 import "./styles.css";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
 import Menu from "./Menu";
 import Directions from "./Directions";
 import TicketDetail from "./TicketDetail";
-import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe, fetchHistory } from "./api";
-import { Board, Ticket, Me } from "./types";
+import FilterBar from "./FilterBar";
+import SummaryBadge from "./SummaryBadge";
+import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe, fetchHistory, fetchSummary } from "./api";
+import { Board, Ticket, Me, Status, User } from "./types";
 
 const App = () => {
   // authentication and UI state
-  const [token, setToken] = useState("");
-  const [me, setMe] = useState(null);
-  const [error, setError] = useState("");
-  const [showDirections, setShowDirections] = useState(false);
+  const [token, setToken] = useState<string>("");
+  const [me, setMe] = useState<User | null>(null);
+  const [error, setError] = useState<string>("");
+  const [showDirections, setShowDirections] = useState<boolean>(false);
 
   // data fetched from the API
-  const [board, setBoard] = useState(null);
-  const [filed, setFiled] = useState(null);
-  const [householdBoard, setHouseholdBoard] = useState(null);
+  const [board, setBoard] = useState<Board | null>(null);
+  const [filed, setFiled] = useState<Ticket[] | null>(null);
+  const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
+  const [summary, setSummary] = useState<{ overdue: number; due_today: number; open: number } | null>(null);
 
   // currently opened ticket in the detail panel
-  const [openedTicket, setOpenedTicket] = useState(null);
+  const [openedTicket, setOpenedTicket] = useState<Ticket | null>(null);
 
   // form fields for creating a new ticket
-  const [title, setTitle] = useState("");
-  const [details, setDetails] = useState("");
-  const [priority, setPriority] = useState("normal");
-  const [due, setDue] = useState(""); // empty string means null
+  const [title, setTitle] = useState<string>("");
+  const [details, setDetails] = useState<string>("");
+  const [priority, setPriority] = useState<string>("normal");
+  const [due, setDue] = useState<string>(""); // empty string means null
+
+  // filter state for household board
+  const [boardFilter, setBoardFilter] = useState<{ q: string; priority: string; assigned_to: string }>({
+    q: "",
+    priority: "",
+    assigned_to: "",
+  });
 
   const handleLoad = async () => {
     // reset everything on load
@@ -38,6 +48,7 @@ const App = () => {
     setHouseholdBoard(null);
     setOpenedTicket(null);
     setMe(null);
+    setSummary(null);
     setShowDirections(false);
     if (!token) return;
     try {
@@ -52,13 +63,30 @@ const App = () => {
       setBoard(dash);
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
-      try {
-        const hb = await fetchBoard(token);
-        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
-        setHouseholdBoard(valid ? hb : null);
-      } catch (_) {
-        setHouseholdBoard(null);
+    // fetch household board with current filter (initially empty)
+    try {
+      const hb = await fetchBoard(token, boardFilter);
+      const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+      setHouseholdBoard(valid ? hb : null);
+    } catch (_) {
+      // board fetch failure should not set an error alert; just hide the board
+      setHouseholdBoard(null);
+    }
+    // fetch summary
+    try {
+      const sum = await fetchSummary(token);
+      if (
+        typeof sum.overdue === "number" &&
+        typeof sum.due_today === "number" &&
+        typeof sum.open === "number"
+      ) {
+        setSummary(sum);
+      } else {
+        setSummary(null);
       }
+    } catch (_) {
+      setSummary(null);
+    }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -68,7 +96,7 @@ const App = () => {
     }
   };
 
-  const handleCreateTicket = async (e) => {
+  const handleCreateTicket = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setError("");
@@ -76,7 +104,7 @@ const App = () => {
       await createTicket(token, {
         title,
         details,
-        priority,
+        priority: priority as "low" | "normal" | "urgent",
         due: due === "" ? null : due,
       });
       // clear form
@@ -87,11 +115,30 @@ const App = () => {
       // reload data
       const dash = await fetchDashboard(token);
       setBoard(dash);
-      const hb = await fetchBoard(token);
-      const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
-      setHouseholdBoard(valid ? hb : null);
+      try {
+        const hb = await fetchBoard(token, boardFilter);
+        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+        setHouseholdBoard(valid ? hb : null);
+      } catch (_) {
+        setHouseholdBoard(null);
+      }
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
+      // refresh summary
+      try {
+        const sum = await fetchSummary(token);
+        if (
+          typeof sum.overdue === "number" &&
+          typeof sum.due_today === "number" &&
+          typeof sum.open === "number"
+        ) {
+          setSummary(sum);
+        } else {
+          setSummary(null);
+        }
+      } catch (_) {
+        setSummary(null);
+      }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -101,17 +148,39 @@ const App = () => {
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
+  const handleStatusChange = async (id: number, newStatus: Status) => {
     if (!token) return;
     setError("");
     try {
       await changeStatus(token, id, newStatus);
       const dash = await fetchDashboard(token);
       setBoard(dash);
+      // refresh household board with current filter
+      try {
+        const hb = await fetchBoard(token, boardFilter);
+        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+        setHouseholdBoard(valid ? hb : null);
+      } catch (_) {
+        setHouseholdBoard(null);
+      }
       // if the open detail panel shows this ticket, refresh its history
       if (openedTicket && openedTicket.id === id) {
-        // trigger a fetch; result is ignored – the mock records the call
         await fetchHistory(token, id);
+      }
+      // refresh summary
+      try {
+        const sum = await fetchSummary(token);
+        if (
+          typeof sum.overdue === "number" &&
+          typeof sum.due_today === "number" &&
+          typeof sum.open === "number"
+        ) {
+          setSummary(sum);
+        } else {
+          setSummary(null);
+        }
+      } catch (_) {
+        setSummary(null);
       }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
@@ -122,7 +191,7 @@ const App = () => {
     }
   };
 
-  const handleFileStatusChange = async (id, newStatus) => {
+  const handleFileStatusChange = async (id: number, newStatus: Status) => {
     if (!token) return;
     setError("");
     try {
@@ -131,9 +200,32 @@ const App = () => {
       setBoard(dash);
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
-      // also refresh history if open
+      // also refresh household board with current filter
+      try {
+        const hb = await fetchBoard(token, boardFilter);
+        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+        setHouseholdBoard(valid ? hb : null);
+      } catch (_) {
+        setHouseholdBoard(null);
+      }
+      // refresh history if open
       if (openedTicket && openedTicket.id === id) {
         await fetchHistory(token, id);
+      }
+      // refresh summary
+      try {
+        const sum = await fetchSummary(token);
+        if (
+          typeof sum.overdue === "number" &&
+          typeof sum.due_today === "number" &&
+          typeof sum.open === "number"
+        ) {
+          setSummary(sum);
+        } else {
+          setSummary(null);
+        }
+      } catch (_) {
+        setSummary(null);
       }
     } catch (e) {
       if (e instanceof Error && e.message === "401") {
@@ -147,7 +239,7 @@ const App = () => {
   const handleDirections = () => setShowDirections(true);
   const handleCloseDirections = () => setShowDirections(false);
 
-  const openTicket = (ticket) => {
+  const openTicket = (ticket: Ticket) => {
     setOpenedTicket(ticket);
   };
 
@@ -155,7 +247,25 @@ const App = () => {
     setOpenedTicket(null);
   };
 
-  const renderColumn = (name, tickets) => {
+  const applyFilter = (filter: { q: string; priority: string; assigned_to: string }) => {
+    const cleaned = {
+      q: filter.q.trim(),
+      priority: filter.priority,
+      assigned_to: filter.assigned_to,
+    };
+    setBoardFilter(cleaned);
+    // fetch board with new filter
+    fetchBoard(token, cleaned)
+      .then((hb) => {
+        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+        setHouseholdBoard(valid ? hb : null);
+      })
+      .catch(() => {
+        setHouseholdBoard(null);
+      });
+  };
+
+  const renderColumn = (name: string, tickets: Ticket[]) => {
     const count = tickets.length;
     return (
       <section className="column" aria-label={name} key={name}>
@@ -198,6 +308,7 @@ const App = () => {
         </label>
         <button type="button" onClick={handleLoad}>Load</button>
         {me && <span className="whoami">Signed in as {me}</span>}
+        {summary && <SummaryBadge summary={summary} />}
       </header>
       <main className="content">
         {error && (
@@ -288,7 +399,9 @@ const App = () => {
           </section>
         )}
         {householdBoard && (
-          <HouseholdBoard board={householdBoard} onOpen={openTicket} />
+          <HouseholdBoard board={householdBoard} onOpen={openTicket}>
+            <FilterBar onApply={applyFilter} />
+          </HouseholdBoard>
         )}
       </main>
     </div>

@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import "./styles.css";
 import TicketCard from "./TicketCard";
-import { fetchDashboard, fetchFiled, createTicket, changeStatus } from "./api";
+import HouseholdBoard from "./HouseholdBoard";
+import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus } from "./api";
 import { Board, Ticket } from "./types";
 
 const App: React.FC = () => {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[] | null>(null);
+  const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string>("");
 
   // form fields for new ticket
@@ -28,6 +30,19 @@ const App: React.FC = () => {
       // also fetch filed tickets on load
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
+      // fetch household board, ignore errors or malformed data
+      try {
+        const hb = await fetchBoard(token);
+        const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+        if (valid) {
+          setHouseholdBoard(hb);
+        } else {
+          setHouseholdBoard(null);
+        }
+      } catch (e) {
+        // silently ignore board fetch errors
+        setHouseholdBoard(null);
+      }
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -56,6 +71,13 @@ const App: React.FC = () => {
       // reload dashboard and filed tickets
       const data = await fetchDashboard(token);
       setBoard(data);
+      const hb = await fetchBoard(token);
+      const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+      if (valid) {
+        setHouseholdBoard(hb);
+      } else {
+        setHouseholdBoard(null);
+      }
       const filedData = await fetchFiled(token);
       setFiled(filedData.tickets);
     } catch (e: any) {
@@ -222,6 +244,7 @@ const App: React.FC = () => {
             </div>
           </section>
         )}
+        {householdBoard && <HouseholdBoard board={householdBoard} />}
       </main>
     </div>
   );

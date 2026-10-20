@@ -37,6 +37,35 @@ def _parse_due(value):
         raise ValueError("due must name a real date in YYYY-MM-DD form")
 
 
+_STATUSES = ("open", "acknowledged", "in_progress", "done", "closed")
+_MOVES = {
+    ("open", "acknowledged"): "assignee",
+    ("acknowledged", "in_progress"): "assignee",
+    ("in_progress", "done"): "assignee",
+    ("done", "closed"): "filer",
+    ("done", "open"): "filer",
+    ("closed", "open"): "filer",
+}
+
+
+def change_status(session, ticket_id, user, new_status):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None or user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("ticket not found")
+    if new_status not in _STATUSES:
+        raise ValueError("unknown status")
+    party = _MOVES.get((ticket.status, new_status))
+    if party is None:
+        raise ValueError("invalid transition")
+    expected = ticket.assigned_to if party == "assignee" else ticket.filed_by
+    if user != expected:
+        raise PermissionError("not allowed to make this move")
+    ticket.status = new_status
+    ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+    session.commit()
+    return ticket_to_dict(ticket)
+
+
 def create_ticket(session, filed_by, data):
     if filed_by not in USERS:
         raise ValueError("filed_by must be one of USERS")

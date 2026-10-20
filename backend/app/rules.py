@@ -18,8 +18,8 @@ def ticket_to_dict(ticket):
         "status": ticket.status,
         "filed_by": ticket.filed_by,
         "assigned_to": ticket.assigned_to,
-        "created_at": ticket.created_at.isoformat(),
-        "updated_at": ticket.updated_at.isoformat(),
+        "created_at": ticket.created_at.astimezone(dt.timezone.utc).isoformat(),
+        "updated_at": ticket.updated_at.astimezone(dt.timezone.utc).isoformat(),
     }
 
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./styles.css";
 import TicketCard from "./TicketCard";
-import { fetchDashboard } from "./api";
+import { fetchDashboard, fetchFiled, createTicket, changeStatus } from "./api";
 import { Board, Ticket } from "./types";
 
 const App: React.FC = () => {
@@ -9,12 +9,65 @@ const App: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string>("");
 
+  // form fields for new ticket
+  const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
+  const [priority, setPriority] = useState<"low" | "normal" | "urgent">("normal");
+  const [due, setDue] = useState(""); // empty string means null
+
   const handleLoad = async () => {
     // clear previous state
     setError("");
     setBoard(null);
     if (!token) return;
     try {
+      const data = await fetchDashboard(token);
+      setBoard(data);
+      // also fetch filed tickets on load
+      await fetchFiled(token);
+    } catch (e: any) {
+      if (e instanceof Error && e.message === "401") {
+        setError("Wrong token");
+      } else {
+        setError("Something went wrong");
+      }
+    }
+  };
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setError("");
+    try {
+      await createTicket(token, {
+        title,
+        details,
+        priority,
+        due: due === "" ? null : due,
+      });
+      // on success clear form fields
+      setTitle("");
+      setDetails("");
+      setPriority("normal");
+      setDue("");
+      // reload dashboard and filed tickets
+      const data = await fetchDashboard(token);
+      setBoard(data);
+      await fetchFiled(token);
+    } catch (e: any) {
+      if (e instanceof Error && e.message === "401") {
+        setError("Wrong token");
+      } else {
+        setError("Something went wrong");
+      }
+    }
+  };
+
+  const handleStatusChange = async (id: number, newStatus: "acknowledged" | "in_progress" | "done") => {
+    if (!token) return;
+    setError("");
+    try {
+      await changeStatus(token, id, newStatus);
       const data = await fetchDashboard(token);
       setBoard(data);
     } catch (e: any) {
@@ -34,7 +87,19 @@ const App: React.FC = () => {
           {name} <span className="count">{count}</span>
         </h3>
         {count > 0 ? (
-          tickets.map((t) => <TicketCard key={t.id} ticket={t} />)
+          tickets.map((t) => (
+            <TicketCard key={t.id} ticket={t}>
+              {t.status === "open" && (
+                <button type="button" onClick={() => handleStatusChange(t.id, "acknowledged")}>Acknowledge</button>
+              )}
+              {t.status === "acknowledged" && (
+                <button type="button" onClick={() => handleStatusChange(t.id, "in_progress")}>Start</button>
+              )}
+              {t.status === "in_progress" && (
+                <button type="button" onClick={() => handleStatusChange(t.id, "done")}>Done</button>
+              )}
+            </TicketCard>
+          ))
         ) : (
           <p className="empty">Nothing here</p>
         )}
@@ -62,6 +127,51 @@ const App: React.FC = () => {
             {error}
           </p>
         )}
+        {/* New ticket form */}
+        <section className="panel new-ticket" aria-label="New ticket">
+          <h2>New ticket for {token ? (token.includes("her") ? "him" : "her") : ""}</h2>
+          <form onSubmit={handleCreateTicket}>
+            <label>
+              Title
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                name="title"
+              />
+            </label>
+            <label>
+              Details
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                name="details"
+              />
+            </label>
+            <label>
+              Priority
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as "low" | "normal" | "urgent")}
+                name="priority"
+              >
+                <option value="low">low</option>
+                <option value="normal">normal</option>
+                <option value="urgent">urgent</option>
+              </select>
+            </label>
+            <label>
+              Due
+              <input
+                type="date"
+                value={due}
+                onChange={(e) => setDue(e.target.value)}
+                name="due"
+              />
+            </label>
+            <button type="submit">File ticket</button>
+          </form>
+        </section>
         {board && (
           <section className="panel" aria-label="My board">
             <h2>My board</h2>
@@ -78,3 +188,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

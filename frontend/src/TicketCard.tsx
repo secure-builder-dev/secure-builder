@@ -5,13 +5,20 @@ import HoverCard from "./HoverCard";
 interface TicketCardProps {
   ticket: Ticket;
   children?: ReactNode;
+  onOpen?: (ticket: Ticket) => void;
 }
 
-export default function TicketCard({ ticket, children }: TicketCardProps) {
-  const className = ticket.group === 0 ? "card urgent" : "card";
+export default function TicketCard({ ticket, children, onOpen }: TicketCardProps) {
+  const className = ["card", ticket.group === 0 ? "urgent" : null, onOpen ? "openable" : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <article className={className} aria-label={ticket.title}>
-      <h3 className="card-title">
+      <h3
+        className="card-title"
+        onClick={onOpen ? () => onOpen(ticket) : undefined}
+        onKeyDown={onOpen ? (e) => { if (e.key === "Enter") onOpen(ticket); } : undefined}
+      >
         <HoverCard ticket={ticket}>{ticket.title}</HoverCard>
       </h3>
       <div className="card-meta">

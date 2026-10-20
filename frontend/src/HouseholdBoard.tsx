@@ -1,8 +1,11 @@
-import type { Board } from "./types";
+import type { ReactNode } from "react";
+import type { Board, Ticket } from "./types";
 import TicketCard from "./TicketCard";
 
 interface HouseholdBoardProps {
   board: Board;
+  onOpen?: (ticket: Ticket) => void;
+  children?: ReactNode;
 }
 
 const COLUMNS: Array<{ name: string; key: keyof Board }> = [
@@ -11,10 +14,11 @@ const COLUMNS: Array<{ name: string; key: keyof Board }> = [
   { name: "Completed", key: "completed" },
 ];
 
-export default function HouseholdBoard({ board }: HouseholdBoardProps) {
+export default function HouseholdBoard({ board, onOpen, children }: HouseholdBoardProps) {
   return (
     <section className="panel" aria-label="Household board">
       <h2>Household board</h2>
+      {children}
       <div className="board">
         {COLUMNS.map(({ name, key }) => {
           const tickets = board[key];
@@ -26,7 +30,7 @@ export default function HouseholdBoard({ board }: HouseholdBoardProps) {
               {tickets.length === 0 ? (
                 <p className="empty">Nothing here</p>
               ) : (
-                tickets.map((t) => <TicketCard key={t.id} ticket={t} />)
+                tickets.map((t) => <TicketCard key={t.id} ticket={t} onOpen={onOpen} />)
               )}
             </section>
           );

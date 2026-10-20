@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Board, NewTicket, Ticket } from "./types";
-import { changeStatus, createTicket, fetchDashboard, fetchFiled } from "./api";
+import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled } from "./api";
+import HouseholdBoard from "./HouseholdBoard";
 import TicketCard from "./TicketCard";
 
 const COLUMNS: Array<{ key: keyof Board; label: string }> = [
@@ -14,6 +15,7 @@ const EMPTY_FORM: NewTicket = { title: "", details: "", priority: "normal", due:
 export default function App() {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
+  const [household, setHousehold] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<NewTicket>(EMPTY_FORM);
@@ -24,6 +26,16 @@ export default function App() {
     } else {
       setError("Something went wrong");
     }
+  }
+
+  function isBoard(v: unknown): v is Board {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      Array.isArray((v as Board).todo) &&
+      Array.isArray((v as Board).in_progress) &&
+      Array.isArray((v as Board).completed)
+    );
   }
 
   async function load() {
@@ -37,6 +49,16 @@ export default function App() {
       setBoard(null);
       setFiled([]);
       fail(e);
+    }
+    try {
+      const b = await fetchBoard(token);
+      if (isBoard(b)) {
+        setHousehold(b);
+      } else {
+        setHousehold(null);
+      }
+    } catch {
+      setHousehold(null);
     }
   }
 
@@ -196,6 +218,7 @@ export default function App() {
             </div>
           </section>
         )}
+        {household && <HouseholdBoard board={household} />}
       </main>
     </div>
   );

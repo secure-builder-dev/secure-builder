@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import db, rules
+from app import db, household, rules
 
 
 @asynccontextmanager
@@ -84,6 +84,12 @@ def dashboard(session=Depends(get_db), caller=Depends(get_caller)):
 @app.get("/api/filed")
 def filed(session=Depends(get_db), caller=Depends(get_caller)):
     return {"tickets": rules.filed(session, caller)}
+
+
+@app.get("/api/board")
+def board(session=Depends(get_db), caller=Depends(get_caller)):
+    today = dt.datetime.now(dt.timezone.utc).date()
+    return household.household_board(session, today)
 
 
 async def _read_json_object(request: Request):

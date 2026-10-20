@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Board, NewTicket, Ticket } from "./types";
-import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled } from "./api";
+import type { Board, NewTicket, Ticket, User } from "./types";
+import { changeStatus, createTicket, fetchBoard, fetchDashboard, fetchFiled, fetchMe } from "./api";
 import HouseholdBoard from "./HouseholdBoard";
 import TicketCard from "./TicketCard";
 
@@ -17,6 +17,7 @@ export default function App() {
   const [board, setBoard] = useState<Board | null>(null);
   const [household, setHousehold] = useState<Board | null>(null);
   const [filed, setFiled] = useState<Ticket[]>([]);
+  const [me, setMe] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<NewTicket>(EMPTY_FORM);
 
@@ -40,6 +41,17 @@ export default function App() {
 
   async function load() {
     setError(null);
+    setMe(null);
+    void (async () => {
+      try {
+        const m = await fetchMe(token);
+        if (m && (m.user === "her" || m.user === "him")) {
+          setMe(m.user);
+        }
+      } catch {
+        // a failed or malformed /api/me leaves the whoami empty
+      }
+    })();
     try {
       const dash = await fetchDashboard(token);
       setBoard(dash);
@@ -123,13 +135,14 @@ export default function App() {
           </label>{" "}
           <button type="button" onClick={() => void load()}>Load</button>
         </div>
+        {me && <span className="whoami">Signed in as {me}</span>}
       </header>
       <main className="content">
         {error && (
           <p role="alert" className="error">{error}</p>
         )}
         <section className="panel new-ticket" aria-label="New ticket">
-          <h2>New ticket</h2>
+          <h2>{me === "her" ? "New ticket for him" : me === "him" ? "New ticket for her" : "New ticket"}</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();

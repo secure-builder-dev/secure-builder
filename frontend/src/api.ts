@@ -1,4 +1,4 @@
-import type { Board, Filed, NewTicket, Ticket } from "./types";
+import type { Board, Filed, Me, NewTicket, Ticket } from "./types";
 
 async function call(
   token: string,
@@ -28,6 +28,10 @@ export async function fetchBoard(token: string): Promise<Board> {
 
 export async function fetchFiled(token: string): Promise<Filed> {
   return (await call(token, "/api/filed")) as Filed;
+}
+
+export async function fetchMe(token: string): Promise<Me> {
+  return (await call(token, "/api/me")) as Me;
 }
 
 export async function createTicket(

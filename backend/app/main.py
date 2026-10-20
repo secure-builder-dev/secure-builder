@@ -119,6 +119,13 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/api/me")
+async def api_me(
+    caller: str = Depends(get_caller),
+) -> dict:
+    return {"user": caller}
+
+
 # ---------------------------------------------------------------------------
 # Authenticated API routes
 # ---------------------------------------------------------------------------

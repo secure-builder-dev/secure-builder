@@ -65,6 +65,12 @@ TS_DEF = re.compile(r"^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\s*\
 # app code that imports the test framework or patches builtins is working around a test, not passing it (TO-1b: rules.py
 # set builtins.pytest so that a test file missing `import pytest` would run)
 TEST_HACK = re.compile(r"^\s*(?:import\s+pytest\b|from\s+pytest\b|import\s+builtins\b|from\s+builtins\b)|__import__\(\s*['\"](?:pytest|builtins)", re.M)
+# the same for a web frontend: test-runner code in a component ships in the bundle and rewrites the suite's matchers
+# (honey-do TO-4, gpt-oss-120b: TicketDetail.tsx and FilterBar.tsx imported vitest, called expect.extend, set globalThis.vi)
+TS_TEST_HACK = re.compile(r"""from\s+["'](?:vitest|@vitest/[^"']*|@testing-library/[^"']*)["']|require\(\s*["'](?:vitest|@testing-library/[^"']*)["']"""
+                          r"""|\bexpect\.extend\s*\(|globalThis\.vi\b""")
+# a patch pasted as file text instead of an edit (honey-do TO-2d: an apply_patch diff with '*** End Patch' in a test file)
+PATCH_TEXT = re.compile(r"^\*\*\* (?:Begin|End) Patch\b|^\*\*\* (?:Update|Add|Delete) File: ", re.M)
 
 
 def read(p):
@@ -417,6 +423,16 @@ def apply_edits(root, edits, writable, readonly):
         if not is_test_path(rel) and TEST_HACK.search(new) and not TEST_HACK.search(current or ""):
             refused.append(f"{rel}: application code must not import pytest or builtins, or patch builtins — that works around a "
                            "test instead of passing it. If a test is wrong, say so in notes")
+            continue
+        if (rel.endswith((".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")) and not is_test_path(rel)
+                and TS_TEST_HACK.search(new) and not TS_TEST_HACK.search(current or "")):
+            refused.append(f"{rel}: application code must not import vitest or @testing-library, call expect.extend or set "
+                           "globalThis.vi — test code in a component ships to users and rewrites the tests' own checks. Make the "
+                           "component do what the test asks; if a test is wrong, say so in notes")
+            continue
+        if PATCH_TEXT.search(new) and not PATCH_TEXT.search(current or ""):
+            refused.append(f"{rel}: the replace text holds a patch ('*** Begin Patch' / '*** End Patch' lines). This tool takes no "
+                           "patches: give {path, search, replace} with the exact old text and the new text")
             continue
         staged[rel] = new
     for rel, new in staged.items():

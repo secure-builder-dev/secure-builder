@@ -18,8 +18,50 @@ export async function fetchMe(token: string) {
   return data;
 }
 
-export async function fetchBoard(token: string) {
-  const resp = await fetch('/api/board', {
+export async function fetchBoard(token: string, filter?: { q: string; priority: string; assigned_to: string }) {
+  let url = '/api/board';
+  if (filter) {
+    const params = new URLSearchParams();
+    if (filter.q) params.append('q', filter.q);
+    if (filter.priority) params.append('priority', filter.priority);
+    if (filter.assigned_to) params.append('assigned_to', filter.assigned_to);
+    const query = params.toString();
+    if (query) url += `?${query}`;
+  }
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
+export async function editTicket(token: string, id: number, changes: {
+  title: string;
+  details: string;
+  priority: 'low' | 'normal' | 'urgent';
+  due: string | null;
+}) {
+  const resp = await fetch(`/api/tickets/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(changes),
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
+export async function fetchSummary(token: string) {
+  const resp = await fetch('/api/summary', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,

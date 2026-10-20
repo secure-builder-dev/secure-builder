@@ -143,3 +143,50 @@ def create_ticket(session, filed_by: Any, data: Mapping[str, Any]):
     # Refresh to get the generated primary key.
     session.refresh(ticket)
     return ticket_to_dict(ticket)
+
+
+def change_status(session, ticket_id, user, new_status):
+    """Change the status of a ticket according to the design table.
+
+    Raises:
+        LookupError: if the ticket does not exist or user is not a party.
+        ValueError: if new_status is unknown or the transition is not allowed.
+        PermissionError: if the user is not the party allowed to make the transition.
+    """
+    # Lookup ticket
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise LookupError("ticket not found")
+    # Verify user is a party
+    if user not in (ticket.filed_by, ticket.assigned_to):
+        raise LookupError("user not a party")
+    # Validate new_status
+    allowed_statuses = {"open", "acknowledged", "in_progress", "done", "closed"}
+    if new_status not in allowed_statuses:
+        raise ValueError("unknown status")
+    # Define allowed moves
+    moves = {
+        ("open", "acknowledged"): "assignee",
+        ("acknowledged", "in_progress"): "assignee",
+        ("in_progress", "done"): "assignee",
+        ("done", "closed"): "filer",
+        ("done", "open"): "filer",
+        ("closed", "open"): "filer",
+    }
+    cur = ticket.status
+    key = (cur, new_status)
+    if key not in moves:
+        raise ValueError("invalid transition")
+    required_party = moves[key]
+    # Determine which party the user is
+    if required_party == "assignee":
+        if user != ticket.assigned_to:
+            raise PermissionError("only assignee may perform this move")
+    else:  # filer
+        if user != ticket.filed_by:
+            raise PermissionError("only filer may perform this move")
+    # Perform move
+    ticket.status = new_status
+    ticket.updated_at = dt.datetime.now(dt.timezone.utc)
+    session.commit()
+    return ticket_to_dict(ticket)

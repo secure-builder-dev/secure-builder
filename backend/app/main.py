@@ -92,6 +92,11 @@ def board(session=Depends(get_db), caller=Depends(get_caller)):
     return household.household_board(session, today)
 
 
+@app.get("/api/me")
+def me(caller=Depends(get_caller)):
+    return {"user": caller}
+
+
 async def _read_json_object(request: Request):
     try:
         data = await request.json()

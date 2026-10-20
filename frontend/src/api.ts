@@ -1,12 +1,15 @@
 import type {
   Board,
+  BoardFilter,
   CommentOut,
   Comments,
   Filed,
   History,
   Me,
   NewTicket,
+  Summary,
   Ticket,
+  TicketEdit,
 } from "./types";
 
 async function call(
@@ -31,8 +34,18 @@ export async function fetchDashboard(token: string): Promise<Board> {
   return (await call(token, "/api/dashboard")) as Board;
 }
 
-export async function fetchBoard(token: string): Promise<Board> {
-  return (await call(token, "/api/board")) as Board;
+export async function fetchBoard(
+  token: string,
+  filter?: BoardFilter,
+): Promise<Board> {
+  const params = new URLSearchParams();
+  if (filter) {
+    if (filter.q !== "") params.set("q", filter.q);
+    if (filter.priority !== "") params.set("priority", filter.priority);
+    if (filter.assigned_to !== "") params.set("assigned_to", filter.assigned_to);
+  }
+  const qs = params.toString();
+  return (await call(token, "/api/board" + (qs ? `?${qs}` : ""))) as Board;
 }
 
 export async function fetchFiled(token: string): Promise<Filed> {
@@ -91,4 +104,19 @@ export async function fetchHistory(
   id: number,
 ): Promise<History> {
   return (await call(token, `/api/tickets/${id}/history`)) as History;
+}
+
+export async function editTicket(
+  token: string,
+  id: number,
+  changes: TicketEdit,
+): Promise<Ticket> {
+  return (await call(token, `/api/tickets/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(changes),
+  })) as Ticket;
+}
+
+export async function fetchSummary(token: string): Promise<Summary> {
+  return (await call(token, "/api/summary")) as Summary;
 }

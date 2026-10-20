@@ -3,12 +3,27 @@
   "scope_statement": "This manifest covers system-specific controls and the system-specific portion of hybrid controls. Fully inherited controls are implemented by the hosting platform, are tracked in the platform's system security plan, and are outside this harness's verification scope.",
   "controls": [
     {
-      "id": "CTRL-EXAMPLE",
-      "placeholder": true,
-      "description": "Replace this placeholder with a real control. A manifest holding only placeholders is reported as template-only, never as passing.",
-      "location": {"file": "src/example.py", "symbol": "require_auth"},
+      "id": "CTRL-AUTHN-BEARER",
+      "description": "Every /api route identifies the caller from Authorization: Bearer <token>, compared with hmac.compare_digest against TOKEN_HER and TOKEN_HIM; a missing header, an unknown token, or an unset or empty variable is answered 401 {\"error\": \"unauthorized\"}.",
+      "location": {
+        "file": "backend/app/main.py",
+        "symbol": "get_caller"
+      },
       "required_artifact": null,
-      "test_pattern": "tests/test_auth*",
+      "test_pattern": "backend/tests/test_api.py",
+      "status": "system-specific",
+      "counterpart": null,
+      "mutation": null
+    },
+    {
+      "id": "CTRL-AUTHZ-TICKET-PARTY",
+      "description": "A status change is made only by a party to the ticket (its filer or assignee), and only the move the design's status table gives that party: anyone else is answered 404, the other party 403, and the ticket is left unchanged.",
+      "location": {
+        "file": "backend/app/rules.py",
+        "symbol": "change_status"
+      },
+      "required_artifact": null,
+      "test_pattern": "backend/tests/test_*.py",
       "status": "system-specific",
       "counterpart": null,
       "mutation": null

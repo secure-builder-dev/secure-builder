@@ -1,5 +1,6 @@
 import os
 import hmac
+import json
 from datetime import datetime, timezone
 from typing import Generator
 
@@ -61,7 +62,6 @@ def get_caller(request: Request) -> str:
     raise HTTPException(status_code=401, detail="unauthorized")
 
 # ---------------------------------------------------------------------------
-
 # Middleware: body size limit (413) and security headers on every response
 @app.middleware("http")
 async def body_size_and_security_headers(request: Request, call_next):
@@ -101,6 +101,7 @@ async def http_exception_handler(request: Request, exc):
     # Map known status codes to the exact error messages required by the tests.
     messages = {
         401: "unauthorized",
+        403: "forbidden",
         404: "not found",
         405: "method not allowed",
     }
@@ -134,7 +135,64 @@ async def api_filed(
 ) -> dict:
     return {"tickets": rules.filed(session, caller)}
 
-# The test suite also checks that unknown paths and wrong methods return the
-# appropriate JSON bodies. FastAPI automatically raises ``HTTPException`` for
-# those cases, and our ``http_exception_handler`` converts them to the required
-# format.
+# ---------------------------------------------------------------------------
+# Ticket creation route
+# ---------------------------------------------------------------------------
+@app.post("/api/tickets")
+async def api_create_ticket(
+    request: Request,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    # Read and parse JSON body manually to replace FastAPI's validation.
+    try:
+        raw = await request.body()
+        data = json.loads(raw)
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if not isinstance(data, dict):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        ticket = rules.create_ticket(session, caller, data)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    return JSONResponse(status_code=201, content=ticket)
+
+# ---------------------------------------------------------------------------
+# Ticket status change route
+# ---------------------------------------------------------------------------
+@app.post("/api/tickets/{ticket_id}/status")
+async def api_change_status(
+    ticket_id: str,
+    request: Request,
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> JSONResponse:
+    # Validate ticket_id is an integer.
+    try:
+        tid = int(ticket_id)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    # Parse JSON body.
+    try:
+        raw = await request.body()
+        data = json.loads(raw)
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    if not isinstance(data, dict) or set(data.keys()) != {"status"} or not isinstance(data.get("status"), str):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    new_status = data["status"]
+    try:
+        ticket = rules.change_status(session, tid, caller, new_status)
+    except LookupError:
+        raise HTTPException(status_code=404)
+    except PermissionError:
+        raise HTTPException(status_code=403)
+    except ValueError:
+        # Invalid transition or unknown status maps to 409.
+        raise HTTPException(status_code=409, detail="invalid transition")
+    return JSONResponse(status_code=200, content=ticket)
+
+# ---------------------------------------------------------------------------
+# End of file
+# ---------------------------------------------------------------------------

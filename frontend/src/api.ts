@@ -1,3 +1,17 @@
+
+export async function fetchBoard(token: string) {
+  const resp = await fetch('/api/board', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
 export async function fetchDashboard(token: string) {
   const resp = await fetch('/api/dashboard', {
     method: 'GET',

@@ -1,4 +1,23 @@
 
+export async function fetchMe(token: string) {
+  const resp = await fetch('/api/me', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  const data = await resp.json();
+  // Validate that the returned user is one of the known users.
+  if (data.user !== 'her' && data.user !== 'him') {
+    // Treat an unexpected user as a failed request.
+    throw new Error(String(resp.status));
+  }
+  return data;
+}
+
 export async function fetchBoard(token: string) {
   const resp = await fetch('/api/board', {
     method: 'GET',

@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import "./styles.css";
 import TicketCard from "./TicketCard";
 import HouseholdBoard from "./HouseholdBoard";
-import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus } from "./api";
-import { Board, Ticket } from "./types";
+import { fetchDashboard, fetchFiled, fetchBoard, createTicket, changeStatus, fetchMe } from "./api";
+import { Board, Ticket, Me } from "./types";
 
 const App: React.FC = () => {
   const [token, setToken] = useState("");
@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [filed, setFiled] = useState<Ticket[] | null>(null);
   const [householdBoard, setHouseholdBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string>("");
+  const [me, setMe] = useState<Me["user"] | null>(null); // signed‑in user
 
   // form fields for new ticket
   const [title, setTitle] = useState("");
@@ -23,8 +24,18 @@ const App: React.FC = () => {
     setError("");
     setBoard(null);
     setFiled(null);
+    setHouseholdBoard(null);
+    setMe(null);
     if (!token) return;
     try {
+      // first, fetch who we are
+      try {
+        const meResp = await fetchMe(token);
+        setMe(meResp.user);
+      } catch (e) {
+        // ignore errors – no whoami, heading stays generic
+        setMe(null);
+      }
       const data = await fetchDashboard(token);
       setBoard(data);
       // also fetch filed tickets on load
@@ -165,6 +176,7 @@ const App: React.FC = () => {
           />
         </label>
         <button type="button" onClick={handleLoad}>Load</button>
+        {me && <span className="whoami">Signed in as {me}</span>}
       </header>
       <main className="content">
         {error && (
@@ -174,7 +186,7 @@ const App: React.FC = () => {
         )}
         {/* New ticket form */}
         <section className="panel new-ticket" aria-label="New ticket">
-          <h2>New ticket for {token ? (token.includes("her") ? "him" : "her") : ""}</h2>
+          <h2>{me ? `New ticket for ${me === "her" ? "him" : "her"}` : "New ticket"}</h2>
           <form onSubmit={handleCreateTicket}>
             <label>
               Title

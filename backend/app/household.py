@@ -3,8 +3,16 @@ from app.models import Ticket
 from app.rules import ticket_to_dict
 
 
-def household_board(session, today: dt.date):
-    """Return the household board for *both* users.
+def household_board(session, today: dt.date, q=None, priority=None, assigned_to=None):
+    """Return the household board for *both* users, optionally filtered.
+
+    Parameters
+    ----------
+    session: SQLAlchemy session.
+    today: date used for the completed‑window calculation.
+    q: optional case‑insensitive substring to match in title or details.
+    priority: optional priority filter ("low", "normal", "urgent").
+    assigned_to: optional filter for the ``assigned_to`` field ("her" or "him").
 
     The result is a dict with keys ``todo``, ``in_progress`` and ``completed``.
     ``todo`` contains tickets with status ``open`` or ``acknowledged``.
@@ -20,11 +28,25 @@ def household_board(session, today: dt.date):
     # Fetch all tickets (both users).
     tickets = session.query(Ticket).all()
 
+    # Normalise filter values: treat None or empty string as no filter.
+    q_val = None if q is None or q == "" else str(q).lower()
+    priority_val = None if priority is None or priority == "" else str(priority)
+    assigned_to_val = None if assigned_to is None or assigned_to == "" else str(assigned_to)
+
     todo = []
     in_progress = []
     completed = []
 
     for t in tickets:
+        # Apply filters early – if any filter does not match, skip the ticket.
+        if q_val is not None:
+            if q_val not in t.title.lower() and q_val not in (t.details or "").lower():
+                continue
+        if priority_val is not None and t.priority != priority_val:
+            continue
+        if assigned_to_val is not None and t.assigned_to != assigned_to_val:
+            continue
+
         td = ticket_to_dict(t)
         if t.status in {"open", "acknowledged"}:
             todo.append(td)
@@ -52,3 +74,28 @@ def household_board(session, today: dt.date):
     )
 
     return {"todo": todo, "in_progress": in_progress, "completed": completed}
+
+
+def summary(session, user: str, today: dt.date):
+    """Return a summary dict for *user*.
+
+    The dict contains ``overdue``, ``due_today`` and ``open`` counts over the
+    tickets assigned to ``user`` whose status is not ``done`` or ``closed``.
+    ``overdue`` counts tickets with a due date before *today*.
+    ``due_today`` counts tickets with a due date equal to *today*.
+    ``open`` counts all such tickets regardless of due date.
+    """
+    tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
+    overdue = 0
+    due_today = 0
+    open_cnt = 0
+    for t in tickets:
+        if t.status in {"done", "closed"}:
+            continue
+        open_cnt += 1
+        if t.due is not None:
+            if t.due < today:
+                overdue += 1
+            elif t.due == today:
+                due_today += 1
+    return {"overdue": overdue, "due_today": due_today, "open": open_cnt}

@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import { Ticket } from "./types";
+import HoverCard from "./HoverCard";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -18,7 +19,9 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, children }) => {
 
   return (
     <article className={articleClass.join(" ")} aria-label={ticket.title}>
-      <h3 className="card-title">{ticket.title}</h3>
+      <h3 className="card-title">
+        <HoverCard ticket={ticket}>{ticket.title}</HoverCard>
+      </h3>
       <div className="card-meta">
         <span className={`badge priority-${ticket.priority}`}>{ticket.priority}</span>
         {ticket.due && <span className="due">due {ticket.due}</span>}

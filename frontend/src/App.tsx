@@ -187,6 +187,10 @@ export default function App() {
             me={me}
             historyTick={historyTick}
             onClose={() => setOpenTicket(null)}
+            onSaved={(t) => {
+              setOpenTicket(t);
+              void refresh();
+            }}
           />
         )}
         <section className="panel new-ticket" aria-label="New ticket">

@@ -91,3 +91,58 @@ export async function changeStatus(token: string, id: number, status: 'open' | '
   }
   return await resp.json();
 }
+
+export async function fetchTicket(token: string, id: number) {
+  const resp = await fetch(`/api/tickets/${id}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
+export async function fetchComments(token: string, id: number) {
+  const resp = await fetch(`/api/tickets/${id}/comments`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
+export async function fetchHistory(token: string, id: number) {
+  const resp = await fetch(`/api/tickets/${id}/history`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+
+export async function addComment(token: string, id: number, body: string) {
+  const resp = await fetch(`/api/tickets/${id}/comments`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ body }),
+  });
+  if (!resp.ok) {
+    throw new Error(String(resp.status));
+  }
+  return await resp.json();
+}
+

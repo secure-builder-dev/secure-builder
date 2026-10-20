@@ -118,6 +118,7 @@ async def http_exception_handler(request: Request, exc):
 async def health() -> dict:
     return {"status": "ok"}
 
+
 # ---------------------------------------------------------------------------
 # Authenticated API routes
 # ---------------------------------------------------------------------------
@@ -135,6 +136,22 @@ async def api_filed(
     session = Depends(get_db),
 ) -> dict:
     return {"tickets": rules.filed(session, caller)}
+
+# New route: Household board
+@app.get("/api/board")
+async def api_board(
+    caller: str = Depends(get_caller),
+    session = Depends(get_db),
+) -> dict:
+    """Return the household board for both users.
+
+    The board is computed for the current UTC date so that both callers see the same
+    view regardless of when they request it.
+    """
+    today = datetime.now(timezone.utc).date()
+    # Import here to avoid circular imports at module load time.
+    from app import household
+    return household.household_board(session, today)
 
 # ---------------------------------------------------------------------------
 # Ticket creation route

@@ -267,6 +267,29 @@ export default function App() {
             ticket={openTicket}
             me={me}
             onClose={() => setOpenTicket(null)}
+            onSaved={(t) => {
+              // Keep the detail panel open with the updated ticket
+              setOpenTicket(t);
+              // Refresh boards, filed tickets, household board, and summary without clearing the open ticket
+              (async () => {
+                try {
+                  const dash = await fetchDashboard(token);
+                  setBoard(dash);
+                  const f = await fetchFiled(token);
+                  setFiled(f.tickets);
+                  const hb = await fetchBoard(token, boardFilter);
+                  setHouseBoard(hb);
+                  const sum = await fetchSummary(token);
+                  setSummary(sum);
+                } catch (e: any) {
+                  if (e instanceof Error && e.message === "401") {
+                    setError("Wrong token");
+                  } else {
+                    setError("Something went wrong");
+                  }
+                }
+              })();
+            }}
           />
         )}
         {/* New ticket panel */}

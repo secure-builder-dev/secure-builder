@@ -1,9 +1,11 @@
 import datetime as dt
 import hmac
+import json
 import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -21,6 +23,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def security_headers(request, call_next):
+    length = request.headers.get("Content-Length")
+    if length is not None and length.isdigit() and int(length) > 65536:
+        return JSONResponse(status_code=413, content={"error": "too large"})
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = "default-src 'none'"
@@ -60,6 +65,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=400, content={"error": "invalid request"})
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -74,3 +84,49 @@ def dashboard(session=Depends(get_db), caller=Depends(get_caller)):
 @app.get("/api/filed")
 def filed(session=Depends(get_db), caller=Depends(get_caller)):
     return {"tickets": rules.filed(session, caller)}
+
+
+async def _read_json_object(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+@app.post("/api/tickets", status_code=201)
+async def create_ticket_route(request: Request, session=Depends(get_db), caller=Depends(get_caller)):
+    data = await _read_json_object(request)
+    if data is None:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        ticket = rules.create_ticket(session, caller, data)
+    except ValueError:
+        session.rollback()
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    return JSONResponse(status_code=201, content=ticket)
+
+
+@app.post("/api/tickets/{ticket_id}/status")
+async def change_status_route(request: Request, ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    data = await _read_json_object(request)
+    if (
+        data is None
+        or set(data) != {"status"}
+        or not isinstance(data["status"], str)
+    ):
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        ticket = rules.change_status(session, ticket_id, caller, data["status"])
+    except LookupError:
+        session.rollback()
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    except PermissionError:
+        session.rollback()
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    except ValueError:
+        session.rollback()
+        return JSONResponse(status_code=409, content={"error": "invalid transition"})
+    return ticket

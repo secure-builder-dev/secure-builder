@@ -138,9 +138,14 @@ def create_ticket(session, filed_by: Any, data: Mapping[str, Any]):
         created_at=now,
         updated_at=now,
     )
+    # Record the filed event before committing both ticket and event together.
+    from app.activity import record_event
     session.add(ticket)
+    # At this point ticket.id is not yet assigned; we need to flush to get an id for the event.
+    session.flush()
+    record_event(session, ticket, filed_by, "filed", from_status=None, to_status="open")
     session.commit()
-    # Refresh to get the generated primary key.
+    # Refresh to get the generated primary key (if not already set).
     session.refresh(ticket)
     return ticket_to_dict(ticket)
 
@@ -185,6 +190,9 @@ def change_status(session, ticket_id, user, new_status):
     else:  # filer
         if user != ticket.filed_by:
             raise PermissionError("only filer may perform this move")
+    # Record the status event before committing the change.
+    from app.activity import record_event
+    record_event(session, ticket, user, "status", from_status=cur, to_status=new_status)
     # Perform move
     ticket.status = new_status
     ticket.updated_at = dt.datetime.now(dt.timezone.utc)

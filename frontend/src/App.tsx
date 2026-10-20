@@ -7,6 +7,7 @@ import { Board, Ticket } from "./types";
 const App: React.FC = () => {
   const [token, setToken] = useState("");
   const [board, setBoard] = useState<Board | null>(null);
+  const [filed, setFiled] = useState<Ticket[] | null>(null);
   const [error, setError] = useState<string>("");
 
   // form fields for new ticket
@@ -19,12 +20,14 @@ const App: React.FC = () => {
     // clear previous state
     setError("");
     setBoard(null);
+    setFiled(null);
     if (!token) return;
     try {
       const data = await fetchDashboard(token);
       setBoard(data);
       // also fetch filed tickets on load
-      await fetchFiled(token);
+      const filedData = await fetchFiled(token);
+      setFiled(filedData.tickets);
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -53,7 +56,8 @@ const App: React.FC = () => {
       // reload dashboard and filed tickets
       const data = await fetchDashboard(token);
       setBoard(data);
-      await fetchFiled(token);
+      const filedData = await fetchFiled(token);
+      setFiled(filedData.tickets);
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -70,6 +74,25 @@ const App: React.FC = () => {
       await changeStatus(token, id, newStatus);
       const data = await fetchDashboard(token);
       setBoard(data);
+    } catch (e: any) {
+      if (e instanceof Error && e.message === "401") {
+        setError("Wrong token");
+      } else {
+        setError("Something went wrong");
+      }
+    }
+  };
+
+  const handleFileStatusChange = async (id: number, newStatus: "closed" | "open") => {
+    if (!token) return;
+    setError("");
+    try {
+      await changeStatus(token, id, newStatus);
+      // reload both board and filed tickets
+      const boardData = await fetchDashboard(token);
+      setBoard(boardData);
+      const filedData = await fetchFiled(token);
+      setFiled(filedData.tickets);
     } catch (e: any) {
       if (e instanceof Error && e.message === "401") {
         setError("Wrong token");
@@ -179,6 +202,23 @@ const App: React.FC = () => {
               {renderColumn("To Do", board.todo)}
               {renderColumn("In Progress", board.in_progress)}
               {renderColumn("Completed", board.completed)}
+            </div>
+          </section>
+        )}
+        {filed && (
+          <section className="panel" aria-label="Tickets I filed">
+            <h2>Tickets I filed</h2>
+            <div className="card-list">
+              {filed.map((t) => (
+                <TicketCard key={t.id} ticket={t}>
+                  {t.status === "done" && (
+                    <>
+                      <button type="button" onClick={() => handleFileStatusChange(t.id, "closed")}>Close</button>
+                      <button type="button" onClick={() => handleFileStatusChange(t.id, "open")}>Reopen</button>
+                    </>
+                  )}
+                </TicketCard>
+              ))}
             </div>
           </section>
         )}

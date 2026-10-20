@@ -22,6 +22,10 @@ export async function fetchDashboard(token: string): Promise<Board> {
   return (await call(token, "/api/dashboard")) as Board;
 }
 
+export async function fetchBoard(token: string): Promise<Board> {
+  return (await call(token, "/api/board")) as Board;
+}
+
 export async function fetchFiled(token: string): Promise<Filed> {
   return (await call(token, "/api/filed")) as Filed;
 }

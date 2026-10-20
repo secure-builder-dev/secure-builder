@@ -243,6 +243,37 @@ const App = () => {
     setOpenedTicket(ticket);
   };
 
+  const handleTicketSaved = async (saved: Ticket) => {
+    // re-fetch data after a successful edit, similar to other handlers
+    if (!token) return;
+    setError("");
+    try {
+      const dash = await fetchDashboard(token);
+      setBoard(dash);
+      const filedData = await fetchFiled(token);
+      setFiled(filedData.tickets);
+      const hb = await fetchBoard(token, boardFilter);
+      const valid = hb && Array.isArray(hb.todo) && Array.isArray(hb.in_progress) && Array.isArray(hb.completed);
+      setHouseholdBoard(valid ? hb : null);
+      const sum = await fetchSummary(token);
+      if (
+        typeof sum.overdue === "number" &&
+        typeof sum.due_today === "number" &&
+        typeof sum.open === "number"
+      ) {
+        setSummary(sum);
+      } else {
+        setSummary(null);
+      }
+
+    } catch (e) {
+      if (e instanceof Error && e.message === "401") {
+        setError("Wrong token");
+      } else {
+        setError("Something went wrong");
+      }
+    }
+  };
   const closeTicketDetail = () => {
     setOpenedTicket(null);
   };
@@ -323,7 +354,7 @@ const App = () => {
             token={token}
             ticket={openedTicket}
             me={me}
-            onClose={closeTicketDetail}
+            onClose={closeTicketDetail} onSaved={handleTicketSaved}
           />
         )}
         {/* New ticket form */}

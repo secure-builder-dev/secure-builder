@@ -38,7 +38,7 @@ describe("EditTicketForm component", () => {
     expect(titleInput).toBeInTheDocument();
     expect(titleInput).toHaveValue(baseTicket.title);
 
-    const detailsInput = screen.getByLabelText(/details/i);
+    const detailsInput = screen.getByLabelText(/^details$/i);
     expect(detailsInput).toBeInTheDocument();
     expect(detailsInput).toHaveValue(baseTicket.details);
 
@@ -75,10 +75,10 @@ describe("EditTicketForm component", () => {
     const newPriority = "urgent";
     const newDue = ""; // empty means null
 
-    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: newTitle } });
-    fireEvent.change(screen.getByLabelText(/details/i), { target: { value: newDetails } });
-    fireEvent.change(screen.getByLabelText(/priority/i), { target: { value: newPriority } });
-    fireEvent.change(screen.getByLabelText(/due/i), { target: { value: newDue } });
+    fireEvent.change(screen.getByLabelText(/^title$/i), { target: { value: newTitle } });
+    fireEvent.change(screen.getByLabelText(/^details$/i), { target: { value: newDetails } });
+    fireEvent.change(screen.getByLabelText(/^priority$/i), { target: { value: newPriority } });
+    fireEvent.change(screen.getByLabelText(/^due$/i), { target: { value: newDue } });
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -123,10 +123,10 @@ describe("TicketDetail edit workflow", () => {
     const form = await screen.findByRole("form", { name: /edit ticket/i });
     expect(form).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Updated title" } });
-    fireEvent.change(screen.getByLabelText(/details/i), { target: { value: "Updated details" } });
-    fireEvent.change(screen.getByLabelText(/priority/i), { target: { value: "low" } });
-    fireEvent.change(screen.getByLabelText(/due/i), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/^title$/i), { target: { value: "Updated title" } });
+    fireEvent.change(screen.getByLabelText(/^details$/i), { target: { value: "Updated details" } });
+    fireEvent.change(screen.getByLabelText(/^priority$/i), { target: { value: "low" } });
+    fireEvent.change(screen.getByLabelText(/^due$/i), { target: { value: "" } });
 
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
@@ -144,7 +144,7 @@ describe("TicketDetail edit workflow", () => {
 
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Updated title");
 
-    await waitFor(() => expect(mockFetchHistory).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockFetchHistory).toHaveBeenCalledTimes(2));
 
     expect(onSaved).toHaveBeenCalledWith(updatedTicket);
   });

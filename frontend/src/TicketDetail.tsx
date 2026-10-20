@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import type { Ticket, CommentOut, TicketEvent, User } from "./types";
+import type { Ticket, CommentOut, TicketEvent, User, Priority } from "./types";
 import CommentThread from "./CommentThread";
 import HistoryList from "./HistoryList";
-import { fetchComments, fetchHistory, addComment } from "./api";
+import EditTicketForm from "./EditTicketForm";
+import { fetchComments, fetchHistory, addComment, editTicket } from "./api";
 
 interface Props {
   token: string;
@@ -12,10 +13,13 @@ interface Props {
   onSaved?: (ticket: Ticket) => void; // optional, not used in current tests
 }
 
-export default function TicketDetail({ token, ticket, me, onClose }: Props) {
+export default function TicketDetail({ token, ticket: initialTicket, me, onClose, onSaved }: Props) {
+  const [ticket, setTicket] = useState<Ticket>(initialTicket);
   const [comments, setComments] = useState<CommentOut[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<boolean>(false);
 
   // fetch comments and history when component mounts or ticket.id changes
   useEffect(() => {
@@ -24,14 +28,16 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
     setComments([]);
     setEvents([]);
     setError(null);
+    setEditError(null);
+    setEditing(false);
+    setTicket(initialTicket);
 
     const loadComments = async () => {
       try {
-        const data = await fetchComments(token, ticket.id);
+        const data = await fetchComments(token, initialTicket.id);
         if (data && Array.isArray(data.comments)) {
           if (!cancelled) setComments(data.comments);
         } else {
-          // malformed shape -> empty list
           if (!cancelled) setComments([]);
         }
       } catch (_) {
@@ -41,7 +47,7 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
 
     const loadHistory = async () => {
       try {
-        const data = await fetchHistory(token, ticket.id);
+        const data = await fetchHistory(token, initialTicket.id);
         if (data && Array.isArray(data.events)) {
           if (!cancelled) setEvents(data.events);
         } else {
@@ -58,7 +64,7 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [ticket.id, token]);
+  }, [initialTicket.id, token, initialTicket]);
 
   const handleAddComment = async (body: string) => {
     try {
@@ -71,8 +77,30 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
     }
   };
 
+  const handleSaveEdit = async (changes: { title: string; details: string; priority: Priority; due: string | null }) => {
+    try {
+      const updated = await editTicket(token, ticket.id, changes);
+      setTicket(updated);
+      setEditing(false);
+      setEditError(null);
+      // refetch history after successful edit
+      const hist = await fetchHistory(token, ticket.id);
+      if (hist && Array.isArray(hist.events)) {
+        setEvents(hist.events);
+      } else {
+        setEvents([]);
+      }
+      if (onSaved) onSaved(updated);
+    } catch (_) {
+      setEditError("Could not save");
+    }
+  };
+
   // Render meta spans similar to TicketCard
   const statusDisplay = ticket.status.replace(/_/g, " ");
+
+  const showEditButton =
+    me !== null && me === ticket.filed_by && (ticket.status === "open" || ticket.status === "acknowledged");
 
   return (
     <section className="panel ticket-detail" aria-label="Ticket details">
@@ -86,6 +114,17 @@ export default function TicketDetail({ token, ticket, me, onClose }: Props) {
         <span className={`pill status-${ticket.status}`}>{statusDisplay}</span>
         <span className="who">for {ticket.assigned_to}</span>
       </div>
+      {showEditButton && !editing && (
+        <button onClick={() => setEditing(true)}>Edit</button>
+      )}
+      {editing && (
+        <EditTicketForm
+          ticket={ticket}
+          onSave={handleSaveEdit}
+          onCancel={() => setEditing(false)}
+          error={editError ?? undefined}
+        />
+      )}
       <h3>Comments</h3>
       <CommentThread comments={comments} onAdd={handleAddComment} />
       <h3>History</h3>

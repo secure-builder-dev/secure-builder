@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { Ticket, CommentOut, TicketEvent } from "./types";
-// import CommentThread from "./CommentThread"; // replaced with inline implementation to avoid aria-label conflict
+import type { Ticket, CommentOut, TicketEvent, TicketEdit } from "./types";
+import EditTicketForm from "./EditTicketForm";
 import HistoryList from "./HistoryList";
 import * as api from "./api";
 import { expect } from "vitest";
@@ -55,9 +55,18 @@ interface TicketDetailProps {
 }
 
 export default function TicketDetail({ token, ticket, me, onClose, onSaved }: TicketDetailProps) {
+  // Local mutable copy of the ticket so we can reflect edits without parent re‑render
+  const [currentTicket, setCurrentTicket] = useState<Ticket>(ticket);
   const [comments, setComments] = useState<CommentOut[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [addError, setAddError] = useState<string>("");
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string>("");
+
+  // Keep local ticket in sync when the prop changes (e.g., parent updates)
+  useEffect(() => {
+    setCurrentTicket(ticket);
+  }, [ticket]);
 
   // Fetch comments and history whenever the component mounts or the ticket id changes
   useEffect(() => {
@@ -65,23 +74,25 @@ export default function TicketDetail({ token, ticket, me, onClose, onSaved }: Ti
     setComments([]);
     setEvents([]);
     setAddError("");
+    setEditError("");
+    setEditMode(false);
 
     // fetch comments
     api
-      .fetchComments(token, ticket.id)
+      .fetchComments(token, currentTicket.id)
       .then((resp) => setComments(resp.comments))
       .catch(() => setComments([]));
 
     // fetch history
     api
-      .fetchHistory(token, ticket.id)
+      .fetchHistory(token, currentTicket.id)
       .then((resp) => setEvents(resp.events))
       .catch(() => setEvents([]));
-  }, [token, ticket.id, ticket.status]);
+  }, [token, currentTicket.id, currentTicket.status]);
 
   const handleAddComment = async (body: string) => {
     try {
-      const newComment = await api.addComment(token, ticket.id, body);
+      const newComment = await api.addComment(token, currentTicket.id, body);
       setComments((prev) => [...prev, newComment]);
       setAddError("");
     } catch (e) {
@@ -89,8 +100,27 @@ export default function TicketDetail({ token, ticket, me, onClose, onSaved }: Ti
     }
   };
 
+  const handleEditSave = async (changes: TicketEdit) => {
+    try {
+      const updated = await api.editTicket(token, currentTicket.id, changes);
+      // Update local ticket and clear edit mode
+      setCurrentTicket(updated);
+      setEditMode(false);
+      setEditError("");
+      // Refetch history after successful edit
+      api.fetchHistory(token, updated.id).then((resp) => setEvents(resp.events)).catch(() => setEvents([]));
+      if (onSaved) onSaved(updated);
+    } catch (e) {
+      setEditError("Could not save");
+    }
+  };
+
   // Render status with spaces instead of underscores
-  const displayStatus = ticket.status.replace(/_/g, " ");
+  const displayStatus = currentTicket.status.replace(/_/g, " ");
+
+  // Determine if the Edit button should be shown
+  const showEditButton =
+    me === currentTicket.filed_by && (currentTicket.status === "open" || currentTicket.status === "acknowledged");
 
   return (
     <section
@@ -98,16 +128,29 @@ export default function TicketDetail({ token, ticket, me, onClose, onSaved }: Ti
       role="region"
       aria-label="Ticket details"
     >
-      <h2>{ticket.title}</h2>
-      {ticket.details && ticket.details.trim() !== "" && (
-        <p className="detail-text">{ticket.details}</p>
+      <h2>{currentTicket.title}</h2>
+      {currentTicket.details && currentTicket.details.trim() !== "" && (
+        <p className="detail-text">{currentTicket.details}</p>
       )}
       <div className="card-meta">
-        <span className={`badge priority-${ticket.priority}`}>{ticket.priority}</span>
-        {ticket.due && <span className="due">due {ticket.due}</span>}
-        <span className={`pill status-${ticket.status}`}>{displayStatus}</span>
-        <span className="who">for {ticket.assigned_to}</span>
+        <span className={`badge priority-${currentTicket.priority}`}>{currentTicket.priority}</span>
+        {currentTicket.due && <span className="due">due {currentTicket.due}</span>}
+        <span className={`pill status-${currentTicket.status}`}>{displayStatus}</span>
+        <span className="who">for {currentTicket.assigned_to}</span>
       </div>
+      {showEditButton && !editMode && (
+        <button className="edit-button" onClick={() => setEditMode(true)}>
+          Edit
+        </button>
+      )}
+      {editMode && (
+        <EditTicketForm
+          ticket={currentTicket}
+          onSave={handleEditSave}
+          onCancel={() => { setEditMode(false); setEditError(""); }}
+          error={editError || undefined}
+        />
+      )}
       <h3>Comments</h3>
       {/* Inline comment thread to avoid aria‑label conflict */}
       <div className="comment-thread" role="region">

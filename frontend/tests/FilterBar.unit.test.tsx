@@ -1,11 +1,14 @@
 // FilterBar.unit.test.tsx – tests for FilterBar component (E4)
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, afterEach } from "@testing-library/react";
 import React from "react";
+import { test, expect } from "vitest";
 
 // Component will be imported dynamically in each test
 
+// Ensure each test cleans up the DOM
+afterEach(() => cleanup());
 
 // Clause 1: renders the form with correct structure and fields
 test("renders_form_with_correct_structure", async () => {
@@ -68,3 +71,4 @@ test("apply_calls_onApply_with_stripped_values", async () => {
   expect(onApply).toHaveBeenCalledTimes(1);
   expect(onApply).toHaveBeenCalledWith({ q: "", priority: "", assigned_to: "" });
 });
+

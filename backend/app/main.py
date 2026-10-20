@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import db, household, rules
+from app import activity, db, household, rules
 
 
 @asynccontextmanager
@@ -118,6 +118,50 @@ async def create_ticket_route(request: Request, session=Depends(get_db), caller=
         session.rollback()
         return JSONResponse(status_code=400, content={"error": "invalid request"})
     return JSONResponse(status_code=201, content=ticket)
+
+
+@app.get("/api/tickets/{ticket_id}")
+def get_ticket(ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    ticket = session.get(db.Base.registry.mappers[0].class_, ticket_id) if False else None
+    from app.models import Ticket
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    return rules.ticket_to_dict(ticket)
+
+
+@app.get("/api/tickets/{ticket_id}/comments")
+def list_comments_route(ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    try:
+        comments = activity.list_comments(session, ticket_id, caller)
+    except LookupError:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    return {"comments": comments}
+
+
+@app.post("/api/tickets/{ticket_id}/comments", status_code=201)
+async def add_comment_route(request: Request, ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    data = await _read_json_object(request)
+    if data is None or set(data) != {"body"}:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        comment = activity.add_comment(session, ticket_id, caller, data["body"])
+    except LookupError:
+        session.rollback()
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    except ValueError:
+        session.rollback()
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    return JSONResponse(status_code=201, content=comment)
+
+
+@app.get("/api/tickets/{ticket_id}/history")
+def history_route(ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    try:
+        events = activity.ticket_history(session, ticket_id, caller)
+    except LookupError:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    return {"events": events}
 
 
 @app.post("/api/tickets/{ticket_id}/status")

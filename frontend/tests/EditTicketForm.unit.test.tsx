@@ -1,123 +1,12 @@
 // Unit tests for EditTicketForm and TicketDetail edit workflow
 import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach, 
-afterEach(() => cleanup());
- } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as api from "../src/api";
-import React, { useState, useEffect } from "react";
+import EditTicketForm from "../src/EditTicketForm";
+import TicketDetail from "../src/TicketDetail";
 
-/**
- * Minimal EditTicketForm component matching the definition of done.
- */
-function EditTicketForm({ ticket, onSave, onCancel, error }) {
-  const [title, setTitle] = useState(ticket.title);
-  const [details, setDetails] = useState(ticket.details);
-  const [priority, setPriority] = useState(ticket.priority);
-  const [due, setDue] = useState(ticket.due ?? "");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({
-      title,
-      details,
-      priority,
-      due: due === "" ? null : due,
-    });
-  };
-
-  return (
-    <form className="edit-ticket" aria-label="Edit ticket" onSubmit={handleSubmit}>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      <label>
-        Title
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </label>
-      <label>
-        Details
-        <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
-      </label>
-      <label>
-        Priority
-        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="low">low</option>
-          <option value="normal">normal</option>
-          <option value="urgent">urgent</option>
-        </select>
-      </label>
-      <label>
-        Due
-        <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-      </label>
-      <button type="submit">Save</button>
-      <button type="button" onClick={onCancel}>Cancel</button>
-    </form>
-  );
-}
-
-/**
- * Minimal TicketDetail component with edit workflow required for the tests.
- */
-function TicketDetail({ token, ticket: initialTicket, me, onClose, onSaved }) {
-  const [ticket, setTicket] = useState(initialTicket);
-  const [editing, setEditing] = useState(false);
-  const [saveError, setSaveError] = useState("");
-
-  // Refetch history after successful edit – mocked in tests
-  useEffect(() => {
-    if (!editing) {
-      api.fetchHistory(token, ticket.id).catch(() => {});
-    }
-  }, [editing, token, ticket.id]);
-
-  const canEdit =
-    me && me === ticket.filed_by && (ticket.status === "open" || ticket.status === "acknowledged");
-
-  const handleSave = async (changes) => {
-    try {
-      const updated = await api.editTicket(token, ticket.id, changes);
-      setTicket(updated);
-      setEditing(false);
-      setSaveError("");
-      if (onSaved) onSaved(updated);
-    } catch (e) {
-      setSaveError("Could not save");
-    }
-  };
-
-  return (
-    <section className="panel ticket-detail" role="region" aria-label="Ticket details">
-      <h2>{ticket.title}</h2>
-      {ticket.details && <p className="detail-text">{ticket.details}</p>}
-      <div className="card-meta">
-        <span className={`badge priority-${ticket.priority}`}>{ticket.priority}</span>
-        {ticket.due && <span className="due">due {ticket.due}</span>}
-        <span className={`pill status-${ticket.status}`}>{ticket.status.replace(/_/g, " ")}</span>
-        <span className="who">for {ticket.assigned_to}</span>
-      </div>
-      {canEdit && !editing && (
-        <button className="edit-button" onClick={() => setEditing(true)}>
-          Edit
-        </button>
-      )}
-      {editing && (
-        <EditTicketForm ticket={ticket} onSave={handleSave} onCancel={() => setEditing(false)} error={saveError} />
-      )}
-      {saveError && !editing && (
-        <p role="alert" className="error">
-          {saveError}
-        </p>
-      )}
-      <button className="close-detail" onClick={onClose}>
-        Close details
-      </button>
-    </section>
-  );
-}
+afterEach(() => cleanup());
 
 // Helper ticket object used in multiple tests
 const baseTicket = {
@@ -168,7 +57,7 @@ describe("EditTicketForm component", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("saveCallsOnSaveAndShowsError", async () => {
+  it("editTicketFormSaveCallsOnSaveAndShowsError", async () => {
     const onSave = vi.fn();
     const onCancel = vi.fn();
     const errorMsg = "Network error";
@@ -184,7 +73,7 @@ describe("EditTicketForm component", () => {
     const newTitle = "Fix bathtub";
     const newDetails = "Cracked porcelain";
     const newPriority = "urgent";
-    const newDue = "";
+    const newDue = ""; // empty means null
 
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: newTitle } });
     fireEvent.change(screen.getByLabelText(/details/i), { target: { value: newDetails } });

@@ -66,6 +66,48 @@ def change_status(session, ticket_id, user, new_status):
     return ticket_to_dict(ticket)
 
 
+def _group(ticket, today):
+    if ticket.priority == "urgent" or (ticket.due is not None and ticket.due < today):
+        return 0
+    if ticket.due is not None and today <= ticket.due <= today + dt.timedelta(days=3):
+        return 1
+    return 2
+
+
+def _ordered_column(tickets, today):
+    def key(t):
+        return (_group(t, today), t.due is None, t.due or dt.date.max, t.created_at)
+    out = []
+    for t in sorted(tickets, key=key):
+        d = ticket_to_dict(t)
+        d["group"] = _group(t, today)
+        out.append(d)
+    return out
+
+
+def dashboard(session, user, today):
+    tickets = session.query(Ticket).filter(Ticket.assigned_to == user).all()
+    todo = [t for t in tickets if t.status in ("open", "acknowledged")]
+    in_progress = [t for t in tickets if t.status == "in_progress"]
+    window_start = today - dt.timedelta(days=6)
+    completed = [
+        t for t in tickets
+        if t.status in ("done", "closed") and window_start <= t.updated_at.date() <= today
+    ]
+    completed.sort(key=lambda t: t.updated_at, reverse=True)
+    return {
+        "todo": _ordered_column(todo, today),
+        "in_progress": _ordered_column(in_progress, today),
+        "completed": [ticket_to_dict(t) for t in completed],
+    }
+
+
+def filed(session, user):
+    tickets = session.query(Ticket).filter(Ticket.filed_by == user).all()
+    tickets.sort(key=lambda t: t.created_at, reverse=True)
+    return [ticket_to_dict(t) for t in tickets]
+
+
 def create_ticket(session, filed_by, data):
     if filed_by not in USERS:
         raise ValueError("filed_by must be one of USERS")

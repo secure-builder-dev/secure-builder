@@ -120,6 +120,28 @@ async def create_ticket_route(request: Request, session=Depends(get_db), caller=
     return JSONResponse(status_code=201, content=ticket)
 
 
+@app.patch("/api/tickets/{ticket_id}")
+async def edit_ticket_route(request: Request, ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
+    data = await _read_json_object(request)
+    if data is None:
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    try:
+        ticket = rules.edit_ticket(session, ticket_id, caller, data)
+    except LookupError:
+        session.rollback()
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    except ValueError:
+        session.rollback()
+        return JSONResponse(status_code=400, content={"error": "invalid request"})
+    except PermissionError:
+        session.rollback()
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    except rules.NotEditable:
+        session.rollback()
+        return JSONResponse(status_code=409, content={"error": "not editable"})
+    return ticket
+
+
 @app.get("/api/tickets/{ticket_id}")
 def get_ticket(ticket_id: int, session=Depends(get_db), caller=Depends(get_caller)):
     ticket = session.get(db.Base.registry.mappers[0].class_, ticket_id) if False else None
